@@ -1,0 +1,32 @@
+name: Strict Mapping Gate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  strict-mapping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv --version
+
+      - name: Sync environment
+        run: uv sync --frozen
+
+      - name: Validate strict mapping
+        run: uv run python scripts/validate_strict_mapping.py
+
+      - name: Validate change propagation
+        run: uv run python scripts/validate_strict_mapping.py --check-changes
