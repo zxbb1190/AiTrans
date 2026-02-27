@@ -1,0 +1,48 @@
+# 规范总纲与树形结构（L0）
+
+## 1. 目的
+本文件是仓库规范总纲，负责定义标准树、层级关系和变更传导规则。
+
+## 2. 标准树（强制）
+
+```text
+L0 规范总纲
+└── standards_tree.md
+    ├── L1 框架设计核心标准
+    │   └── framework_design_standard.md
+    ├── L1 可追溯性标准
+    │   └── traceability_standard.md
+    ├── L1 可删减性标准
+    │   └── reducibility_standard.md
+    ├── L1 工程执行规范
+    │   └── AGENTS.md
+    └── L2 领域标准（置物架）
+        └── shelf_framework_standard.md
+            └── L3 领域实现与证据
+                ├── shelf_framework.py
+                ├── main.py
+                ├── scripts/validate_strict_mapping.py
+                ├── mapping_registry.json
+                └── docs/logic_record.json
+```
+
+## 3. 严格映射规则（强制）
+- 当 L0 变更时，L1/L2/L3 必须同步评估并按需更新。
+- 当 L1 变更时，L2/L3 必须同步评估并按需更新。
+- 当 L2 变更时，L3 必须同步更新。
+- 当 L3 变更时，必须执行反向验证，确认不违反 L0/L1/L2。
+
+## 4. 验证机制
+机器可读映射：`mapping_registry.json`
+
+验证命令：
+```bash
+uv run python scripts/validate_strict_mapping.py
+uv run python scripts/validate_strict_mapping.py --check-changes
+```
+
+## 5. 评审准入门槛
+合并前至少满足：
+- 标准树关系未被破坏
+- 映射验证通过
+- 变更方向满足传导规则
