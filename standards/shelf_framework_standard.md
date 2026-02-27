@@ -2,10 +2,10 @@
 
 ## 0. 规范关系
 本文件为置物架领域标准，必须遵循：
-- `standards_tree.md`
-- `framework_design_standard.md`
-- `traceability_standard.md`
-- `reducibility_standard.md`
+- `standards/standards_tree.md`
+- `standards/framework_design_standard.md`
+- `standards/traceability_standard.md`
+- `standards/reducibility_standard.md`
 
 ## 1. 目标（Goal）
 定义可拆卸组装的开放式立体堆叠装置，以提升单位占地面积下的存取效率。
@@ -42,7 +42,7 @@
 ## 7. 运行与证据
 ```bash
 uv sync
-uv run python main.py
+uv run python src/main.py
 ```
 
 证据：

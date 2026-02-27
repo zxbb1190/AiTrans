@@ -1,19 +1,19 @@
 {
   "levels": {
-    "L0": ["standards_tree.md"],
+    "L0": ["standards/standards_tree.md"],
     "L1": [
-      "framework_design_standard.md",
-      "traceability_standard.md",
-      "reducibility_standard.md",
+      "standards/framework_design_standard.md",
+      "standards/traceability_standard.md",
+      "standards/reducibility_standard.md",
       "AGENTS.md"
     ],
-    "L2": ["shelf_framework_standard.md"],
+    "L2": ["standards/shelf_framework_standard.md"],
     "L3": [
-      "shelf_framework.py",
-      "main.py",
+      "src/shelf_framework.py",
+      "src/main.py",
       "scripts/validate_strict_mapping.py",
       "docs/logic_record.json",
-      "mapping_registry.json"
+      "standards/mapping_registry.json"
     ]
   },
   "top_down_update_rules": [
@@ -43,8 +43,8 @@
       "l1_anchor": "## 1. 目标（Goal）",
       "l2_anchor": "## 1. 目标（Goal）",
       "impl_symbols": [
-        {"file": "shelf_framework.py", "symbol": "class Goal"},
-        {"file": "main.py", "symbol": "goal = Goal("}
+        {"file": "src/shelf_framework.py", "symbol": "class Goal"},
+        {"file": "src/main.py", "symbol": "goal = Goal("}
       ]
     },
     {
@@ -53,10 +53,10 @@
       "l1_anchor": "## 2. 边界定义（Boundary）",
       "l2_anchor": "## 2. 边界定义（Boundary）",
       "impl_symbols": [
-        {"file": "shelf_framework.py", "symbol": "class BoundaryDefinition"},
-        {"file": "shelf_framework.py", "symbol": "class Space3D"},
-        {"file": "shelf_framework.py", "symbol": "class Opening2D"},
-        {"file": "shelf_framework.py", "symbol": "class Footprint2D"}
+        {"file": "src/shelf_framework.py", "symbol": "class BoundaryDefinition"},
+        {"file": "src/shelf_framework.py", "symbol": "class Space3D"},
+        {"file": "src/shelf_framework.py", "symbol": "class Opening2D"},
+        {"file": "src/shelf_framework.py", "symbol": "class Footprint2D"}
       ]
     },
     {
@@ -65,8 +65,8 @@
       "l1_anchor": "## 3. 模块（最小可行基，Module）",
       "l2_anchor": "## 3. 模块（最小可行基，Module）",
       "impl_symbols": [
-        {"file": "shelf_framework.py", "symbol": "class Module"},
-        {"file": "shelf_framework.py", "symbol": "MODULE_ROLE"}
+        {"file": "src/shelf_framework.py", "symbol": "class Module"},
+        {"file": "src/shelf_framework.py", "symbol": "MODULE_ROLE"}
       ]
     },
     {
@@ -75,9 +75,9 @@
       "l1_anchor": "## 4. 组合原则（Combination Principles）",
       "l2_anchor": "## 4. 组合原则（Combination Principles）",
       "impl_symbols": [
-        {"file": "shelf_framework.py", "symbol": "class Rule"},
-        {"file": "shelf_framework.py", "symbol": "class CombinationRules"},
-        {"file": "shelf_framework.py", "symbol": "def default()"}
+        {"file": "src/shelf_framework.py", "symbol": "class Rule"},
+        {"file": "src/shelf_framework.py", "symbol": "class CombinationRules"},
+        {"file": "src/shelf_framework.py", "symbol": "def default()"}
       ]
     },
     {
@@ -86,10 +86,10 @@
       "l1_anchor": "## 5. 验证（Verification）",
       "l2_anchor": "## 5. 验证（Verification）",
       "impl_symbols": [
-        {"file": "shelf_framework.py", "symbol": "class VerificationInput"},
-        {"file": "shelf_framework.py", "symbol": "class VerificationResult"},
-        {"file": "shelf_framework.py", "symbol": "def verify("},
-        {"file": "main.py", "symbol": "verification_result = verify("}
+        {"file": "src/shelf_framework.py", "symbol": "class VerificationInput"},
+        {"file": "src/shelf_framework.py", "symbol": "class VerificationResult"},
+        {"file": "src/shelf_framework.py", "symbol": "def verify("},
+        {"file": "src/main.py", "symbol": "verification_result = verify("}
       ]
     }
   ]

@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-REGISTRY_PATH = REPO_ROOT / "mapping_registry.json"
+REGISTRY_PATH = REPO_ROOT / "standards/mapping_registry.json"
 
 
 REQUIRED_LEVELS = ("L0", "L1", "L2", "L3")
@@ -44,6 +44,20 @@ def collect_changed_files() -> set[str]:
         if result.returncode != 0:
             continue
         for line in result.stdout.splitlines():
+            item = line.strip()
+            if item:
+                changed.add(item)
+
+    # Include untracked files (important for path moves before staging).
+    untracked = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if untracked.returncode == 0:
+        for line in untracked.stdout.splitlines():
             item = line.strip()
             if item:
                 changed.add(item)

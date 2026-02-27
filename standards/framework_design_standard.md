@@ -53,4 +53,4 @@
 
 ## 6. 外部关联
 本文件的外部关联由顶层规范树定义：
-- `standards_tree.md`
+- `standards/standards_tree.md`

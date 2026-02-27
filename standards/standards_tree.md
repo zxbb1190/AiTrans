@@ -7,22 +7,22 @@
 
 ```text
 L0 规范总纲
-└── standards_tree.md
+└── standards/standards_tree.md
     ├── L1 框架设计核心标准
-    │   └── framework_design_standard.md
+    │   └── standards/framework_design_standard.md
     ├── L1 可追溯性标准
-    │   └── traceability_standard.md
+    │   └── standards/traceability_standard.md
     ├── L1 可删减性标准
-    │   └── reducibility_standard.md
+    │   └── standards/reducibility_standard.md
     ├── L1 工程执行规范
     │   └── AGENTS.md
     └── L2 领域标准（置物架）
-        └── shelf_framework_standard.md
+        └── standards/shelf_framework_standard.md
             └── L3 领域实现与证据
-                ├── shelf_framework.py
-                ├── main.py
+                ├── src/shelf_framework.py
+                ├── src/main.py
                 ├── scripts/validate_strict_mapping.py
-                ├── mapping_registry.json
+                ├── standards/mapping_registry.json
                 └── docs/logic_record.json
 ```
 
@@ -33,7 +33,7 @@ L0 规范总纲
 - 当 L3 变更时，必须执行反向验证，确认不违反 L0/L1/L2。
 
 ## 4. 验证机制
-机器可读映射：`mapping_registry.json`
+机器可读映射：`standards/mapping_registry.json`
 
 验证命令：
 ```bash
