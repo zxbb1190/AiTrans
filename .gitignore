@@ -1,4 +1,4 @@
-# Codex workspace (may contain auth tokens)
+# Codex workspace
 .codex/**
 
 # Allow shared prompts (safe, review before commit)
