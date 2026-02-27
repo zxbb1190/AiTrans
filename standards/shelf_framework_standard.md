@@ -23,8 +23,9 @@
 - `M3` 隔板（`Module.PANEL`）：承载物品
 
 ## 4. 组合原则（Combination Principles）
-- `R1`：模块不应孤立存在（组合大小至少为 2）
-- `R2`：可用组合必须包含连接接口
+- `R1`：组合不得孤立，至少包含 2 个模块（对应：`len(combo) >= 2`）
+- `R2`：每个可用组合必须包含连接接口模块（对应：`Module.CONNECTOR in combo`）
+- 组合结果必须可判定为“有效/无效”，并可枚举有效组合集合（`CombinationRules.valid_subsets`）
 
 ## 5. 验证（Verification）
 通过条件：

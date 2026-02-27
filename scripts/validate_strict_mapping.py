@@ -7,10 +7,10 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = REPO_ROOT / "standards/mapping_registry.json"
-
 
 REQUIRED_LEVELS = ("L0", "L1", "L2", "L3")
 ASSIGN_CALL_PATTERN = re.compile(
@@ -18,16 +18,90 @@ ASSIGN_CALL_PATTERN = re.compile(
 )
 
 
-def load_registry() -> dict:
+Issue = dict[str, Any]
+
+
+def make_issue(
+    message: str,
+    file: str,
+    line: int = 1,
+    column: int = 1,
+    code: str = "STRICT_MAPPING",
+    related: list[dict[str, Any]] | None = None,
+) -> Issue:
+    return {
+        "message": message,
+        "file": file,
+        "line": max(1, int(line)),
+        "column": max(1, int(column)),
+        "code": code,
+        "related": related or [],
+    }
+
+
+def load_registry() -> tuple[dict[str, Any], str]:
     if not REGISTRY_PATH.exists():
         raise FileNotFoundError(f"missing mapping registry: {REGISTRY_PATH}")
-    return json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    text = REGISTRY_PATH.read_text(encoding="utf-8")
+    return json.loads(text), text
 
 
 def read_text(path: Path) -> str:
     if not path.exists():
         raise FileNotFoundError(f"missing required file: {path}")
     return path.read_text(encoding="utf-8")
+
+
+def find_line(text: str, pattern: str) -> int:
+    lines = text.splitlines()
+    for idx, line in enumerate(lines, start=1):
+        if pattern in line:
+            return idx
+    return 1
+
+
+def get_mapping_block_bounds(registry_text: str, map_id: str) -> tuple[int, int]:
+    lines = registry_text.splitlines()
+    start = 1
+    end = len(lines)
+
+    id_token = f'"id": "{map_id}"'
+    for idx, line in enumerate(lines, start=1):
+        if id_token in line:
+            start = idx
+            break
+
+    for idx in range(start + 1, len(lines) + 1):
+        if '"id": "' in lines[idx - 1]:
+            end = idx - 1
+            break
+
+    return start, end
+
+
+def find_mapping_key_line(registry_text: str, map_id: str, key: str) -> int:
+    lines = registry_text.splitlines()
+    start, end = get_mapping_block_bounds(registry_text, map_id)
+    key_token = f'"{key}"'
+    for idx in range(start, end + 1):
+        if key_token in lines[idx - 1]:
+            return idx
+    return start
+
+
+def find_mapping_symbol_line(registry_text: str, map_id: str, file_name: str, symbol: str) -> int:
+    lines = registry_text.splitlines()
+    start, end = get_mapping_block_bounds(registry_text, map_id)
+    for idx in range(start, end + 1):
+        line = lines[idx - 1]
+        if file_name in line and symbol in line:
+            return idx
+    return start
+
+
+def find_top_down_rule_line(registry_text: str, src_level: str) -> int:
+    token = f'"from": "{src_level}"'
+    return find_line(registry_text, token)
 
 
 def collect_changed_files() -> set[str]:
@@ -53,7 +127,6 @@ def collect_changed_files() -> set[str]:
             if item:
                 changed.add(item)
 
-    # Include untracked files (important for path moves before staging).
     untracked = subprocess.run(
         ["git", "ls-files", "--others", "--exclude-standard"],
         cwd=REPO_ROOT,
@@ -70,47 +143,153 @@ def collect_changed_files() -> set[str]:
     return changed
 
 
-def validate_registry_structure(registry: dict) -> list[str]:
-    errors: list[str] = []
+def discover_domain_standards() -> list[str]:
+    standards_dir = REPO_ROOT / "standards"
+    if not standards_dir.exists():
+        return []
+
+    results: list[str] = []
+    for path in sorted(standards_dir.glob("*_framework_standard.md")):
+        if path.name == "framework_design_standard.md":
+            continue
+        results.append(path.relative_to(REPO_ROOT).as_posix())
+    return results
+
+
+def validate_registry_structure(registry: dict[str, Any], registry_text: str) -> list[Issue]:
+    issues: list[Issue] = []
 
     levels = registry.get("levels")
     if not isinstance(levels, dict):
-        return ["mapping_registry.json: levels must be an object"]
+        issues.append(
+            make_issue(
+                "mapping_registry.json: levels must be an object",
+                REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                find_line(registry_text, '"levels"'),
+                code="REGISTRY_LEVELS_TYPE",
+            )
+        )
+        return issues
 
     for level in REQUIRED_LEVELS:
         files = levels.get(level)
         if not isinstance(files, list) or not files:
-            errors.append(f"mapping_registry.json: {level} must map to a non-empty file list")
+            issues.append(
+                make_issue(
+                    f"mapping_registry.json: {level} must map to a non-empty file list",
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    find_line(registry_text, f'"{level}"'),
+                    code="REGISTRY_LEVEL_EMPTY",
+                )
+            )
+
+    for level in REQUIRED_LEVELS:
+        for file_name in levels.get(level, []):
+            file_path = REPO_ROOT / file_name
+            if not file_path.exists():
+                line = find_line(registry_text, file_name)
+                issues.append(
+                    make_issue(
+                        f"mapping_registry.json: {level} references missing file: {file_name}",
+                        REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                        line,
+                        code="REGISTRY_MISSING_FILE",
+                        related=[
+                            {
+                                "message": f"Expected file location: {file_name}",
+                                "file": file_name,
+                                "line": 1,
+                                "column": 1,
+                            }
+                        ],
+                    )
+                )
+
+    declared_l2 = set(levels.get("L2", []))
+    for standard_file in discover_domain_standards():
+        if standard_file not in declared_l2:
+            issues.append(
+                make_issue(
+                    "mapping_registry.json: unregistered domain standard in standards/: "
+                    f"{standard_file} (must be listed under L2)",
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    find_line(registry_text, '"L2"'),
+                    code="REGISTRY_UNREGISTERED_DOMAIN",
+                    related=[
+                        {
+                            "message": "New domain standard added here",
+                            "file": standard_file,
+                            "line": 1,
+                            "column": 1,
+                        }
+                    ],
+                )
+            )
 
     mappings = registry.get("mappings", [])
     if not isinstance(mappings, list) or not mappings:
-        errors.append("mapping_registry.json: mappings must be a non-empty list")
-        return errors
+        issues.append(
+            make_issue(
+                "mapping_registry.json: mappings must be a non-empty list",
+                REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                find_line(registry_text, '"mappings"'),
+                code="REGISTRY_MAPPINGS_EMPTY",
+            )
+        )
+        return issues
 
     mapping_ids: set[str] = set()
-
     for item in mappings:
         map_id = item.get("id")
         if not map_id or not isinstance(map_id, str):
-            errors.append("mapping_registry.json: each mapping must have string id")
+            issues.append(
+                make_issue(
+                    "mapping_registry.json: each mapping must have string id",
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    find_line(registry_text, '"id"'),
+                    code="REGISTRY_MAPPING_ID_INVALID",
+                )
+            )
             continue
+
         if map_id in mapping_ids:
-            errors.append(f"mapping_registry.json: duplicate mapping id: {map_id}")
+            issues.append(
+                make_issue(
+                    f"mapping_registry.json: duplicate mapping id: {map_id}",
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    find_mapping_key_line(registry_text, map_id, "id"),
+                    code="REGISTRY_MAPPING_ID_DUP",
+                )
+            )
         mapping_ids.add(map_id)
 
         for key in ("l0_anchor", "l1_anchor", "l2_anchor"):
             if not item.get(key):
-                errors.append(f"{map_id}: missing {key}")
+                issues.append(
+                    make_issue(
+                        f"{map_id}: missing {key}",
+                        REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                        find_mapping_key_line(registry_text, map_id, key),
+                        code="REGISTRY_MAPPING_KEY_MISSING",
+                    )
+                )
 
         symbols = item.get("impl_symbols")
         if not isinstance(symbols, list) or not symbols:
-            errors.append(f"{map_id}: impl_symbols must be non-empty list")
+            issues.append(
+                make_issue(
+                    f"{map_id}: impl_symbols must be non-empty list",
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    find_mapping_key_line(registry_text, map_id, "impl_symbols"),
+                    code="REGISTRY_IMPL_SYMBOLS_EMPTY",
+                )
+            )
 
-    return errors
+    return issues
 
 
-def validate_mapping_content(registry: dict) -> list[str]:
-    errors: list[str] = []
+def validate_mapping_content(registry: dict[str, Any], registry_text: str) -> list[Issue]:
+    issues: list[Issue] = []
 
     l0_doc = REPO_ROOT / registry["levels"]["L0"][0]
     l1_doc = REPO_ROOT / registry["levels"]["L1"][0]
@@ -127,18 +306,72 @@ def validate_mapping_content(registry: dict) -> list[str]:
         map_id = item["id"]
 
         if item["l0_anchor"] not in l0_text:
-            errors.append(f"{map_id}: l0_anchor not found in {l0_doc.name}")
+            issues.append(
+                make_issue(
+                    f"{map_id}: l0_anchor not found in {l0_doc.relative_to(REPO_ROOT).as_posix()}",
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    find_mapping_key_line(registry_text, map_id, "l0_anchor"),
+                    code="ANCHOR_L0_MISSING",
+                    related=[
+                        {
+                            "message": "Expected anchor target file",
+                            "file": l0_doc.relative_to(REPO_ROOT).as_posix(),
+                            "line": 1,
+                            "column": 1,
+                        }
+                    ],
+                )
+            )
+
         if item["l1_anchor"] not in l1_text:
-            errors.append(f"{map_id}: l1_anchor not found in {l1_doc.name}")
+            issues.append(
+                make_issue(
+                    f"{map_id}: l1_anchor not found in {l1_doc.relative_to(REPO_ROOT).as_posix()}",
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    find_mapping_key_line(registry_text, map_id, "l1_anchor"),
+                    code="ANCHOR_L1_MISSING",
+                    related=[
+                        {
+                            "message": "Expected anchor target file",
+                            "file": l1_doc.relative_to(REPO_ROOT).as_posix(),
+                            "line": 1,
+                            "column": 1,
+                        }
+                    ],
+                )
+            )
+
         if item["l2_anchor"] not in l2_text:
-            errors.append(f"{map_id}: l2_anchor not found in {l2_doc.name}")
+            issues.append(
+                make_issue(
+                    f"{map_id}: l2_anchor not found in {l2_doc.relative_to(REPO_ROOT).as_posix()}",
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    find_mapping_key_line(registry_text, map_id, "l2_anchor"),
+                    code="ANCHOR_L2_MISSING",
+                    related=[
+                        {
+                            "message": "Expected anchor target file",
+                            "file": l2_doc.relative_to(REPO_ROOT).as_posix(),
+                            "line": 1,
+                            "column": 1,
+                        }
+                    ],
+                )
+            )
 
         for symbol_ref in item["impl_symbols"]:
             file_name = symbol_ref.get("file")
             symbol = symbol_ref.get("symbol")
 
             if not file_name or not symbol:
-                errors.append(f"{map_id}: invalid impl symbol ref: {symbol_ref}")
+                issues.append(
+                    make_issue(
+                        f"{map_id}: invalid impl symbol ref: {symbol_ref}",
+                        REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                        find_mapping_key_line(registry_text, map_id, "impl_symbols"),
+                        code="IMPL_SYMBOL_REF_INVALID",
+                    )
+                )
                 continue
 
             file_path = REPO_ROOT / file_name
@@ -148,18 +381,27 @@ def validate_mapping_content(registry: dict) -> list[str]:
                 ast_cache[file_path] = ast.parse(code_cache[file_path], filename=file_name)
 
             if not symbol_exists(symbol, file_path, code_cache[file_path], ast_cache.get(file_path)):
-                errors.append(f"{map_id}: symbol '{symbol}' not found in {file_name}")
+                issues.append(
+                    make_issue(
+                        f"{map_id}: symbol '{symbol}' not found in {file_name}",
+                        REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                        find_mapping_symbol_line(registry_text, map_id, file_name, symbol),
+                        code="IMPL_SYMBOL_MISSING",
+                        related=[
+                            {
+                                "message": "Expected implementation file",
+                                "file": file_name,
+                                "line": 1,
+                                "column": 1,
+                            }
+                        ],
+                    )
+                )
 
-    return errors
+    return issues
 
 
-def symbol_exists(
-    symbol: str,
-    file_path: Path,
-    source_text: str,
-    parsed_ast: ast.AST | None,
-) -> bool:
-    # Non-Python files still use text matching.
+def symbol_exists(symbol: str, file_path: Path, source_text: str, parsed_ast: ast.AST | None) -> bool:
     if file_path.suffix != ".py" or parsed_ast is None:
         return symbol in source_text
 
@@ -218,8 +460,8 @@ def python_assign_call_exists(tree: ast.AST, target_name: str, func_name: str) -
     return False
 
 
-def validate_change_propagation(registry: dict, changed_files: set[str]) -> list[str]:
-    errors: list[str] = []
+def validate_change_propagation(registry: dict[str, Any], registry_text: str, changed_files: set[str]) -> list[Issue]:
+    issues: list[Issue] = []
 
     level_files: dict[str, set[str]] = {
         level: set(files) for level, files in registry["levels"].items()
@@ -236,17 +478,25 @@ def validate_change_propagation(registry: dict, changed_files: set[str]) -> list
         if touched(src):
             for target in targets:
                 if target in level_files and not touched(target):
-                    errors.append(
-                        f"change propagation violation: {src} changed but {target} not updated"
+                    missing_target = next(iter(level_files[target]))
+                    issues.append(
+                        make_issue(
+                            f"change propagation violation: {src} changed but {target} not updated",
+                            REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                            find_top_down_rule_line(registry_text, src),
+                            code="PROPAGATION_MISSING_TARGET",
+                            related=[
+                                {
+                                    "message": f"Expected changed file in {target}",
+                                    "file": missing_target,
+                                    "line": 1,
+                                    "column": 1,
+                                }
+                            ],
+                        )
                     )
 
-    for rule in registry.get("reverse_validation_rules", []):
-        src = rule.get("from")
-        if src in level_files and touched(src):
-            # Running this script itself is the reverse validation requirement.
-            pass
-
-    return errors
+    return issues
 
 
 def main() -> int:
@@ -266,29 +516,51 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        registry = load_registry()
+        registry, registry_text = load_registry()
     except Exception as exc:
-        print(f"[FAIL] {exc}")
+        payload = {
+            "passed": False,
+            "checked_changes": args.check_changes,
+            "errors": [
+                make_issue(
+                    str(exc),
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    1,
+                    code="REGISTRY_LOAD_FAILED",
+                )
+            ],
+        }
+        if args.json:
+            print(json.dumps(payload, ensure_ascii=False))
+        else:
+            print(f"[FAIL] {exc}")
         return 1
 
-    errors: list[str] = []
-    errors.extend(validate_registry_structure(registry))
+    issues: list[Issue] = []
+    issues.extend(validate_registry_structure(registry, registry_text))
 
-    if not errors:
+    if not issues:
         try:
-            errors.extend(validate_mapping_content(registry))
+            issues.extend(validate_mapping_content(registry, registry_text))
         except Exception as exc:
-            errors.append(str(exc))
+            issues.append(
+                make_issue(
+                    str(exc),
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    1,
+                    code="MAPPING_CONTENT_VALIDATION_FAILED",
+                )
+            )
 
     if args.check_changes:
         changed = collect_changed_files()
-        errors.extend(validate_change_propagation(registry, changed))
+        issues.extend(validate_change_propagation(registry, registry_text, changed))
 
-    passed = len(errors) == 0
+    passed = len(issues) == 0
     result_payload = {
         "passed": passed,
         "checked_changes": args.check_changes,
-        "errors": errors,
+        "errors": issues,
     }
 
     if args.json:
@@ -297,8 +569,8 @@ def main() -> int:
 
     if not passed:
         print("[FAIL] strict mapping validation failed:")
-        for issue in errors:
-            print(f"- {issue}")
+        for issue in issues:
+            print(f"- {issue['file']}:{issue['line']}: {issue['message']}")
         return 1
 
     print("[PASS] strict mapping validation passed")

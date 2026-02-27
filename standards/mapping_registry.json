@@ -7,7 +7,10 @@
       "standards/reducibility_standard.md",
       "AGENTS.md"
     ],
-    "L2": ["standards/shelf_framework_standard.md"],
+    "L2": [
+      "standards/shelf_framework_standard.md",
+      "standards/curtain_framework_standard.md"
+    ],
     "L3": [
       "src/shelf_framework.py",
       "src/main.py",
