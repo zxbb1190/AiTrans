@@ -7,6 +7,12 @@ import json
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+STRICT_MAPPING_LEVEL = "L2"
+STRICT_MAPPING_REGISTRY = "mapping_registry.json"
+STRICT_MAPPING_VALIDATION_COMMAND = (
+    "uv run python scripts/validate_strict_mapping.py --check-changes"
+)
+
 
 @dataclass(frozen=True)
 class Goal:
@@ -255,3 +261,11 @@ class LogicRecord:
 
 def modules_to_list(combo: set[Module]) -> list[str]:
     return sorted(item.value for item in combo)
+
+
+def strict_mapping_meta() -> dict[str, str]:
+    return {
+        "level": STRICT_MAPPING_LEVEL,
+        "registry": STRICT_MAPPING_REGISTRY,
+        "validation_command": STRICT_MAPPING_VALIDATION_COMMAND,
+    }

@@ -15,6 +15,7 @@ from shelf_framework import (
     Space3D,
     VerificationInput,
     modules_to_list,
+    strict_mapping_meta,
     verify,
 )
 
@@ -75,6 +76,7 @@ def main() -> None:
         "goal": goal.to_dict(),
         "boundary": boundary.to_dict(),
         "hypothesis": hypothesis.to_dict(),
+        "strict_mapping": strict_mapping_meta(),
         "candidate_combo": modules_to_list(candidate_combo),
         "valid_combinations": [modules_to_list(item) for item in valid_combos],
         "verification": verification_result.to_dict(),
