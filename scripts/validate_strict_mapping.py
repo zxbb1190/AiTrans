@@ -11,10 +11,18 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-REGISTRY_PATH = REPO_ROOT / "framework/L3/mapping_registry.json"
+REGISTRY_PATH = REPO_ROOT / "mapping/mapping_registry.json"
+FRAMEWORK_DIR = REPO_ROOT / "framework"
+CORE_L1_STANDARD_FILE = "specs/框架设计核心标准.md"
 
 DEFAULT_LEVEL_ORDER = ("L0", "L1", "L2", "L3")
 VALID_NODE_KINDS = {"layer", "file"}
+LEVEL_ALLOWED_PREFIXES: dict[str, tuple[str, ...]] = {
+    "L0": ("specs/",),
+    "L1": ("specs/",),
+    "L2": ("framework/",),
+    "L3": ("mapping/",),
+}
 REQUIRED_L1_ANCHORS_PER_L2 = (
     "## 1. 目标（Goal）",
     "## 2. 边界定义（Boundary）",
@@ -25,6 +33,20 @@ REQUIRED_L1_ANCHORS_PER_L2 = (
 ASSIGN_CALL_PATTERN = re.compile(
     r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\(\s*$"
 )
+LAYER_DIR_PATTERN = re.compile(r"^L(\d+)$")
+CANONICAL_BASE_ID_PATTERN = re.compile(r"^B(\d+)$")
+CANONICAL_NODE_ID_PATTERN = re.compile(r"^L(\d+)\.M([A-Za-z0-9_-]+)\.B(\d+)$")
+FRAMEWORK_L2_FILE_PATTERN = re.compile(r"^framework/[^/]+/L2/[^/]+\.md$")
+LAYER_TAG_PATTERN = re.compile(r"<!--\s*@layer\s+([^>]*)-->", re.IGNORECASE)
+BASE_TAG_PATTERN = re.compile(r"<!--\s*@base\s+([^>]*)-->", re.IGNORECASE)
+COMPOSE_TAG_PATTERN = re.compile(r"<!--\s*@compose\s+([^>]*)-->", re.IGNORECASE)
+REQUIRED_LAYER_SECTIONS = (
+    "## 1. 目标（Goal）",
+    "## 2. 边界定义（Boundary）",
+    "## 3. 最小可行基（Bases）",
+    "## 4. 组合原则（Combination Principles）",
+    "## 5. 验证（Verification）",
+)
 
 Issue = dict[str, Any]
 
@@ -34,6 +56,7 @@ class ParsedRegistry:
     level_order: list[str]
     level_files: dict[str, set[str]]
     impl_files: set[str]
+    framework_layer_files: set[str]
 
 
 def make_issue(
@@ -161,14 +184,466 @@ def collect_changed_files() -> set[str]:
     return changed
 
 
+def line_from_offset(text: str, offset: int) -> int:
+    return text.count("\n", 0, offset) + 1
+
+
+def parse_tag_attributes(raw: str) -> dict[str, str]:
+    attrs: dict[str, str] = {}
+    for part in raw.split(";"):
+        token = part.strip()
+        if not token or "=" not in token:
+            continue
+        key, value = token.split("=", 1)
+        key_clean = key.strip()
+        value_clean = value.strip().strip('"').strip("'")
+        if key_clean:
+            attrs[key_clean] = value_clean
+    return attrs
+
+
+def iter_framework_layer_markdown() -> list[tuple[str, int, Path]]:
+    docs: list[tuple[str, int, Path]] = []
+    if not FRAMEWORK_DIR.exists():
+        return docs
+
+    for module_dir in sorted(FRAMEWORK_DIR.iterdir()):
+        if not module_dir.is_dir():
+            continue
+        module_name = module_dir.name
+        for layer_dir in sorted(module_dir.iterdir()):
+            if not layer_dir.is_dir():
+                continue
+            layer_match = LAYER_DIR_PATTERN.fullmatch(layer_dir.name)
+            if layer_match is None:
+                continue
+            layer_num = int(layer_match.group(1))
+            for markdown_file in sorted(layer_dir.glob("*.md")):
+                docs.append((module_name, layer_num, markdown_file))
+    return docs
+
+
+def is_allowed_level_path(level: str, file_name: str) -> bool:
+    allowed_prefixes = LEVEL_ALLOWED_PREFIXES.get(level, ())
+    if allowed_prefixes and not any(file_name.startswith(prefix) for prefix in allowed_prefixes):
+        return False
+    if level == "L2":
+        return FRAMEWORK_L2_FILE_PATTERN.fullmatch(file_name) is not None
+    return True
+
+
 def discover_domain_standards() -> list[str]:
-    framework_dir = REPO_ROOT / "framework" / "L2"
-    if not framework_dir.exists():
-        return []
-    return [
-        path.relative_to(REPO_ROOT).as_posix()
-        for path in sorted(framework_dir.glob("*.md"))
-    ]
+    standards: list[str] = []
+    for module_name, layer_num, file_path in iter_framework_layer_markdown():
+        if layer_num != 2:
+            continue
+        rel = file_path.relative_to(REPO_ROOT).as_posix()
+        if FRAMEWORK_L2_FILE_PATTERN.fullmatch(rel) is not None:
+            standards.append(rel)
+    return sorted(set(standards))
+
+
+def discover_framework_layer_docs() -> set[str]:
+    return {path.relative_to(REPO_ROOT).as_posix() for _, _, path in iter_framework_layer_markdown()}
+
+
+def validate_framework_layers() -> tuple[list[Issue], set[str]]:
+    issues: list[Issue] = []
+    layer_files: set[str] = set()
+    node_origin: dict[str, tuple[str, int]] = {}
+    compose_edges: list[tuple[str, str, str, int, str]] = []
+    module_levels: dict[str, set[int]] = {}
+    edge_pairs: set[tuple[str, str]] = set()
+    valid_compose_edges: list[tuple[str, str]] = []
+
+    if not FRAMEWORK_DIR.exists():
+        issues.append(
+            make_issue(
+                "framework directory is missing",
+                REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                1,
+                code="FRAMEWORK_DIR_MISSING",
+            )
+        )
+        return issues, layer_files
+
+    for module_dir in sorted(FRAMEWORK_DIR.iterdir()):
+        if not module_dir.is_dir():
+            continue
+        module_name = module_dir.name
+        levels = module_levels.setdefault(module_name, set())
+
+        for entry in sorted(module_dir.iterdir()):
+            if entry.is_file() and entry.suffix == ".md":
+                rel = entry.relative_to(REPO_ROOT).as_posix()
+                issues.append(
+                    make_issue(
+                        "framework module markdown must be under Lx directory",
+                        rel,
+                        1,
+                        code="FRAMEWORK_FILE_NOT_IN_LAYER_DIR",
+                    )
+                )
+            if entry.is_dir() and LAYER_DIR_PATTERN.fullmatch(entry.name) is None:
+                rel = entry.relative_to(REPO_ROOT).as_posix()
+                issues.append(
+                    make_issue(
+                        "framework module subdirectory must be named as Lx",
+                        rel,
+                        1,
+                        code="FRAMEWORK_LAYER_DIR_NAME_INVALID",
+                    )
+                )
+
+    for module_name, level_num, markdown_file in iter_framework_layer_markdown():
+        rel_file = markdown_file.relative_to(REPO_ROOT).as_posix()
+        layer_files.add(rel_file)
+        module_levels.setdefault(module_name, set()).add(level_num)
+        file_text = read_text(markdown_file)
+
+        for required_heading in REQUIRED_LAYER_SECTIONS:
+            if required_heading not in file_text:
+                issues.append(
+                    make_issue(
+                        f"missing required section heading: {required_heading}",
+                        rel_file,
+                        1,
+                        code="FRAMEWORK_LAYER_SECTION_MISSING",
+                    )
+                )
+
+        layer_matches = list(LAYER_TAG_PATTERN.finditer(file_text))
+        if not layer_matches:
+            issues.append(
+                make_issue(
+                    "missing @layer tag",
+                    rel_file,
+                    1,
+                    code="FRAMEWORK_LAYER_TAG_MISSING",
+                )
+            )
+        else:
+            attrs = parse_tag_attributes(layer_matches[0].group(1))
+            expected_level = f"L{level_num}"
+            declared_module = attrs.get("module")
+            declared_level = attrs.get("level")
+            if declared_module != module_name:
+                issues.append(
+                    make_issue(
+                        f"@layer module must be '{module_name}', got '{declared_module}'",
+                        rel_file,
+                        line_from_offset(file_text, layer_matches[0].start()),
+                        code="FRAMEWORK_LAYER_TAG_MODULE_MISMATCH",
+                    )
+                )
+            if declared_level != expected_level:
+                issues.append(
+                    make_issue(
+                        f"@layer level must be '{expected_level}', got '{declared_level}'",
+                        rel_file,
+                        line_from_offset(file_text, layer_matches[0].start()),
+                        code="FRAMEWORK_LAYER_TAG_LEVEL_MISMATCH",
+                    )
+                )
+
+        base_matches = list(BASE_TAG_PATTERN.finditer(file_text))
+        if not base_matches:
+            issues.append(
+                make_issue(
+                    "missing @base tags",
+                    rel_file,
+                    1,
+                    code="FRAMEWORK_BASE_TAG_MISSING",
+                )
+            )
+        for match in base_matches:
+            attrs = parse_tag_attributes(match.group(1))
+            base_id = attrs.get("id")
+            line = line_from_offset(file_text, match.start())
+            if base_id is None or CANONICAL_BASE_ID_PATTERN.fullmatch(base_id) is None:
+                issues.append(
+                    make_issue(
+                        f"invalid @base id: {base_id}",
+                        rel_file,
+                        line,
+                        code="FRAMEWORK_BASE_ID_INVALID",
+                    )
+                )
+                continue
+
+            node_id = f"L{level_num}.M{module_name}.{base_id}"
+            if node_id in node_origin:
+                prev_file, prev_line = node_origin[node_id]
+                issues.append(
+                    make_issue(
+                        f"duplicate canonical base node id: {node_id}",
+                        rel_file,
+                        line,
+                        code="FRAMEWORK_BASE_NODE_DUP",
+                        related=[
+                            {
+                                "message": "previous declaration",
+                                "file": prev_file,
+                                "line": prev_line,
+                                "column": 1,
+                            }
+                        ],
+                    )
+                )
+                continue
+            node_origin[node_id] = (rel_file, line)
+
+        for match in COMPOSE_TAG_PATTERN.finditer(file_text):
+            attrs = parse_tag_attributes(match.group(1))
+            src = attrs.get("from")
+            dst = attrs.get("to")
+            line = line_from_offset(file_text, match.start())
+            if not src or not dst:
+                issues.append(
+                    make_issue(
+                        "@compose requires from/to",
+                        rel_file,
+                        line,
+                        code="FRAMEWORK_COMPOSE_TAG_INVALID",
+                    )
+                )
+                continue
+            compose_edges.append((src, dst, rel_file, line, module_name))
+
+    for src, dst, rel_file, line, module_name in compose_edges:
+        src_match = CANONICAL_NODE_ID_PATTERN.fullmatch(src)
+        dst_match = CANONICAL_NODE_ID_PATTERN.fullmatch(dst)
+        if src_match is None or dst_match is None:
+            issues.append(
+                make_issue(
+                    f"@compose node id must match L{{X}}.M{{module}}.B{{n}}: from={src}, to={dst}",
+                    rel_file,
+                    line,
+                    code="FRAMEWORK_COMPOSE_NODE_ID_INVALID",
+                )
+            )
+            continue
+
+        src_level, src_module = int(src_match.group(1)), src_match.group(2)
+        dst_level, dst_module = int(dst_match.group(1)), dst_match.group(2)
+
+        if src_module != dst_module:
+            issues.append(
+                make_issue(
+                    f"cross-module composition is forbidden: {src_module} -> {dst_module}",
+                    rel_file,
+                    line,
+                    code="FRAMEWORK_COMPOSE_CROSS_MODULE",
+                )
+            )
+            continue
+
+        if src_module != module_name:
+            issues.append(
+                make_issue(
+                    f"@compose module mismatch with file module '{module_name}': from={src}",
+                    rel_file,
+                    line,
+                    code="FRAMEWORK_COMPOSE_MODULE_MISMATCH",
+                )
+            )
+
+        if src_level == dst_level:
+            issues.append(
+                make_issue(
+                    f"same-level composition is forbidden: {src} -> {dst}",
+                    rel_file,
+                    line,
+                    code="FRAMEWORK_COMPOSE_SAME_LEVEL",
+                )
+            )
+            continue
+
+        if dst_level != src_level + 1:
+            issues.append(
+                make_issue(
+                    f"cross-level composition is forbidden: {src} -> {dst}; expected Lx->L(x+1)",
+                    rel_file,
+                    line,
+                    code="FRAMEWORK_COMPOSE_CROSS_LEVEL",
+                )
+            )
+            continue
+
+        if src not in node_origin:
+            issues.append(
+                make_issue(
+                    f"compose source node not declared: {src}",
+                    rel_file,
+                    line,
+                    code="FRAMEWORK_COMPOSE_SOURCE_MISSING",
+                )
+            )
+        if dst not in node_origin:
+            issues.append(
+                make_issue(
+                    f"compose target node not declared: {dst}",
+                    rel_file,
+                    line,
+                    code="FRAMEWORK_COMPOSE_TARGET_MISSING",
+                )
+            )
+        edge_pairs.add((src, dst))
+        valid_compose_edges.append((src, dst))
+
+    for module_name, levels in module_levels.items():
+        if not levels:
+            continue
+        if len(levels) > 1 and 0 not in levels:
+            issues.append(
+                make_issue(
+                    f"module '{module_name}' has multi-layer docs but missing L0",
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    1,
+                    code="FRAMEWORK_LAYER_ZERO_MISSING",
+                )
+            )
+        for lower_level in sorted(levels):
+            upper_level = lower_level + 1
+            if upper_level not in levels:
+                continue
+            has_adjacent_edge = False
+            for src, dst in edge_pairs:
+                src_match = CANONICAL_NODE_ID_PATTERN.fullmatch(src)
+                dst_match = CANONICAL_NODE_ID_PATTERN.fullmatch(dst)
+                if src_match is None or dst_match is None:
+                    continue
+                if (
+                    src_match.group(2) == module_name
+                    and dst_match.group(2) == module_name
+                    and int(src_match.group(1)) == lower_level
+                    and int(dst_match.group(1)) == upper_level
+                ):
+                    has_adjacent_edge = True
+                    break
+            if not has_adjacent_edge:
+                issues.append(
+                    make_issue(
+                        (
+                            f"module '{module_name}' missing adjacent composition from "
+                            f"L{lower_level} to L{upper_level}"
+                        ),
+                        REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                        1,
+                        code="FRAMEWORK_COMPOSE_ADJACENT_MISSING",
+                    )
+                )
+
+        module_node_ids: list[str] = []
+        for node_id in node_origin:
+            node_match = CANONICAL_NODE_ID_PATTERN.fullmatch(node_id)
+            if node_match is None:
+                continue
+            if node_match.group(2) == module_name:
+                module_node_ids.append(node_id)
+
+        out_degree: dict[str, int] = {node_id: 0 for node_id in module_node_ids}
+        in_degree: dict[str, int] = {node_id: 0 for node_id in module_node_ids}
+        for src, dst in valid_compose_edges:
+            src_match = CANONICAL_NODE_ID_PATTERN.fullmatch(src)
+            dst_match = CANONICAL_NODE_ID_PATTERN.fullmatch(dst)
+            if src_match is None or dst_match is None:
+                continue
+            if src_match.group(2) != module_name or dst_match.group(2) != module_name:
+                continue
+            out_degree[src] = out_degree.get(src, 0) + 1
+            in_degree[dst] = in_degree.get(dst, 0) + 1
+
+        for node_id in module_node_ids:
+            node_match = CANONICAL_NODE_ID_PATTERN.fullmatch(node_id)
+            if node_match is None:
+                continue
+            level_num = int(node_match.group(1))
+            max_level = max(levels)
+            if level_num == max_level:
+                continue
+            out_count = out_degree.get(node_id, 0)
+            if out_count < 1:
+                file_name, line_num = node_origin[node_id]
+                issues.append(
+                    make_issue(
+                        (
+                            f"downstream node must compose to at least one upstream module: "
+                            f"{node_id}; outgoing={out_count}"
+                        ),
+                        file_name,
+                        line_num,
+                        code="FRAMEWORK_DAG_PARENT_MISSING",
+                    )
+                )
+
+        for node_id in module_node_ids:
+            node_match = CANONICAL_NODE_ID_PATTERN.fullmatch(node_id)
+            if node_match is None:
+                continue
+            level_num = int(node_match.group(1))
+            if level_num == 0:
+                continue
+            if (level_num - 1) not in levels:
+                continue
+            in_count = in_degree.get(node_id, 0)
+            if in_count < 1:
+                file_name, line_num = node_origin[node_id]
+                issues.append(
+                    make_issue(
+                        f"upstream node must have at least one downstream child: {node_id}",
+                        file_name,
+                        line_num,
+                        code="FRAMEWORK_TREE_CHILD_MISSING",
+                    )
+                )
+
+        level_node_counts: dict[int, int] = {level: 0 for level in levels}
+        for node_id in module_node_ids:
+            node_match = CANONICAL_NODE_ID_PATTERN.fullmatch(node_id)
+            if node_match is None:
+                continue
+            level_num = int(node_match.group(1))
+            level_node_counts[level_num] = level_node_counts.get(level_num, 0) + 1
+
+        strict_funnel_exists = False
+        for lower_level in sorted(levels):
+            upper_level = lower_level + 1
+            if upper_level not in levels:
+                continue
+            lower_count = level_node_counts.get(lower_level, 0)
+            upper_count = level_node_counts.get(upper_level, 0)
+            if lower_count < upper_count:
+                issues.append(
+                    make_issue(
+                        (
+                            f"tree shape invalid for module '{module_name}': "
+                            f"L{lower_level} node_count({lower_count}) must be >= "
+                            f"L{upper_level} node_count({upper_count})"
+                        ),
+                        REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                        1,
+                        code="FRAMEWORK_TREE_SHAPE_INVALID",
+                    )
+                )
+            if lower_count > upper_count:
+                strict_funnel_exists = True
+
+        if len(levels) > 1 and not strict_funnel_exists:
+            issues.append(
+                make_issue(
+                    (
+                        f"tree shape too flat for module '{module_name}': expected at least one "
+                        "adjacent level pair with fewer upstream nodes"
+                    ),
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    1,
+                    code="FRAMEWORK_TREE_SHAPE_FLAT",
+                )
+            )
+
+    return issues, layer_files
+
 
 
 def parse_level_order(registry: dict[str, Any], registry_text: str) -> tuple[list[str], list[Issue]]:
@@ -379,12 +854,11 @@ def walk_tree_and_collect(
                     seen_files.add(file_name)
                     level_files[level].add(file_name)
 
-                if file_name.startswith("framework/") and not file_name.startswith(
-                    f"framework/{level}/"
-                ):
+                if not is_allowed_level_path(level, file_name):
+                    allowed_prefixes = LEVEL_ALLOWED_PREFIXES.get(level, ())
                     issues.append(
                         make_issue(
-                            f"{node_id}: framework file must be under framework/{level}/",
+                            f"{node_id}: {level} file path is invalid for level constraints; allowed prefixes={list(allowed_prefixes)}",
                             REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
                             line,
                             code="TREE_STANDARDS_PATH_LEVEL_MISMATCH",
@@ -424,6 +898,7 @@ def validate_registry_structure(
     registry: dict[str, Any], registry_text: str
 ) -> tuple[list[Issue], ParsedRegistry | None]:
     issues: list[Issue] = []
+    framework_layer_files: set[str] = set()
 
     level_order, level_issues = parse_level_order(registry, registry_text)
     issues.extend(level_issues)
@@ -459,7 +934,7 @@ def validate_registry_structure(
         if standard_file not in declared_l2:
             issues.append(
                 make_issue(
-                    "mapping_registry.json: unregistered domain standard in framework/L2/: "
+                    "mapping_registry.json: unregistered domain standard under framework/*/L2/: "
                     f"{standard_file}",
                     REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
                     find_line(registry_text, '"L2"'),
@@ -475,6 +950,9 @@ def validate_registry_structure(
                 )
             )
 
+    framework_issues, framework_layer_files = validate_framework_layers()
+    issues.extend(framework_issues)
+
     mappings = registry.get("mappings", [])
     if not isinstance(mappings, list) or not mappings:
         issues.append(
@@ -489,6 +967,7 @@ def validate_registry_structure(
             level_order=level_order,
             level_files=level_files,
             impl_files=set(),
+            framework_layer_files=framework_layer_files,
         )
 
     mapping_ids: set[str] = set()
@@ -615,7 +1094,7 @@ def validate_registry_structure(
                     related=[
                         {
                             "message": "Expected these L1 anchors to be mapped",
-                            "file": "framework/L1/框架设计核心标准.md",
+                            "file": CORE_L1_STANDARD_FILE,
                             "line": 1,
                             "column": 1,
                         }
@@ -627,6 +1106,7 @@ def validate_registry_structure(
         level_order=level_order,
         level_files=level_files,
         impl_files=impl_files,
+        framework_layer_files=framework_layer_files,
     )
 
 
@@ -783,10 +1263,13 @@ def validate_change_propagation(
     level_order = parsed_registry.level_order
     level_files = parsed_registry.level_files
     impl_files = parsed_registry.impl_files
+    framework_layer_files = parsed_registry.framework_layer_files
     level_index = {level: idx for idx, level in enumerate(level_order)}
 
     def touched(level: str) -> bool:
         candidates = set(level_files.get(level, set()))
+        if level == "L2":
+            candidates.update(framework_layer_files)
         if level == "L3":
             candidates.update(impl_files)
         return bool(changed_files.intersection(candidates))
