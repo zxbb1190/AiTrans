@@ -14,6 +14,7 @@ const WATCH_FILES = new Set([
 const STANDARDS_TREE_FILE = path.join("specs", "规范总纲与树形结构.md");
 const REGISTRY_FILE = path.join("mapping", "mapping_registry.json");
 const DEFAULT_FRAMEWORK_TREE_HTML = path.join("docs", "hierarchy", "shelf_framework_tree.html");
+const SIDEBAR_VIEW_ID = "archSync.sidebarHome";
 const DEFAULT_FRAMEWORK_TREE_GENERATE_COMMAND =
   "uv run python scripts/generate_framework_tree_hierarchy.py --source framework --framework-dir framework --output-json docs/hierarchy/shelf_framework_tree.json --output-html docs/hierarchy/shelf_framework_tree.html";
 const MODULE_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
@@ -57,6 +58,7 @@ function activate(context) {
   let mappingValidationActive = true;
   let frameworkTreePanel = null;
   let frameworkTreeRepoRoot = "";
+  let frameworkSidebarView = null;
   const VALIDATION_SOURCE_PRIORITY = {
     auto: 1,
     save: 2,
@@ -103,6 +105,7 @@ function activate(context) {
       lastFailureSignature = "";
       diagnostics.clear();
       setStatusDisabled(status, repoRoot);
+      refreshSidebarHome();
       return;
     }
     mappingValidationActive = true;
@@ -165,6 +168,7 @@ function activate(context) {
         }
       }
     }
+    refreshSidebarHome();
   };
 
   const scheduleValidation = (options) => {
@@ -285,6 +289,87 @@ function activate(context) {
       );
     }
   };
+
+  const renderSidebarHome = () => {
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    if (!folder) {
+      return buildSidebarHomeHtml({
+        workspace: "No workspace",
+        treePath: DEFAULT_FRAMEWORK_TREE_HTML,
+        mappingStatus: "Unavailable",
+        issueSummary: "No workspace",
+      });
+    }
+
+    const repoRoot = folder.uri.fsPath;
+    const config = vscode.workspace.getConfiguration("archSync");
+    const treePath = resolveFrameworkTreeHtmlPath(repoRoot, config.get("frameworkTreeHtmlPath"));
+    const issueSummary = mappingValidationActive
+      ? (lastRunIssues.length ? `${lastRunIssues.length} issue(s)` : "No issues")
+      : "Validation disabled";
+
+    return buildSidebarHomeHtml({
+      workspace: path.basename(repoRoot),
+      treePath: toWorkspaceRelative(treePath, repoRoot),
+      mappingStatus: mappingValidationActive ? "Enabled" : "Disabled",
+      issueSummary,
+    });
+  };
+
+  const refreshSidebarHome = () => {
+    if (!frameworkSidebarView) {
+      return;
+    }
+    frameworkSidebarView.webview.html = renderSidebarHome();
+  };
+
+  const sidebarViewProvider = {
+    resolveWebviewView(webviewView) {
+      frameworkSidebarView = webviewView;
+      webviewView.webview.options = {
+        enableScripts: true
+      };
+      refreshSidebarHome();
+
+      webviewView.onDidDispose(() => {
+        if (frameworkSidebarView === webviewView) {
+          frameworkSidebarView = null;
+        }
+      });
+
+      webviewView.webview.onDidReceiveMessage(async (message) => {
+        if (!message || typeof message.type !== "string") {
+          return;
+        }
+
+        if (message.type === "archSync.sidebar.openTree") {
+          await openFrameworkTree({ regenerateIfMissing: true });
+          return;
+        }
+        if (message.type === "archSync.sidebar.refreshTree") {
+          await vscode.commands.executeCommand("archSync.refreshFrameworkTree");
+          return;
+        }
+        if (message.type === "archSync.sidebar.validate") {
+          scheduleValidation({ mode: "full", triggerUri: null, notifyOnFail: true, source: "manual" });
+          return;
+        }
+        if (message.type === "archSync.sidebar.showIssues") {
+          await vscode.commands.executeCommand("archSync.showIssues");
+        }
+      });
+    }
+  };
+
+  const sidebarViewDisposable = vscode.window.registerWebviewViewProvider(
+    SIDEBAR_VIEW_ID,
+    sidebarViewProvider,
+    {
+      webviewOptions: {
+        retainContextWhenHidden: true
+      }
+    }
+  );
 
   const validateNowDisposable = vscode.commands.registerCommand("archSync.validateNow", async () => {
     scheduleValidation({ mode: "full", triggerUri: null, notifyOnFail: true, source: "manual" });
@@ -410,7 +495,7 @@ function activate(context) {
       },
       {
         label: "Write default path",
-        description: "framework/<module>/<level>-<title>.md",
+        description: "framework/<module>/<level>-M<n>-<title>.md",
         value: "default"
       }
     ];
@@ -448,7 +533,7 @@ function activate(context) {
         repoRoot,
         "framework",
         normalizedModule,
-        `${normalizedLevel}-${title.trim()}.md`
+        `${normalizedLevel}-M0-${title.trim()}.md`
       );
       fs.mkdirSync(path.dirname(defaultPath), { recursive: true });
       if (fs.existsSync(defaultPath)) {
@@ -616,6 +701,7 @@ function activate(context) {
   }
 
   context.subscriptions.push(
+    sidebarViewDisposable,
     validateNowDisposable,
     showIssuesDisposable,
     openFrameworkTreeDisposable,
@@ -718,7 +804,7 @@ function inferFrameworkDefaults(activeFilePath, repoRoot) {
   }
 
   const relPath = path.relative(repoRoot, activeFilePath).replace(/\\/g, "/");
-  const match = /^framework\/([^/]+)\/(L\d+)-([^/]+)\.md$/i.exec(relPath);
+  const match = /^framework\/([^/]+)\/(L\d+)-M(\d+)-([^/]+)\.md$/i.exec(relPath);
   if (!match) {
     return defaults;
   }
@@ -728,7 +814,7 @@ function inferFrameworkDefaults(activeFilePath, repoRoot) {
     module: moduleName,
     moduleDisplay: moduleDisplayName(moduleName),
     level: match[2].toUpperCase(),
-    title: match[3]
+    title: match[4]
   };
 }
 
@@ -1021,6 +1107,137 @@ function buildFrameworkTreeFallbackHtml(message) {
 </html>`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function buildSidebarHomeHtml(model) {
+  const workspace = escapeHtml(model.workspace);
+  const treePath = escapeHtml(model.treePath);
+  const mappingStatus = escapeHtml(model.mappingStatus);
+  const issueSummary = escapeHtml(model.issueSummary);
+
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #f3f7fb;
+      --panel: #ffffff;
+      --text: #1f3246;
+      --muted: #4f6479;
+      --line: #d7e3ee;
+      --primary: #0b74de;
+      --primary-hover: #095fb3;
+      --ghost: #edf4fb;
+      --ghost-hover: #e2edf8;
+    }
+
+    body {
+      margin: 0;
+      padding: 12px;
+      background: linear-gradient(180deg, #f7fbff 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: "Noto Sans SC", "PingFang SC", sans-serif;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 12px;
+      box-shadow: 0 6px 16px rgba(22, 47, 74, 0.08);
+    }
+
+    .title {
+      margin: 0 0 6px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .meta {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.55;
+      word-break: break-all;
+    }
+
+    .meta + .meta {
+      margin-top: 4px;
+    }
+
+    .actions {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 9px;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 120ms ease;
+    }
+
+    button.primary {
+      color: #ffffff;
+      background: var(--primary);
+    }
+
+    button.primary:hover {
+      background: var(--primary-hover);
+    }
+
+    button.ghost {
+      color: #234563;
+      background: var(--ghost);
+    }
+
+    button.ghost:hover {
+      background: var(--ghost-hover);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1 class="title">ArchSync</h1>
+    <p class="meta">Workspace: ${workspace}</p>
+    <p class="meta">Framework tree: ${treePath}</p>
+    <p class="meta">Mapping validation: ${mappingStatus}</p>
+    <p class="meta">Issues: ${issueSummary}</p>
+
+    <div class="actions">
+      <button class="primary" data-action="openTree">打开树图</button>
+      <button class="ghost" data-action="refreshTree">刷新树图</button>
+      <button class="ghost" data-action="validate">执行校验</button>
+      <button class="ghost" data-action="showIssues">查看问题</button>
+    </div>
+  </div>
+
+  <script>
+    const vscode = typeof acquireVsCodeApi === "function" ? acquireVsCodeApi() : null;
+    for (const button of document.querySelectorAll("button[data-action]")) {
+      button.addEventListener("click", () => {
+        if (!vscode) return;
+        const action = button.getAttribute("data-action");
+        if (!action) return;
+        vscode.postMessage({ type: "archSync.sidebar." + action });
+      });
+    }
+  </script>
+</body>
+</html>`;
+}
+
 async function revealIssue(issue, repoRoot) {
   const candidate = resolveIssueFile(issue.file, repoRoot);
   const target = (candidate && fs.existsSync(candidate))
@@ -1115,7 +1332,7 @@ function hasStandardsTree(repoRoot) {
 }
 
 function setStatusDisabled(status, repoRoot) {
-  status.text = "$(circle-slash) ArchSync n/a";
+  status.text = "$(circle-slash) ArchSync";
   status.tooltip = `ArchSync mapping guard disabled: ${toWorkspaceRelative(
     path.join(repoRoot, STANDARDS_TREE_FILE),
     repoRoot

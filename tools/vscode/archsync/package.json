@@ -2,7 +2,7 @@
   "name": "archsync",
   "displayName": "ArchSync",
   "description": "ArchSync: framework tree webview + strict mapping validation guard.",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "publisher": "local",
   "engines": {
     "vscode": "^1.85.0"
@@ -13,6 +13,7 @@
   ],
   "activationEvents": [
     "onStartupFinished",
+    "onView:archSync.sidebarHome",
     "onCommand:archSync.validateNow",
     "onCommand:archSync.openFrameworkTree",
     "onCommand:archSync.refreshFrameworkTree",
@@ -48,6 +49,42 @@
         "title": "ArchSync: Generate Framework Scaffold"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "archSyncSidebar",
+          "title": "ArchSync",
+          "icon": "media/archsync.svg"
+        }
+      ]
+    },
+    "views": {
+      "archSyncSidebar": [
+        {
+          "id": "archSync.sidebarHome",
+          "name": "ArchSync"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "archSync.openFrameworkTree",
+          "when": "view == archSync.sidebarHome",
+          "group": "navigation@1"
+        },
+        {
+          "command": "archSync.refreshFrameworkTree",
+          "when": "view == archSync.sidebarHome",
+          "group": "navigation@2"
+        },
+        {
+          "command": "archSync.validateNow",
+          "when": "view == archSync.sidebarHome",
+          "group": "navigation@3"
+        }
+      ]
+    },
     "configuration": {
       "title": "ArchSync",
       "properties": {

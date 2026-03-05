@@ -1,6 +1,8 @@
 # ArchSync (VSCode Extension)
 
 ## What It Does
+- Adds an Activity Bar icon entry (`ArchSync`) for direct plugin access from the sidebar.
+- Sidebar home view provides one-click actions: open tree, refresh tree, run validation, show issues.
 - Opens framework tree structure HTML in Webview (`docs/hierarchy/shelf_framework_tree.html`).
 - Refreshes framework tree artifacts by running the generator script.
 - Supports node-to-source jump: click a node, then use `打开源文件` in detail panel to jump to the mapped markdown line.
@@ -12,6 +14,7 @@
 - Auto-disables validation for repositories that do not contain `specs/规范总纲与树形结构.md`.
 - Shows validation issues in VSCode Problems panel.
 - Status bar (`ArchSync issues`) is clickable and opens an issue picker for direct file/line jump.
+- Disabled status text no longer shows `n/a`.
 - Auto-fail notification provides buttons: `Open Problems` / `Open Log`.
 - Provides manual commands for validation and framework tree viewing.
 
@@ -19,6 +22,9 @@
 1. Open `tools/vscode/archsync` in VSCode.
 2. Press `F5` to launch Extension Development Host.
 3. Open the repository in the launched host window.
+
+## Sidebar Icon
+- Activity Bar icon uses `media/archsync.svg` (Möbius ring geometry).
 
 ## Commands
 - `ArchSync: Open Framework Tree`
@@ -71,7 +77,12 @@ Default framework tree generation command:
 - `uv run python scripts/generate_framework_tree_hierarchy.py --source framework --framework-dir framework --output-json docs/hierarchy/shelf_framework_tree.json --output-html docs/hierarchy/shelf_framework_tree.html`
 
 Tree generation behavior:
-- Source defaults to framework files: `framework/<module>/Lx-*.md`.
-- Only adjacent-level edges are generated: `Lx -> L(x+1)`.
-- Cross-level jump edges are never generated.
+- Source defaults to framework files: `framework/<module>/Lx-Mn-*.md`.
+- Legacy `Lx-*.md` (without `-Mn`) files are ignored.
+- Preferred derivation: file-level module mode (`Lx-Mn-*.md` -> node `Lx.Mn`).
+- In file-level mode, growth edges are parsed from base lines that directly reference upstream modules, for example:
+  - ``- `B3` ...：L0.M0[R2,R3] + L0.M1[R2,R3]。来源：`...`。``
+- `上游模块：...` format is still supported.
+- Growth edges only allow adjacent layers (`Lx-1 -> Lx`).
+- If a module file lacks explicit upstream refs in `B*`, generator emits warning and skips growth edges for that module.
 - Each node carries `source_file` and `source_line` metadata for line-level jump.
