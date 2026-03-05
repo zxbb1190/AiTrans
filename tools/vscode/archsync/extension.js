@@ -22,7 +22,7 @@ const FRAMEWORK_DIRECTIVE_PREFIX = "@framework";
 const FRAMEWORK_RULE_HINTS = {
   FW002: "@framework 必须无参数",
   FW003: "标题必须为 中文名:EnglishName",
-  FW010: "模块内编号必须唯一",
+  FW010: "当前框架文件内编号必须唯一",
   FW011: "C/B/R/V 编号格式必须合法",
   FW020: "B* 必须包含来源",
   FW021: "B* 来源表达式与引用必须合法",
@@ -377,7 +377,7 @@ function activate(context) {
       },
       {
         label: "Write default path",
-        description: "framework/<module>/<level>/<title>.md",
+        description: "framework/<module>/<level>-<title>.md",
         value: "default"
       }
     ];
@@ -415,8 +415,7 @@ function activate(context) {
         repoRoot,
         "framework",
         normalizedModule,
-        normalizedLevel,
-        `${title.trim()}.md`
+        `${normalizedLevel}-${title.trim()}.md`
       );
       fs.mkdirSync(path.dirname(defaultPath), { recursive: true });
       if (fs.existsSync(defaultPath)) {
@@ -686,7 +685,7 @@ function inferFrameworkDefaults(activeFilePath, repoRoot) {
   }
 
   const relPath = path.relative(repoRoot, activeFilePath).replace(/\\/g, "/");
-  const match = /^framework\/([^/]+)\/(L\d+)\/([^/]+)\.md$/i.exec(relPath);
+  const match = /^framework\/([^/]+)\/(L\d+)-([^/]+)\.md$/i.exec(relPath);
   if (!match) {
     return defaults;
   }
@@ -765,45 +764,59 @@ function buildFrameworkTemplate(bilingualTitle) {
 
 ## 1. 能力声明（Capability Statement）
 
-- \`C1\` 能力项：待补充。
-- \`C2\` 能力项：待补充。
-- \`C3\` 能力项：待补充。
+- \`C1\` 结构承载能力：提供可重复组装的承载结构能力。
+- \`C2\` 形态生成能力：可生成目标形态并提供可用承载单元。
+- \`C3\` 适配能力：在给定参数边界内可按需扩展和收缩。
+- \`C4\` 非能力项：不负责电控、装饰、非承载功能件等外部职责。
 
 ## 2. 边界定义（Boundary / 参数）
 
-- \`N\` 参数：待补充。来源：\`C1\`。
-- \`P\` 参数：待补充。来源：\`C1\`。
-- \`S\` 参数：待补充。来源：\`C2\`。
-- \`O\` 参数：待补充。来源：\`C2\`。
-- \`A\` 参数：待补充。来源：\`C2\`。
-- \`T\` 参数：待补充。来源：\`C1 + C3\`。
-- \`SF\` 参数：待补充。来源：\`C1\`。
+- \`N\` 层数（int）：\`N >= 1\`。来源：\`C1 + C3\`。
+- \`P\` 单层承重（number）：\`P > 0\`。来源：\`C1\`。
+- \`S\` 单层净空（space）：宽/深/高均大于 0。来源：\`C2 + C3\`。
+- \`O\` 开口尺寸（opening）：需满足可存取约束。来源：\`C2\`。
+- \`A\` 占地尺寸（footprint）：需满足场地上限约束。来源：\`C2 + C3\`。
+- \`T\` 连接公差（tolerance）：需满足装配稳定约束。来源：\`C1 + C3\`。
+- \`SF\` 安全系数（number）：\`SF >= 1\`。来源：\`C1\`。
 
 ## 3. 最小可行基（Minimum Viable Bases）
 
-- \`B1\` 名称：说明。来源：\`C1 + N\`。
-- \`B2\` 名称：说明。来源：\`C1 + T\`。
-- \`B3\` 名称：说明。来源：\`C2 + S + O + A + T\`。
+- \`B1\` 骨架：提供主承载路径与结构稳定性。来源：\`C1 + N + P + SF\`。
+- \`B2\` 连接接口：提供构件连接、定位与传力。来源：\`C1 + C3 + T\`。
+- \`B3\` 承载面：提供可用放置/受力平面。来源：\`C2 + S + O + A + T\`。
 
 ## 4. 基组合原则（Base Combination Principles）
 
-- \`R1\` 规则名
+- \`R1\` 结构通路组合
   - \`R1.1\` 参与基：\`B1 + B2\`。
-  - \`R1.2\` 骨架形态：
-  - \`R1.3\` 输出结构：\`CP_set\`（元素：\`CP\`）。
-  - \`R1.4\` 组合方式：
-  - \`R1.5\` 输出能力：\`C1\`。
-  - \`R1.6\` 边界绑定：\`N/P/T/SF\`。
-- \`R2\` 规则名
+  - \`R1.2\` 组合方式：骨架由立向与横向构件组成；稳定单元定义为骨架连接图中存在至少一个闭合环（cycle）。
+  - \`R1.3\` 输出结构：\`CP_set\`（元素：\`CP\`，每个 \`CP\` 必须绑定骨架端点或骨架交点）。
+  - \`R1.4\` 输出能力：\`C1\`。
+  - \`R1.5\` 边界绑定：\`N/P/T/SF\`。
+- \`R2\` 承载单元组合
   - \`R2.1\` 参与基：\`B1 + B2 + B3\`。
-  - \`R2.2\` 组合方式：连接点来自 \`CP_set\`。
+  - \`R2.2\` 组合方式：承载面连接点必须来自 \`CP_set\`，且连接关系满足稳定受力路径约束。
   - \`R2.3\` 输出能力：\`C2\`。
   - \`R2.4\` 边界绑定：\`S/O/A/T\`。
+- \`R3\` 完整功能组合
+  - \`R3.1\` 参与基：\`B1 + B2 + B3\`。
+  - \`R3.2\` 组合方式：先完成 \`R1\` 骨架与连接点，再执行 \`R2\` 承载面挂接，最后执行整体稳定复核。
+  - \`R3.3\` 输出能力：\`C1 + C2 + C3\`。
+  - \`R3.4\` 边界绑定：\`N/P/S/O/A/T/SF\`。
+- \`R4\` 禁止组合
+  - \`R4.1\` 参与基：\`B1 + B2 + B3\`。
+  - \`R4.2\` 组合方式：缺少关键基、存在游离连接点、断裂传力路径或违反边界参数的组合均无效。
+  - \`R4.3\` 输出能力：\`C4\`。
+  - \`R4.4\` 边界绑定：\`N/P/S/O/A/T/SF\`。
 
 ## 5. 验证（Verification）
 
-- \`V1\` 验证项：待补充。
-- \`V2\` 验证项：待补充。
+- \`V1\` 推导一致性：每个 \`B*\` 必须能由至少一个 \`C*\` 与一个参数项推导得到。
+- \`V2\` 规则一致性：每个 \`R*\` 必须明确参与基/组合方式/输出能力/边界绑定。
+- \`V3\` 目标覆盖性：\`R1~R3\` 输出能力并集必须覆盖 \`C1~C3\`。
+- \`V4\` 边界符合性：所有有效组合必须满足绑定的参数边界。
+- \`V5\` 最小必要性：移除任一 \`B*\` 后，\`V3\` 或 \`V4\` 至少一项失败。
+- \`V6\` 结论表达：逐条输出 \`R* -> C* / 参数边界\` 的通过或失败结论。
 `;
 }
 

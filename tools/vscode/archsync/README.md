@@ -42,7 +42,7 @@
 ## Framework Rule Codes
 - `FW002`: `@framework` must be plain directive without arguments.
 - `FW003`: title must be bilingual `中文名:EnglishName`.
-- `FW010`: identifiers in one module must be unique.
+- `FW010`: identifiers in one framework file must be unique.
 - `FW011`: capability/base/rule/verification ids must match required numbering patterns.
 - `FW020`: every `B*` must include source expression.
 - `FW021`: `B*` source expression must be parseable and references must exist.
