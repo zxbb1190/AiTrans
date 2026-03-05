@@ -56,6 +56,7 @@ function activate(context) {
   let lastRepoRoot = "";
   let mappingValidationActive = true;
   let frameworkTreePanel = null;
+  let frameworkTreeRepoRoot = "";
   const VALIDATION_SOURCE_PRIORITY = {
     auto: 1,
     save: 2,
@@ -196,6 +197,26 @@ function activate(context) {
     }, 250);
   };
 
+  const openFrameworkTreeSource = async (repoRoot, relFile, line) => {
+    if (!repoRoot || !relFile || typeof relFile !== "string") {
+      return;
+    }
+
+    const normalizedRel = relFile.replace(/\\/g, "/").replace(/^\/+/, "");
+    const absPath = path.resolve(repoRoot, normalizedRel);
+    if (!fs.existsSync(absPath)) {
+      vscode.window.showWarningMessage(`ArchSync: source file not found: ${normalizedRel}`);
+      return;
+    }
+
+    const lineNumber = Number.isFinite(Number(line)) ? Math.max(1, Number(line)) : 1;
+    const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(absPath));
+    const editor = await vscode.window.showTextDocument(doc, { preview: false });
+    const pos = new vscode.Position(lineNumber - 1, 0);
+    editor.selection = new vscode.Selection(pos, pos);
+    editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+  };
+
   const ensureFrameworkTreePanel = () => {
     if (!frameworkTreePanel) {
       frameworkTreePanel = vscode.window.createWebviewPanel(
@@ -209,6 +230,17 @@ function activate(context) {
       );
       frameworkTreePanel.onDidDispose(() => {
         frameworkTreePanel = null;
+        frameworkTreeRepoRoot = "";
+      });
+      frameworkTreePanel.webview.onDidReceiveMessage(async (message) => {
+        if (!message || message.type !== "archSync.openSource") {
+          return;
+        }
+        await openFrameworkTreeSource(
+          frameworkTreeRepoRoot || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || "",
+          String(message.file || ""),
+          Number(message.line || 1)
+        );
       });
     } else {
       frameworkTreePanel.reveal(vscode.ViewColumn.Active, true);
@@ -224,6 +256,7 @@ function activate(context) {
     }
 
     const repoRoot = folder.uri.fsPath;
+    frameworkTreeRepoRoot = repoRoot;
     const config = vscode.workspace.getConfiguration("archSync");
     const htmlPath = resolveFrameworkTreeHtmlPath(repoRoot, config.get("frameworkTreeHtmlPath"));
 

@@ -3,6 +3,7 @@
 ## What It Does
 - Opens framework tree structure HTML in Webview (`docs/hierarchy/shelf_framework_tree.html`).
 - Refreshes framework tree artifacts by running the generator script.
+- Supports node-to-source jump: click a node, then use `打开源文件` in detail panel to jump to the mapped markdown line.
 - Generates framework layer scaffold markdown via command palette.
 - Auto-expands `@framework` directive on save for `framework/**` markdown files.
 - Runs strict mapping validation automatically on startup.
@@ -73,3 +74,4 @@ Tree generation behavior:
 - Source defaults to framework files: `framework/<module>/Lx-*.md`.
 - Only adjacent-level edges are generated: `Lx -> L(x+1)`.
 - Cross-level jump edges are never generated.
+- Each node carries `source_file` and `source_line` metadata for line-level jump.

@@ -14,6 +14,7 @@ class HierarchyNode:
     level: int
     description: str
     order: int | None = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -93,6 +94,11 @@ def load_hierarchy(path: Path) -> HierarchyGraph:
             level=_expect_int(node_obj.get("level"), f"nodes[{idx}].level"),
             description=_expect_str(node_obj.get("description"), f"nodes[{idx}].description"),
             order=_expect_optional_int(node_obj.get("order"), f"nodes[{idx}].order"),
+            metadata={
+                str(key): value
+                for key, value in node_obj.items()
+                if key not in {"id", "label", "level", "description", "order"}
+            },
         )
         nodes.append(node)
 
@@ -294,22 +300,27 @@ def _build_payload(
     nodes_payload: list[dict[str, Any]] = []
     for node in graph.nodes:
         x, y = positions[node.node_id]
-        nodes_payload.append(
-            {
-                "id": node.node_id,
-                "label": node.label,
-                "level": node.level,
-                "description": node.description,
-                "x": x,
-                "y": y,
-            }
-        )
+        item: dict[str, Any] = {
+            "id": node.node_id,
+            "label": node.label,
+            "level": node.level,
+            "description": node.description,
+            "x": x,
+            "y": y,
+        }
+        if node.metadata:
+            item.update(node.metadata)
+        nodes_payload.append(item)
 
     edges_payload: list[dict[str, Any]] = []
     for edge in graph.edges:
-        item: dict[str, Any] = {"from": edge.source, "to": edge.target, "relation": edge.relation}
-        item.update(edge.metadata)
-        edges_payload.append(item)
+        edge_item: dict[str, Any] = {
+            "from": edge.source,
+            "to": edge.target,
+            "relation": edge.relation,
+        }
+        edge_item.update(edge.metadata)
+        edges_payload.append(edge_item)
 
     return {
         "title": graph.title,
@@ -705,6 +716,7 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
   <script>
     const graphData = __PAYLOAD_JSON__;
     const SVG_NS = "http://www.w3.org/2000/svg";
+    const vscodeApi = typeof acquireVsCodeApi === "function" ? acquireVsCodeApi() : null;
 
     const svg = document.getElementById("graphSvg");
     const titleEl = document.getElementById("title");
@@ -948,6 +960,20 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       return `${peerId} (${peerLabel}) · ${edge.relation}${extraText}`;
     }
 
+    function openSourceFile(filePath, lineNumber) {
+      const safeLine = Number.isFinite(Number(lineNumber)) ? Math.max(1, Number(lineNumber)) : 1;
+      if (vscodeApi) {
+        vscodeApi.postMessage({
+          type: "archSync.openSource",
+          file: String(filePath || ""),
+          line: safeLine
+        });
+        return;
+      }
+      const uri = `vscode://file/${encodeURI(String(filePath || ""))}:${safeLine}`;
+      window.location.href = uri;
+    }
+
     function selectNode(nodeId) {
       const related = new Set([nodeId]);
       const upEdges = incoming.get(nodeId) ?? [];
@@ -989,17 +1015,37 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       const levelName = graphData.level_labels[String(node.level)] ?? `层级 ${node.level}`;
       const upItems = upEdges.map((edge) => formatEdgeItem(edge, "up"));
       const downItems = downEdges.map((edge) => formatEdgeItem(edge, "down"));
+      const sourceFile = typeof node.source_file === "string" ? node.source_file : "";
+      const sourceLine =
+        Number.isFinite(Number(node.source_line)) && Number(node.source_line) > 0
+          ? Number(node.source_line)
+          : 1;
+      const sourceAction = sourceFile
+        ? `<button type="button" data-open-source="1" data-file="${escapeHtml(sourceFile)}" data-line="${sourceLine}">打开源文件</button>`
+        : "无";
 
       detailBoxEl.innerHTML = `
         <p class=\"kv\"><b>ID:</b> ${escapeHtml(node.id)}</p>
         <p class=\"kv\"><b>标签:</b> ${escapeHtml(node.label)}</p>
         <p class=\"kv\"><b>层级:</b> ${escapeHtml(levelName)}</p>
         <p class=\"kv\"><b>描述:</b> ${escapeHtml(node.description)}</p>
+        <p class=\"kv\"><b>来源:</b> ${sourceFile ? `${escapeHtml(sourceFile)}:${sourceLine}` : "无"}</p>
+        <p class=\"kv\"><b>跳转:</b> ${sourceAction}</p>
         <p class=\"kv\"><b>上游节点:</b></p>
         <ul>${toList(upItems)}</ul>
         <p class=\"kv\"><b>下游节点:</b></p>
         <ul>${toList(downItems)}</ul>
       `;
+
+      const openBtn = detailBoxEl.querySelector("[data-open-source='1']");
+      if (openBtn) {
+        openBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const filePath = openBtn.getAttribute("data-file") || "";
+          const lineNumber = Number(openBtn.getAttribute("data-line") || "1");
+          openSourceFile(filePath, lineNumber);
+        });
+      }
     }
 
     function updateLabelVisibility() {

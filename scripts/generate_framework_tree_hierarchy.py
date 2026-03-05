@@ -41,6 +41,15 @@ def node_label(node_kind: str, level_num: int, file_name: str | None) -> str:
     return f"L{level_num}.file"
 
 
+def find_first_h1_line(file_path: Path) -> int:
+    if not file_path.exists():
+        return 1
+    for idx, line in enumerate(file_path.read_text(encoding="utf-8").splitlines(), start=1):
+        if line.lstrip().startswith("# "):
+            return idx
+    return 1
+
+
 def build_payload_from_registry(registry_path: Path) -> dict[str, Any]:
     raw = json.loads(registry_path.read_text(encoding="utf-8"))
     tree = raw.get("tree")
@@ -76,8 +85,10 @@ def build_payload_from_registry(registry_path: Path) -> dict[str, Any]:
         order = level_order_counter[level_num]
 
         description_parts = [f"id={node_id}", f"kind={kind}", f"level=L{level_num}"]
+        source_line = 1
         if file_name:
             description_parts.append(f"file={file_name}")
+            source_line = find_first_h1_line(REPO_ROOT / file_name)
 
         nodes.append(
             {
@@ -86,6 +97,8 @@ def build_payload_from_registry(registry_path: Path) -> dict[str, Any]:
                 "level": level_num,
                 "order": order,
                 "description": " | ".join(description_parts),
+                "source_file": file_name,
+                "source_line": source_line,
             }
         )
 
@@ -148,9 +161,11 @@ def build_payload_from_framework(framework_dir: Path) -> tuple[dict[str, Any], l
         raise ValueError("no framework Lx-*.md files found under framework directory")
 
     module_level_files: dict[str, dict[int, list[str]]] = {}
+    source_line_by_file: dict[str, int] = {}
     for module_name, level_num, markdown_file in docs:
         rel = markdown_file.relative_to(REPO_ROOT).as_posix()
         module_level_files.setdefault(module_name, {}).setdefault(level_num, []).append(rel)
+        source_line_by_file[rel] = find_first_h1_line(markdown_file)
 
     warnings: list[str] = []
     seen_warnings: set[str] = set()
@@ -203,6 +218,8 @@ def build_payload_from_framework(framework_dir: Path) -> tuple[dict[str, Any], l
                         "description": (
                             f"module={module_name} | level=L{level_num} | file={rel}"
                         ),
+                        "source_file": rel,
+                        "source_line": source_line_by_file.get(rel, 1),
                     }
                 )
 
