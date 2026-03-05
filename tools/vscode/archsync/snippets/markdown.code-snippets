@@ -1,63 +1,71 @@
 {
-  "@framework Layer Scaffold": {
+  "@framework Empty Scaffold": {
     "prefix": "@framework",
-    "description": "Insert a full framework layer scaffold with required headings and tags.",
+    "description": "Insert empty framework scaffold (format only).",
     "body": [
-      "# ${1:前端}框架模块标准（${2:L4}）${3:状态与数据编排层}",
-      "<!--@layer module=${4:frontend}; level=${2}-->",
+      "# ${1:中文模块名}:${2:EnglishName}",
       "",
-      "## 1. 目标（Goal）",
+      "@framework",
       "",
-      "- 小标题：${5:一句话说明本层目标。}",
+      "## 1. 能力声明（Capability Statement）",
       "",
-      "${6:请补充目标正文。}",
+      "- `C1` 能力项：待补充。",
+      "- `C2` 能力项：待补充。",
+      "- `C3` 能力项：待补充。",
       "",
-      "## 2. 边界定义（Boundary）",
+      "## 2. 边界定义（Boundary / 参数）",
       "",
-      "- 小标题：${7:定义该层负责什么、不负责什么。}",
-      "- `${8:TODO_SCOPE}`：${9:待补充边界说明。}",
+      "- `N` 参数：待补充。来源：`C1`。",
+      "- `P` 参数：待补充。来源：`C1`。",
+      "- `S` 参数：待补充。来源：`C2`。",
+      "- `O` 参数：待补充。来源：`C2`。",
+      "- `A` 参数：待补充。来源：`C2`。",
+      "- `T` 参数：待补充。来源：`C1 + C3`。",
+      "- `SF` 参数：待补充。来源：`C1`。",
       "",
-      "## 3. 最小可行基（Bases）",
+      "## 3. 最小可行基（Minimum Viable Bases）",
       "",
-      "- 小标题：${10:列出最小能力基并补全元数据。}",
-      "- `B1` ${11:能力基1}  <!--@base id=B1; name=${12:BASE_ONE}; capability=${13:base_one_capability}-->",
-      "- `B2` ${14:能力基2}  <!--@base id=B2; name=${15:BASE_TWO}; capability=${16:base_two_capability}-->",
+      "- `B1` 名称：说明。来源：`C1 + N`。",
+      "- `B2` 名称：说明。来源：`C1 + T`。",
+      "- `B3` 名称：说明。来源：`C2 + S + O + A + T`。",
       "",
-      "## 4. 组合原则（Combination Principles）",
+      "## 4. 基组合原则（Base Combination Principles）",
       "",
-      "- 小标题：${17:描述组合方向、约束与映射示例。}",
-      "仅允许下游向上游组合：`${2} -> ${18:L5}`。禁止同层组合与反向组合。",
-      "",
-      "组合约束集合：",
-      "- `C1` 相邻层约束",
-      "- `C2` 下游上行约束",
-      "- `C3` 能力契约约束",
-      "",
-      "组合映射（示例）：",
-      "- `U1 = {${2}.B1, ${2}.B2} --[C1,C2,C3]--> ${18}.B1`",
-      "",
-      "- ${19:待补充组合关系。}  <!--@compose from=${2}.M${4}.B1; to=${18}.M${4}.B1; rule=adjacent_only; principle=P_DOWNSTREAM_UPSTREAM; constraint=C1_C2_C3-->",
+      "- `R1` 规则名",
+      "  - `R1.1` 参与基：`B1 + B2`。",
+      "  - `R1.2` 骨架形态：",
+      "  - `R1.3` 输出结构：`CP_set`（元素：`CP`）。",
+      "  - `R1.4` 组合方式：",
+      "  - `R1.5` 输出能力：`C1`。",
+      "  - `R1.6` 边界绑定：`N/P/T/SF`。",
+      "- `R2` 规则名",
+      "  - `R2.1` 参与基：`B1 + B2 + B3`。",
+      "  - `R2.2` 组合方式：连接点来自 `CP_set`。",
+      "  - `R2.3` 输出能力：`C2`。",
+      "  - `R2.4` 边界绑定：`S/O/A/T`。",
       "",
       "## 5. 验证（Verification）",
       "",
-      "- 小标题：${20:定义可执行验证条件。}",
-      "- 每个 `${2}` 基必须至少指向一个 `${18}` 父节点。",
-      "- 每个 `${18}` 基必须至少由一个 `${2}` 子节点支撑。",
-      "- 不允许同层或跨层跳级组合。"
+      "- `V1` 验证项：待补充。",
+      "- `V2` 验证项：待补充。"
     ]
   },
-  "@base Tag Entry": {
-    "prefix": "@base",
-    "description": "Insert a base entry with @base metadata tag.",
+  "B Format Entry": {
+    "prefix": "B",
+    "description": "Insert B-item format only.",
     "body": [
-      "- `B${1:1}` ${2:能力基名称}  <!--@base id=B${1}; name=${3:BASE_NAME}; capability=${4:base_capability}-->"
+      "- `B${1:1}` ${2:名称}：${3:说明}。来源：`${4:C1 + N}`。"
     ]
   },
-  "@compose Edge Entry": {
-    "prefix": "@compose",
-    "description": "Insert a compose edge entry with canonical from/to node ids.",
+  "R Format Block": {
+    "prefix": "R",
+    "description": "Insert R-rule format block only.",
     "body": [
-      "- ${1:下游基组合到上游基。}  <!--@compose from=${2:L4}.M${3:frontend}.B${4:1}; to=${5:L5}.M${3}.B${6:1}; rule=adjacent_only; principle=P_DOWNSTREAM_UPSTREAM; constraint=C1_C2_C3-->"
+      "- `R${1:1}` ${2:规则名}",
+      "  - `R${1}.1` 参与基：`${3:B1 + B2}`。",
+      "  - `R${1}.2` 组合方式：${4:待补充}",
+      "  - `R${1}.3` 输出能力：`${5:C1}`。",
+      "  - `R${1}.4` 边界绑定：`${6:N/P}`。"
     ]
   }
 }

@@ -16,10 +16,24 @@ const REGISTRY_FILE = path.join("mapping", "mapping_registry.json");
 const DEFAULT_FRAMEWORK_TREE_HTML = path.join("docs", "hierarchy", "shelf_framework_tree.html");
 const DEFAULT_FRAMEWORK_TREE_GENERATE_COMMAND =
   "uv run python scripts/generate_framework_tree_hierarchy.py --registry mapping/mapping_registry.json --output-json docs/hierarchy/shelf_framework_tree.json --output-html docs/hierarchy/shelf_framework_tree.html";
-const DEFAULT_FRAMEWORK_SCAFFOLD_SCRIPT = path.join("scripts", "generate_framework_scaffold.py");
 const MODULE_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 const LEVEL_PATTERN = /^L\d+$/i;
 const FRAMEWORK_DIRECTIVE_PREFIX = "@framework";
+const FRAMEWORK_RULE_HINTS = {
+  FW002: "@framework 必须无参数",
+  FW003: "标题必须为 中文名:EnglishName",
+  FW010: "模块内编号必须唯一",
+  FW011: "C/B/R/V 编号格式必须合法",
+  FW020: "B* 必须包含来源",
+  FW021: "B* 来源表达式与引用必须合法",
+  FW022: "B* 来源必须包含 C* 与参数",
+  FW030: "边界参数必须包含来源",
+  FW031: "边界来源必须引用 C* 且引用合法",
+  FW040: "R*/R*.* 编号必须合法并可追溯",
+  FW041: "每个 R* 必须包含参与基/组合方式/输出能力/边界绑定",
+  FW050: "R*.输出能力必须引用已定义 C*",
+  FW060: "新符号必须通过输出结构声明后才可在规则中使用"
+};
 
 function activate(context) {
   const output = vscode.window.createOutputChannel("ArchSync");
@@ -42,8 +56,39 @@ function activate(context) {
   let lastRepoRoot = "";
   let mappingValidationActive = true;
   let frameworkTreePanel = null;
+  const VALIDATION_SOURCE_PRIORITY = {
+    auto: 1,
+    save: 2,
+    manual: 3
+  };
 
-  const runValidation = async (options = { mode: "change", triggerUri: null, notifyOnFail: false }) => {
+  const normalizeValidationOptions = (options = {}) => ({
+    mode: options.mode === "full" ? "full" : "change",
+    triggerUri: options.triggerUri || null,
+    notifyOnFail: Boolean(options.notifyOnFail),
+    source: options.source || "auto"
+  });
+
+  const mergeValidationOptions = (left, right) => {
+    const current = normalizeValidationOptions(left);
+    const incoming = normalizeValidationOptions(right);
+    const sourcePriority = Math.max(
+      VALIDATION_SOURCE_PRIORITY[current.source] || 0,
+      VALIDATION_SOURCE_PRIORITY[incoming.source] || 0
+    );
+    const source = Object.keys(VALIDATION_SOURCE_PRIORITY)
+      .find((key) => VALIDATION_SOURCE_PRIORITY[key] === sourcePriority) || "auto";
+
+    return {
+      mode: current.mode === "full" || incoming.mode === "full" ? "full" : "change",
+      triggerUri: incoming.triggerUri || current.triggerUri,
+      notifyOnFail: current.notifyOnFail || incoming.notifyOnFail,
+      source
+    };
+  };
+
+  const runValidation = async (options = { mode: "change", triggerUri: null, notifyOnFail: false, source: "auto" }) => {
+    const task = normalizeValidationOptions(options);
     const folder = vscode.workspace.workspaceFolders?.[0];
     if (!folder) {
       return;
@@ -62,7 +107,7 @@ function activate(context) {
     mappingValidationActive = true;
 
     const config = vscode.workspace.getConfiguration("archSync");
-    const command = options.mode === "full"
+    const command = task.mode === "full"
       ? config.get("fullValidationCommand")
       : config.get("changeValidationCommand");
 
@@ -70,9 +115,13 @@ function activate(context) {
       return;
     }
 
-    status.text = "$(sync~spin) ArchSync validating";
-    status.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
-    status.color = new vscode.ThemeColor("statusBarItem.warningForeground");
+    const showProgressStatus = task.source === "manual";
+    const shouldSetErrorStatus = task.source === "save" || task.source === "manual";
+    if (showProgressStatus) {
+      status.text = "$(sync~spin) ArchSync validating";
+      status.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
+      status.color = new vscode.ThemeColor("statusBarItem.warningForeground");
+    }
     output.clear();
     output.appendLine(`[run] ${command}`);
 
@@ -83,7 +132,7 @@ function activate(context) {
     const parsed = parseResult(execResult.stdout, execResult.stderr, execResult.code);
     lastRunIssues = parsed.errors;
     lastRepoRoot = repoRoot;
-    applyDiagnostics(parsed, diagnostics, repoRoot, options.triggerUri);
+    applyDiagnostics(parsed, diagnostics, repoRoot, task.triggerUri);
     output.appendLine(`[result] passed=${parsed.passed} errors=${parsed.errors.length}`);
 
     if (parsed.passed) {
@@ -93,12 +142,14 @@ function activate(context) {
       status.color = undefined;
       lastFailureSignature = "";
     } else {
-      status.text = "$(error) ArchSync issues";
-      status.tooltip = buildTooltip(parsed.errors);
-      status.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
-      status.color = new vscode.ThemeColor("statusBarItem.errorForeground");
+      if (shouldSetErrorStatus) {
+        status.text = "$(error) ArchSync issues";
+        status.tooltip = buildTooltip(parsed.errors);
+        status.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
+        status.color = new vscode.ThemeColor("statusBarItem.errorForeground");
+      }
 
-      const shouldNotify = options.notifyOnFail || config.get("notifyOnAutoFail");
+      const shouldNotify = task.notifyOnFail || config.get("notifyOnAutoFail");
       if (shouldNotify && shouldNotifyFailure(parsed.errors, lastFailureSignature)) {
         lastFailureSignature = signature(parsed.errors);
         const action = await vscode.window.showErrorMessage(
@@ -116,14 +167,11 @@ function activate(context) {
   };
 
   const scheduleValidation = (options) => {
+    const normalized = normalizeValidationOptions(options);
     if (pending) {
-      pending = {
-        mode: pending.mode === "full" || options.mode === "full" ? "full" : "change",
-        triggerUri: options.triggerUri || pending.triggerUri,
-        notifyOnFail: pending.notifyOnFail || options.notifyOnFail
-      };
+      pending = mergeValidationOptions(pending, normalized);
     } else {
-      pending = options;
+      pending = normalized;
     }
 
     if (timer) {
@@ -206,7 +254,7 @@ function activate(context) {
   };
 
   const validateNowDisposable = vscode.commands.registerCommand("archSync.validateNow", async () => {
-    scheduleValidation({ mode: "full", triggerUri: null, notifyOnFail: true });
+    scheduleValidation({ mode: "full", triggerUri: null, notifyOnFail: true, source: "manual" });
   });
 
   const showIssuesDisposable = vscode.commands.registerCommand("archSync.showIssues", async () => {
@@ -230,10 +278,12 @@ function activate(context) {
     const picks = lastRunIssues.map((issue) => {
       const resolved = resolveIssueFile(issue.file, lastRepoRoot);
       const displayPath = resolved ? toWorkspaceRelative(resolved, lastRepoRoot) : "unknown";
+      const ruleCode = normalizeFrameworkRuleCode(issue.code);
+      const ruleHint = frameworkRuleHint(ruleCode);
       return {
         label: issue.message,
         description: `${displayPath}:${Number(issue.line || 1)}`,
-        detail: issue.code ? `[${issue.code}]` : "",
+        detail: ruleCode ? `[${ruleCode}] ${ruleHint}` : (issue.code ? `[${issue.code}]` : ""),
         issue
       };
     });
@@ -299,15 +349,6 @@ function activate(context) {
       return;
     }
 
-    const moduleDisplay = await promptScaffoldValue({
-      title: "ArchSync: module display name",
-      prompt: "Display name shown in markdown title",
-      value: inferred.moduleDisplay
-    });
-    if (!moduleDisplay) {
-      return;
-    }
-
     const level = await promptScaffoldValue({
       title: "ArchSync: level",
       prompt: "Layer level, e.g. L4",
@@ -320,33 +361,13 @@ function activate(context) {
 
     const title = await promptScaffoldValue({
       title: "ArchSync: layer title",
-      prompt: "Markdown title and default filename stem",
+      prompt: "Markdown file title stem (Chinese or bilingual title)",
       value: inferred.title,
       validateInput: (value) => validateScaffoldTitle(value)
     });
     if (!title) {
       return;
     }
-
-    const subtitle = await promptScaffoldValue({
-      title: "ArchSync: goal subtitle",
-      prompt: "Short subtitle for Goal section",
-      value: "一句话描述该层要解决的问题。"
-    });
-    if (!subtitle) {
-      return;
-    }
-
-    const baseCountRaw = await promptScaffoldValue({
-      title: "ArchSync: base count",
-      prompt: "Placeholder base count when custom bases are not provided",
-      value: "3",
-      validateInput: (value) => validatePositiveInt(value)
-    });
-    if (!baseCountRaw) {
-      return;
-    }
-    const baseCount = Number(baseCountRaw.trim());
 
     const targetOptions = [
       {
@@ -373,54 +394,43 @@ function activate(context) {
       return;
     }
 
-    const args = [
-      "run",
-      "python",
-      DEFAULT_FRAMEWORK_SCAFFOLD_SCRIPT,
-      "--module",
-      moduleId.trim(),
-      "--module-display",
-      moduleDisplay.trim(),
-      "--level",
-      level.trim().toUpperCase(),
-      "--title",
-      title.trim(),
-      "--subtitle",
-      subtitle.trim(),
-      "--base-count",
-      String(baseCount)
-    ];
+    const normalizedModule = moduleId.trim();
+    const normalizedLevel = level.trim().toUpperCase();
+    const bilingualTitle = ensureBilingualTitle(title.trim(), normalizedModule, moduleDisplayName(normalizedModule));
+    const scaffold = buildFrameworkTemplate(bilingualTitle);
 
     let outputFilePath = null;
     if (targetPick.value === "current" && editor) {
-      const rel = path.relative(repoRoot, editor.document.uri.fsPath).replace(/\\/g, "/");
-      args.push("--output", rel, "--overwrite");
       outputFilePath = editor.document.uri.fsPath;
-    }
-
-    output.appendLine(`[framework-scaffold] uv ${args.join(" ")}`);
-    const result = await execCommandArgs("uv", args, repoRoot);
-    output.appendLine(result.stdout || "");
-    output.appendLine(result.stderr || "");
-    output.appendLine(`[framework-scaffold] exit=${result.code}`);
-
-    if (result.code !== 0) {
-      await vscode.window.showErrorMessage(
-        "ArchSync: failed to generate framework scaffold.",
-        "Open Log"
-      ).then((action) => {
-        if (action === "Open Log") {
-          output.show(true);
+      const doc = editor.document;
+      const fullRange = new vscode.Range(
+        doc.positionAt(0),
+        doc.positionAt(doc.getText().length)
+      );
+      const edit = new vscode.WorkspaceEdit();
+      edit.replace(doc.uri, fullRange, scaffold);
+      await vscode.workspace.applyEdit(edit);
+    } else {
+      const defaultPath = path.join(
+        repoRoot,
+        "framework",
+        normalizedModule,
+        normalizedLevel,
+        `${title.trim()}.md`
+      );
+      fs.mkdirSync(path.dirname(defaultPath), { recursive: true });
+      if (fs.existsSync(defaultPath)) {
+        const action = await vscode.window.showWarningMessage(
+          `ArchSync: ${toWorkspaceRelative(defaultPath, repoRoot)} already exists.`,
+          "Overwrite",
+          "Cancel"
+        );
+        if (action !== "Overwrite") {
+          return;
         }
-      });
-      return;
-    }
-
-    if (!outputFilePath) {
-      const resolvedFromOutput = extractGeneratedPath(result.stdout, repoRoot);
-      if (resolvedFromOutput) {
-        outputFilePath = resolvedFromOutput;
       }
+      fs.writeFileSync(defaultPath, scaffold, "utf8");
+      outputFilePath = defaultPath;
     }
 
     if (outputFilePath) {
@@ -452,7 +462,7 @@ function activate(context) {
       return;
     }
 
-    scheduleValidation({ mode: "change", triggerUri: doc.uri, notifyOnFail: false });
+    scheduleValidation({ mode: "change", triggerUri: doc.uri, notifyOnFail: false, source: "save" });
   });
 
   const willSaveDisposable = vscode.workspace.onWillSaveTextDocument((event) => {
@@ -483,52 +493,13 @@ function activate(context) {
 
     event.waitUntil((async () => {
       const defaults = inferFrameworkDefaults(doc.uri.fsPath, folder.uri.fsPath);
-      const resolved = resolveFrameworkDirectiveConfig(directive, defaults);
-      if (resolved.error) {
-        vscode.window.showErrorMessage(`ArchSync: ${resolved.error}`);
+      if (directive.error) {
+        vscode.window.showErrorMessage(`ArchSync: ${directive.error}`);
         return [];
       }
 
-      const args = [
-        "run",
-        "python",
-        DEFAULT_FRAMEWORK_SCAFFOLD_SCRIPT,
-        "--module",
-        resolved.module,
-        "--module-display",
-        resolved.moduleDisplay,
-        "--level",
-        resolved.level,
-        "--title",
-        resolved.title,
-        "--subtitle",
-        resolved.subtitle,
-        "--base-count",
-        String(resolved.baseCount),
-        "--stdout"
-      ];
-
-      if (resolved.upstreamLevel) {
-        args.push("--upstream-level", resolved.upstreamLevel);
-      }
-
-      output.appendLine(`[framework-directive] uv ${args.join(" ")}`);
-      const result = await execCommandArgs("uv", args, folder.uri.fsPath);
-      output.appendLine(result.stdout || "");
-      output.appendLine(result.stderr || "");
-      output.appendLine(`[framework-directive] exit=${result.code}`);
-
-      if (result.code !== 0) {
-        vscode.window.showErrorMessage(
-          "ArchSync: @framework expansion failed. Check ArchSync output log."
-        );
-        return [];
-      }
-
-      const generated = String(result.stdout || "");
-      if (!generated.trim()) {
-        return [];
-      }
+      const title = ensureBilingualTitle(defaults.title, defaults.module, defaults.moduleDisplay);
+      const generated = buildFrameworkTemplate(title);
 
       const fullRange = new vscode.Range(
         doc.positionAt(0),
@@ -544,7 +515,7 @@ function activate(context) {
       return;
     }
     if (anyWatchedUris(event.files, folder.uri.fsPath)) {
-      scheduleValidation({ mode: "change", triggerUri: null, notifyOnFail: false });
+      scheduleValidation({ mode: "change", triggerUri: null, notifyOnFail: false, source: "auto" });
     }
   });
 
@@ -554,7 +525,7 @@ function activate(context) {
       return;
     }
     if (anyWatchedUris(event.files, folder.uri.fsPath)) {
-      scheduleValidation({ mode: "change", triggerUri: null, notifyOnFail: false });
+      scheduleValidation({ mode: "change", triggerUri: null, notifyOnFail: false, source: "auto" });
     }
   });
 
@@ -568,7 +539,7 @@ function activate(context) {
       uris.push(item.oldUri, item.newUri);
     }
     if (anyWatchedUris(uris, folder.uri.fsPath)) {
-      scheduleValidation({ mode: "change", triggerUri: null, notifyOnFail: false });
+      scheduleValidation({ mode: "change", triggerUri: null, notifyOnFail: false, source: "auto" });
     }
   });
 
@@ -576,7 +547,7 @@ function activate(context) {
     if (!state.focused) {
       return;
     }
-    scheduleValidation({ mode: "change", triggerUri: null, notifyOnFail: false });
+    scheduleValidation({ mode: "change", triggerUri: null, notifyOnFail: false, source: "auto" });
   });
 
   const fileWatcherDisposables = [];
@@ -601,7 +572,7 @@ function activate(context) {
 
       const triggerIfWatched = (uri) => {
         if (isWatchedUri(uri, watcherFolder.uri.fsPath)) {
-          scheduleValidation({ mode: "change", triggerUri: uri, notifyOnFail: false });
+          scheduleValidation({ mode: "change", triggerUri: uri, notifyOnFail: false, source: "auto" });
         }
       };
 
@@ -627,7 +598,7 @@ function activate(context) {
     ...fileWatcherDisposables
   );
 
-  scheduleValidation({ mode: "change", triggerUri: null, notifyOnFail: false });
+  scheduleValidation({ mode: "change", triggerUri: null, notifyOnFail: false, source: "auto" });
 }
 
 function deactivate() {}
@@ -670,18 +641,6 @@ function execCommand(command, cwd) {
   });
 }
 
-function execCommandArgs(command, args, cwd) {
-  return new Promise((resolve) => {
-    cp.execFile(command, args, { cwd, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
-      resolve({
-        code: error ? error.code ?? 1 : 0,
-        stdout: stdout || "",
-        stderr: stderr || ""
-      });
-    });
-  });
-}
-
 async function promptScaffoldValue(options) {
   const value = await vscode.window.showInputBox({
     title: options.title,
@@ -710,14 +669,6 @@ function validateScaffoldTitle(value) {
   }
   if (trimmed.includes("/") || trimmed.includes("\\")) {
     return "Title cannot contain path separators.";
-  }
-  return null;
-}
-
-function validatePositiveInt(value) {
-  const n = Number(value.trim());
-  if (!Number.isInteger(n) || n < 1) {
-    return "Use integer >= 1.";
   }
   return null;
 }
@@ -763,18 +714,6 @@ function moduleDisplayName(moduleName) {
   return moduleName;
 }
 
-function extractGeneratedPath(stdout, repoRoot) {
-  const match = /generated scaffold:\s*([^\n\r]+)/i.exec(String(stdout || ""));
-  if (!match) {
-    return null;
-  }
-  const rel = match[1].trim();
-  if (!rel) {
-    return null;
-  }
-  return path.join(repoRoot, rel);
-}
-
 function parseFrameworkDirective(documentText) {
   const lines = String(documentText || "").split(/\r?\n/);
   for (const line of lines) {
@@ -783,102 +722,89 @@ function parseFrameworkDirective(documentText) {
       continue;
     }
 
-    const rest = trimmed.slice(FRAMEWORK_DIRECTIVE_PREFIX.length).trim();
-    if (!rest) {
-      return { params: {}, error: null };
-    }
-
-    const params = {};
-    const tokenPattern = /([A-Za-z_][A-Za-z0-9_]*)=("([^"\\]|\\.)*"|'([^'\\]|\\.)*'|[^\s;]+)/g;
-    let match = null;
-    while ((match = tokenPattern.exec(rest)) !== null) {
-      const key = match[1];
-      const rawValue = match[2];
-      params[key] = unquoteDirectiveValue(rawValue);
-    }
-
-    if (!Object.keys(params).length) {
+    if (trimmed !== FRAMEWORK_DIRECTIVE_PREFIX) {
       return {
-        params: {},
-        error: "invalid @framework format. Use: @framework module=frontend level=L4 title=\"状态层\""
+        error: "@framework must be plain directive without parameters."
       };
     }
 
-    return { params, error: null };
+    return { error: null };
   }
 
   return null;
 }
 
-function unquoteDirectiveValue(rawValue) {
-  const value = String(rawValue || "").trim();
-  if (
-    (value.startsWith("\"") && value.endsWith("\"")) ||
-    (value.startsWith("'") && value.endsWith("'"))
-  ) {
-    return value.slice(1, -1);
+function toPascalIdentifier(raw) {
+  const parts = String(raw || "")
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean);
+  if (!parts.length) {
+    return "ModuleName";
   }
-  return value;
+  return parts.map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join("");
 }
 
-function resolveFrameworkDirectiveConfig(directive, defaults) {
-  if (directive?.error) {
-    return { error: directive.error };
-  }
-
-  const params = directive?.params || {};
-  const module = String(params.module || defaults.module || "").trim();
-  const moduleDisplay = String(
-    params.module_display || params.moduleDisplay || defaults.moduleDisplay || moduleDisplayName(module)
-  ).trim();
-  const level = String(params.level || defaults.level || "").trim().toUpperCase();
-  const title = String(params.title || defaults.title || "").trim();
-  const subtitle = String(params.subtitle || "一句话描述该层要解决的问题。").trim();
-  const baseCountRaw = String(params.base_count || "3").trim();
-  const upstreamLevelRaw = params.upstream_level ? String(params.upstream_level).trim().toUpperCase() : "";
-
-  if (!MODULE_ID_PATTERN.test(module)) {
-    return { error: "directive module must match [A-Za-z0-9_-], e.g. frontend" };
-  }
-  if (!LEVEL_PATTERN.test(level)) {
-    return { error: "directive level must be L<number>, e.g. L4" };
-  }
-  if (!title || title.includes("/") || title.includes("\\")) {
-    return { error: "directive title is required and cannot contain path separators" };
-  }
-  if (!moduleDisplay) {
-    return { error: "directive module_display cannot be empty" };
-  }
-
-  const baseCount = Number(baseCountRaw);
-  if (!Number.isInteger(baseCount) || baseCount < 1) {
-    return { error: "directive base_count must be integer >= 1" };
-  }
-
-  let upstreamLevel = null;
-  if (upstreamLevelRaw) {
-    if (!LEVEL_PATTERN.test(upstreamLevelRaw)) {
-      return { error: "directive upstream_level must be L<number>, e.g. L5" };
+function ensureBilingualTitle(rawTitle, moduleId, moduleDisplay) {
+  const cleaned = String(rawTitle || "").trim().replace("：", ":");
+  if (cleaned.includes(":")) {
+    const parts = cleaned.split(":");
+    const left = String(parts[0] || "").trim();
+    const right = String(parts.slice(1).join(":") || "").trim();
+    if (left && right) {
+      return `${left}:${right}`;
     }
-
-    const sourceNum = Number(level.slice(1));
-    const upstreamNum = Number(upstreamLevelRaw.slice(1));
-    if (upstreamNum !== sourceNum + 1) {
-      return { error: `directive upstream_level must be adjacent to ${level}, expected L${sourceNum + 1}` };
-    }
-    upstreamLevel = upstreamLevelRaw;
   }
+  const zhName = cleaned || `${moduleDisplay}模块`;
+  return `${zhName}:${toPascalIdentifier(moduleId)}`;
+}
 
-  return {
-    error: null,
-    module,
-    moduleDisplay,
-    level,
-    title,
-    subtitle,
-    baseCount,
-    upstreamLevel
-  };
+function buildFrameworkTemplate(bilingualTitle) {
+  return `# ${bilingualTitle}
+
+@framework
+
+## 1. 能力声明（Capability Statement）
+
+- \`C1\` 能力项：待补充。
+- \`C2\` 能力项：待补充。
+- \`C3\` 能力项：待补充。
+
+## 2. 边界定义（Boundary / 参数）
+
+- \`N\` 参数：待补充。来源：\`C1\`。
+- \`P\` 参数：待补充。来源：\`C1\`。
+- \`S\` 参数：待补充。来源：\`C2\`。
+- \`O\` 参数：待补充。来源：\`C2\`。
+- \`A\` 参数：待补充。来源：\`C2\`。
+- \`T\` 参数：待补充。来源：\`C1 + C3\`。
+- \`SF\` 参数：待补充。来源：\`C1\`。
+
+## 3. 最小可行基（Minimum Viable Bases）
+
+- \`B1\` 名称：说明。来源：\`C1 + N\`。
+- \`B2\` 名称：说明。来源：\`C1 + T\`。
+- \`B3\` 名称：说明。来源：\`C2 + S + O + A + T\`。
+
+## 4. 基组合原则（Base Combination Principles）
+
+- \`R1\` 规则名
+  - \`R1.1\` 参与基：\`B1 + B2\`。
+  - \`R1.2\` 骨架形态：
+  - \`R1.3\` 输出结构：\`CP_set\`（元素：\`CP\`）。
+  - \`R1.4\` 组合方式：
+  - \`R1.5\` 输出能力：\`C1\`。
+  - \`R1.6\` 边界绑定：\`N/P/T/SF\`。
+- \`R2\` 规则名
+  - \`R2.1\` 参与基：\`B1 + B2 + B3\`。
+  - \`R2.2\` 组合方式：连接点来自 \`CP_set\`。
+  - \`R2.3\` 输出能力：\`C2\`。
+  - \`R2.4\` 边界绑定：\`S/O/A/T\`。
+
+## 5. 验证（Verification）
+
+- \`V1\` 验证项：待补充。
+- \`V2\` 验证项：待补充。
+`;
 }
 
 async function generateFrameworkTree(repoRoot, command, output) {
@@ -946,13 +872,20 @@ function applyDiagnostics(parsed, collection, repoRoot, triggerUri) {
     const startLine = Math.max(0, Number(issue.line || 1) - 1);
     const startCol = Math.max(0, Number(issue.column || 1) - 1);
     const range = new vscode.Range(startLine, startCol, startLine, startCol + 1);
+    const ruleCode = normalizeFrameworkRuleCode(issue.code);
+    const ruleHint = frameworkRuleHint(ruleCode);
+    const message = ruleCode
+      ? `[archsync ${ruleCode}] ${ruleHint} | ${issue.message}`
+      : `[archsync] ${issue.message}`;
     const diag = new vscode.Diagnostic(
       range,
-      `[archsync] ${issue.message}`,
+      message,
       vscode.DiagnosticSeverity.Error
     );
 
-    if (issue.code) {
+    if (ruleCode) {
+      diag.code = ruleCode;
+    } else if (issue.code) {
       diag.code = issue.code;
     }
 
@@ -1091,6 +1024,24 @@ function normalizeIssue(item) {
     code: item.code || "ARCHSYNC_MAPPING",
     related: Array.isArray(item.related) ? item.related : []
   };
+}
+
+function normalizeFrameworkRuleCode(rawCode) {
+  const code = String(rawCode || "").trim();
+  if (!code) {
+    return "";
+  }
+  if (Object.prototype.hasOwnProperty.call(FRAMEWORK_RULE_HINTS, code)) {
+    return code;
+  }
+  return "";
+}
+
+function frameworkRuleHint(ruleCode) {
+  if (!ruleCode) {
+    return "ArchSync 规则";
+  }
+  return FRAMEWORK_RULE_HINTS[ruleCode] || "ArchSync 规则";
 }
 
 function signature(errors) {

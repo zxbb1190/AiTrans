@@ -27,18 +27,32 @@
 - `ArchSync: Generate Framework Scaffold`
 
 ## Markdown Snippets
-- `@framework`: insert a full layer scaffold with required headings and tags.
-- `@base`: insert one base entry with `@base` metadata.
-- `@compose`: insert one compose edge entry with canonical node ids.
+- `@framework`: insert empty framework scaffold format only.
+- `B`: insert one `B*` line format only.
+- `R`: insert one `R*` + `R*.*` nested rule block format only.
 
 ## Auto Expand `@framework`
 - Default enabled: `archSync.autoExpandFrameworkDirective = true`
 - Scope: markdown files under `framework/**`
-- Behavior: if file contains a line starting with `@framework`, save will replace full file content with generated scaffold.
+- Behavior: if file contains a line `@framework`, save will replace full file content with scaffold format.
 - Directive format:
   - `@framework`
-  - `@framework module=frontend level=L4 title="状态与数据编排层"`
-  - Optional keys: `module_display`, `subtitle`, `base_count`, `upstream_level`
+  - Any extra parameters are invalid.
+
+## Framework Rule Codes
+- `FW002`: `@framework` must be plain directive without arguments.
+- `FW003`: title must be bilingual `中文名:EnglishName`.
+- `FW010`: identifiers in one module must be unique.
+- `FW011`: capability/base/rule/verification ids must match required numbering patterns.
+- `FW020`: every `B*` must include source expression.
+- `FW021`: `B*` source expression must be parseable and references must exist.
+- `FW022`: `B*` source must include at least one `C*` and one parameter id.
+- `FW030`: every boundary parameter item (for example `N/P/S/O/A/T/SF`) must include source.
+- `FW031`: boundary source must reference at least one `C*`, and all references must exist.
+- `FW040`: `R*` / `R*.*` numbering must be valid.
+- `FW041`: each `R*` must include required fields (`参与基` / `组合方式` / `输出能力` / `边界绑定`).
+- `FW050`: each `输出能力` line must reference at least one defined `C*`.
+- `FW060`: any new symbol in rules must be declared via `输出结构` in same/upstream rule.
 
 ## Configuration
 - `archSync.enableOnSave`
