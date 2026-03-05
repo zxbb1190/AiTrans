@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.5 - 2026-03-06
+- Enforced inline upstream module refs in `B*` lines; removed legacy `上游模块：...` style.
+- Added validator rule `FW023` for the new `B*` format constraint.
+- Updated framework tree parsing to rely on inline upstream refs only.
+
 ## 0.0.4 - 2026-03-06
 - Removed legacy tree compatibility; framework tree generation now only accepts `framework/<module>/Lx-Mn-*.md`.
 - Aligned scaffold default output path to `Lx-Mn-*` naming.

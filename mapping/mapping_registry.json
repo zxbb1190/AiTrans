@@ -21,6 +21,10 @@
       {
         "id": "SYNC-20260306-frontend-multi-path-graph",
         "note": "Frontend multi-path graph is inferred from framework base definitions (B*) and rule participation (参与基), without extra graph directives."
+      },
+      {
+        "id": "SYNC-20260306-inline-upstream-b-format",
+        "note": "Unify B* syntax to inline upstream module refs (B*: Lx.My[...]. 来源: ...), remove legacy '上游模块' clause, and enforce with FW023."
       }
     ]
   },

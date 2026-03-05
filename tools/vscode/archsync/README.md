@@ -54,6 +54,7 @@
 - `FW020`: every `B*` must include source expression.
 - `FW021`: `B*` source expression must be parseable and references must exist.
 - `FW022`: `B*` source must include at least one `C*` and one parameter id.
+- `FW023`: `B*` must inline upstream module refs (`Lx.My[...]`) before source expression; `上游模块：...` is forbidden.
 - `FW030`: every boundary parameter item (for example `N/P/S/O/A/T/SF`) must include source.
 - `FW031`: boundary source must reference at least one `C*`, and all references must exist.
 - `FW040`: `R*` / `R*.*` numbering must be valid.
@@ -82,7 +83,6 @@ Tree generation behavior:
 - Preferred derivation: file-level module mode (`Lx-Mn-*.md` -> node `Lx.Mn`).
 - In file-level mode, growth edges are parsed from base lines that directly reference upstream modules, for example:
   - ``- `B3` ...：L0.M0[R2,R3] + L0.M1[R2,R3]。来源：`...`。``
-- `上游模块：...` format is still supported.
 - Growth edges only allow adjacent layers (`Lx-1 -> Lx`).
 - If a module file lacks explicit upstream refs in `B*`, generator emits warning and skips growth edges for that module.
 - Each node carries `source_file` and `source_line` metadata for line-level jump.

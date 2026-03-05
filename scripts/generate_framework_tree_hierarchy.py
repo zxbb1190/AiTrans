@@ -16,7 +16,6 @@ DEFAULT_OUTPUT_HTML = REPO_ROOT / "docs/hierarchy/shelf_framework_tree.html"
 LEVEL_PATTERN = re.compile(r"^L(\d+)$")
 FRAMEWORK_FILE_LEVEL_MODULE_PATTERN = re.compile(r"^L(\d+)-M(\d+)-[^/]+\.md$")
 FRAMEWORK_BASE_ITEM_LINE_PATTERN = re.compile(r"^\s*[-*]\s*`(B(\d+))`\s*(.*)$")
-FRAMEWORK_UPSTREAM_CLAUSE_PATTERN = re.compile(r"上游模块[：:]\s*([^。；;]+)")
 FRAMEWORK_UPSTREAM_TERM_PATTERN = re.compile(r"^(L\d+\.[A-Za-z][A-Za-z0-9_-]*)(?:\[(.*?)\])?$")
 
 
@@ -200,13 +199,6 @@ def normalize_base_title(raw_text: str, fallback: str) -> str:
 
 def parse_upstream_refs(raw_text: str) -> list[tuple[str, str]]:
     refs: list[tuple[str, str]] = []
-
-    match = FRAMEWORK_UPSTREAM_CLAUSE_PATTERN.search(raw_text)
-    if match is not None:
-        refs.extend(parse_upstream_expr(match.group(1).strip()))
-
-    if refs:
-        return refs
 
     # Support inline module reference style:
     # `B3` xxx基：L0.M0[R2,R3] + L0.M1[R2,R3]。来源：`...`

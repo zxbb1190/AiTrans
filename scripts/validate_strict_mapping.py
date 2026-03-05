@@ -61,6 +61,7 @@ FRAMEWORK_BASE_ITEM_LINE_PATTERN = re.compile(
     re.MULTILINE,
 )
 FRAMEWORK_SOURCE_EXPR_PATTERN = re.compile(r"来源[：:]\s*`([^`]+)`")
+FRAMEWORK_LEGACY_UPSTREAM_CLAUSE_PATTERN = re.compile(r"上游模块[：:]")
 FRAMEWORK_SOURCE_TOKEN_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9]*(?:\.[0-9]+)?")
 FRAMEWORK_RULE_ID_PATTERN = re.compile(r"^R\d+(?:\.\d+)?$")
 FRAMEWORK_RULE_TOP_LINE_PATTERN = re.compile(r"^\s*[-*]\s*`(R\d+)`\s*(.*)$")
@@ -497,6 +498,18 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                 base_id = base_item_match.group(1)
                 base_line = base_item_match.group(0)
                 base_line_num = line_from_offset(file_text, base_item_match.start(1))
+                if FRAMEWORK_LEGACY_UPSTREAM_CLAUSE_PATTERN.search(base_line):
+                    issues.append(
+                        make_issue(
+                            (
+                                f"{base_id} must inline upstream module refs before source expression; "
+                                "legacy '上游模块：...' clause is forbidden"
+                            ),
+                            rel_file,
+                            base_line_num,
+                            code="FW023",
+                        )
+                    )
                 source_match = FRAMEWORK_SOURCE_EXPR_PATTERN.search(base_line)
                 if source_match is None:
                     issues.append(
