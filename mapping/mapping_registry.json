@@ -33,6 +33,10 @@
       {
         "id": "SYNC-20260306-core-standard-bases-clarification",
         "note": "Clarify in core standard that Minimal Viable Base is a structure unit rather than an ability unit, that each layer may define new bases while references must remain adjacent, and that B-line format must inline module refs directly."
+      },
+      {
+        "id": "SYNC-20260306-code-standards-folder",
+        "note": "Move Python implementation quality rules out of core framework standard into specs/code/ so code conventions can expand by language without mixing into framework design core."
       }
     ]
   },
@@ -66,6 +70,13 @@
             "kind": "file",
             "level": "L1",
             "file": "specs/可删减性标准.md",
+            "children": []
+          },
+          {
+            "id": "NODE-L1-CODE-PYTHON",
+            "kind": "file",
+            "level": "L1",
+            "file": "specs/code/Python实现质量标准.md",
             "children": []
           },
           {

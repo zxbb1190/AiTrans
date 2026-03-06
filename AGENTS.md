@@ -23,5 +23,6 @@
 ### 4. 规范优先级
 - 规范总纲：`specs/规范总纲与树形结构.md`
 - 框架设计标准：`specs/框架设计核心标准.md`
-- 领域标准：`framework/shelf/L2/置物架框架标准.md`
-- Python 实现质量（静态类型）：`specs/框架设计核心标准.md`（`## 7. Python 实现质量（静态类型）`）
+- 领域标准：`framework/shelf/L2-M0-置物架框架标准模块.md`
+- 代码规范目录：`specs/code/`
+- Python 实现质量（静态类型）：`specs/code/Python实现质量标准.md`
