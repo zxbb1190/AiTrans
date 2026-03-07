@@ -36,16 +36,17 @@ jobs:
             fi
           fi
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "vsix=tools/vscode/archsync/releases/archsync-${VERSION}.vsix" >> "${GITHUB_OUTPUT}"
+          echo "vsix_run_path=releases/archsync-${VERSION}.vsix" >> "${GITHUB_OUTPUT}"
+          echo "vsix_repo_path=tools/vscode/archsync/releases/archsync-${VERSION}.vsix" >> "${GITHUB_OUTPUT}"
 
       - name: Package VSIX
-        run: npx --yes @vscode/vsce package -o "releases/archsync-${{ steps.meta.outputs.version }}.vsix"
+        run: npx --yes @vscode/vsce package -o "${{ steps.meta.outputs.vsix_run_path }}"
 
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v4
         with:
           name: archsync-${{ steps.meta.outputs.version }}-vsix
-          path: ${{ steps.meta.outputs.vsix }}
+          path: ${{ steps.meta.outputs.vsix_repo_path }}
 
       - name: Create GitHub release
         if: github.ref_type == 'tag'
@@ -57,7 +58,7 @@ jobs:
             gh release create "${GITHUB_REF_NAME}" \
               --title "ArchSync ${{ steps.meta.outputs.version }}" \
               --generate-notes
-          gh release upload "${GITHUB_REF_NAME}" "${{ steps.meta.outputs.vsix }}" --clobber
+          gh release upload "${GITHUB_REF_NAME}" "${{ steps.meta.outputs.vsix_run_path }}" --clobber
 
       - name: Publish to Open VSX
         if: github.ref_type == 'tag'
@@ -68,7 +69,7 @@ jobs:
             echo "OPEN_VSX_TOKEN not configured; skipping Open VSX publish."
             exit 0
           fi
-          npx --yes ovsx publish "${{ steps.meta.outputs.vsix }}" -p "${OPEN_VSX_TOKEN}"
+          npx --yes ovsx publish "${{ steps.meta.outputs.vsix_run_path }}" -p "${OPEN_VSX_TOKEN}"
 
       - name: Publish to VS Marketplace
         if: github.ref_type == 'tag'
@@ -79,4 +80,4 @@ jobs:
             echo "VS_MARKETPLACE_TOKEN not configured; skipping VS Marketplace publish."
             exit 0
           fi
-          npx --yes @vscode/vsce publish --packagePath "${{ steps.meta.outputs.vsix }}"
+          npx --yes @vscode/vsce publish --packagePath "${{ steps.meta.outputs.vsix_run_path }}"

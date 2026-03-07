@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.0.23 - 2026-03-07
+- Fixed the GitHub release workflow so the packaged VSIX is uploaded from the correct path during tag-based publishing.
+
 ## 0.0.22 - 2026-03-07
 - Expanded framework-markdown hover coverage for module refs, module rule refs, and local `B/C/R/V` plus boundary symbols.
 - Module hover cards now include combination-principle details, especially participating bases, combination method, output abilities, and boundary bindings.
