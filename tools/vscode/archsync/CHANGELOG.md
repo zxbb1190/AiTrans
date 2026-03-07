@@ -1,7 +1,12 @@
 # Changelog
 
+## 0.0.19 - 2026-03-07
+- Updated packaged guidance and snippets for the deeper frontend common-structure split: frontend `L0` now represents common structure atoms, while domain `L0` examples point to concrete frontend `L1` component atoms such as `frontend.L1.M0[...]`.
+- Synced the published docs with the new structure chain: frontend common structures -> frontend component atoms -> frontend standard -> domain atoms.
+
 ## 0.0.18 - 2026-03-07
 - Updated ArchSync packaged docs and Markdown snippets to reflect the new frontend primitive sink: domain `L0` examples now point to concrete frontend `L0` atoms such as `frontend.L0.M0[...]`, instead of the older coarse `frontend.L1.M0[...]` component-family reference.
+- Updated examples again for the deeper frontend common-structure split: domain `L0` examples now point to concrete frontend `L1` component atoms such as `frontend.L1.M0[...]`, while frontend `L0` is reserved for lower-level common structures.
 - Aligned the published guidance with the current structure-first layering: frontend primitive atoms -> generic component assembly -> domain atoms -> domain scenes.
 
 ## 0.0.17 - 2026-03-07
