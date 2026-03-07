@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.0.16 - 2026-03-07
+- Made GitHub Release creation non-blocking in the publish workflow so registry publication can continue even if the repository token cannot create releases.
+
 ## 0.0.15 - 2026-03-07
 - Fixed the GitHub Actions release workflow by moving registry-token checks into shell steps; GitHub rejected `secrets.*` inside those step-level `if` expressions.
 
