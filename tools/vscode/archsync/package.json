@@ -2,17 +2,17 @@
   "name": "archsync",
   "displayName": "ArchSync",
   "description": "ArchSync: framework tree webview + strict mapping validation guard.",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "publisher": "rdshr",
   "license": "SEE LICENSE IN LICENSE.txt",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rdshr/shelf.git"
+    "url": "https://github.com/xueyu888/framework.git"
   },
   "bugs": {
-    "url": "https://github.com/rdshr/shelf/issues"
+    "url": "https://github.com/xueyu888/framework/issues"
   },
-  "homepage": "https://github.com/rdshr/shelf/tree/main/tools/vscode/archsync",
+  "homepage": "https://github.com/xueyu888/framework/tree/framework/tools/vscode/archsync",
   "engines": {
     "vscode": "^1.85.0"
   },

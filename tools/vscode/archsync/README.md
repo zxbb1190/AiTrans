@@ -65,10 +65,12 @@
 - `FW020`: every `B*` must include source expression.
 - `FW021`: `B*` source expression must be parseable and references must exist.
 - `FW022`: `B*` source must include at least one `C*` and one parameter id.
-- `FW023`: `B*` must inline upstream module refs (`Lx.My[...]`) before source expression; `上游模块：...` is forbidden.
+- `FW023`: `B*` must inline upstream module refs (`Lx.My[...]` or `framework.Lx.My[...]`) before source expression; `上游模块：...` is forbidden.
 - `FW024`: non-`L0` `B*` must inline adjacent lower-layer module refs in the main clause.
-- `FW025`: inline module refs must point to real adjacent lower-layer module files in the same framework directory.
-- `FW026`: `L0` `B*` cannot reference upstream modules.
+- `FW025`: local inline module refs must point to real adjacent lower-layer module files in the same framework directory.
+- `FW026`: `L0` `B*` cannot reference local upstream modules inside the same framework.
+- `FW027`: external foundation refs may only target another framework's `L0/L1` base modules.
+- `FW028`: external foundation refs must point to real framework modules.
 - `FW030`: every boundary parameter item (for example `N/P/S/O/A/T/SF`) must include source.
 - `FW031`: boundary source must reference at least one `C*`, and all references must exist.
 - `FW040`: `R*` / `R*.*` numbering must be valid.
@@ -97,7 +99,10 @@ Tree generation behavior:
 - Preferred derivation: file-level module mode (`Lx-Mn-*.md` -> node `Lx.Mn`).
 - In file-level mode, growth edges are parsed from base lines that directly reference upstream modules, for example:
   - ``- `B3` ...：L0.M0[R2,R3] + L0.M1[R2,R3]。来源：`...`。``
+- Domain `L0` modules may also declare explicit external foundation refs, for example:
+  - ``- `B1` ...：frontend.L1.M0[R1,R3]。来源：`...`。``
 - Growth edges only allow adjacent layers (`Lx-1 -> Lx`).
+- External foundation edges are limited to another framework's `L0/L1` modules and are intended only for structure carry-over, not for skipping the current framework's own layer growth.
 - Strict validator rejects missing or invalid inline upstream refs for non-`L0` modules; standalone tree generation now aborts on warnings instead of silently skipping invalid growth edges.
 - Module nodes jump to the module header; growth edges keep their source `B*` line for precise trace-back.
 - Each node and growth edge carries `source_file` and `source_line` metadata for line-level jump.

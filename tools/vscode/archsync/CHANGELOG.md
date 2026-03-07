@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.17 - 2026-03-07
+- Synced ArchSync rule hints with the new cross-framework foundation ref syntax (`frontend.L1.M0[...]`) and the added validator rules `FW027` / `FW028`.
+- Updated the packaged docs and snippets to reflect the current structure-first stack: generic frontend structures, domain knowledge-base structures, and project-instantiated generation.
+
 ## 0.0.16 - 2026-03-07
 - Made GitHub Release creation non-blocking in the publish workflow so registry publication can continue even if the repository token cannot create releases.
 
