@@ -14,6 +14,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = REPO_ROOT / "mapping/mapping_registry.json"
 FRAMEWORK_DIR = REPO_ROOT / "framework"
 CORE_L1_STANDARD_FILE = "specs/框架设计核心标准.md"
+COMPATIBILITY_FACADE_FILE = "src/shelf_framework.py"
+SHELF_DOMAIN_FILE = "src/shelf_domain.py"
 
 DEFAULT_LEVEL_ORDER = ("L0", "L1", "L2", "L3")
 VALID_NODE_KINDS = {"layer", "file"}
@@ -24,7 +26,7 @@ LEVEL_ALLOWED_PREFIXES: dict[str, tuple[str, ...]] = {
     "L3": ("mapping/",),
 }
 REQUIRED_L1_ANCHORS_PER_L2 = (
-    "## 1. 目标（Goal）",
+    "## 1. 能力声明（Capability Statement）",
     "## 2. 边界定义（Boundary）",
     "## 3. 最小可行基（Bases）",
     "## 4. 组合原则（Combination Principles）",
@@ -1427,6 +1429,61 @@ def validate_mapping_content(
                         ],
                     )
                 )
+
+        issues.extend(validate_impl_mapping_semantics(item, registry_text))
+
+    return issues
+
+
+def validate_impl_mapping_semantics(item: dict[str, Any], registry_text: str) -> list[Issue]:
+    issues: list[Issue] = []
+    map_id = item["id"]
+    l2_file = item["l2_file"]
+    l2_anchor = item["l2_anchor"]
+    impl_files = {
+        file_name
+        for file_name in (
+            symbol_ref.get("file")
+            for symbol_ref in item.get("impl_symbols", [])
+            if isinstance(symbol_ref, dict)
+        )
+        if isinstance(file_name, str) and file_name
+    }
+
+    if COMPATIBILITY_FACADE_FILE in impl_files:
+        issues.append(
+            make_issue(
+                f"{map_id}: impl_symbols must not reference compatibility facade {COMPATIBILITY_FACADE_FILE}",
+                REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                find_mapping_key_line(registry_text, map_id, "impl_symbols"),
+                code="IMPL_SYMBOL_COMPAT_FACADE_FORBIDDEN",
+            )
+        )
+
+    if not l2_file.startswith("framework/shelf/") and SHELF_DOMAIN_FILE in impl_files:
+        issues.append(
+            make_issue(
+                f"{map_id}: non-shelf mapping must not reference shelf-specific domain file {SHELF_DOMAIN_FILE}",
+                REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                find_mapping_key_line(registry_text, map_id, "impl_symbols"),
+                code="IMPL_SYMBOL_SHELF_DOMAIN_SCOPE_INVALID",
+            )
+        )
+
+    if l2_file.startswith("framework/shelf/"):
+        shelf_required_anchors = {
+            "## 2. 边界定义（Boundary / 参数）",
+            "## 5. 验证（Verification）",
+        }
+        if l2_anchor in shelf_required_anchors and SHELF_DOMAIN_FILE not in impl_files:
+            issues.append(
+                make_issue(
+                    f"{map_id}: shelf mapping for '{l2_anchor}' must include {SHELF_DOMAIN_FILE}",
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    find_mapping_key_line(registry_text, map_id, "impl_symbols"),
+                    code="IMPL_SYMBOL_SHELF_DOMAIN_REQUIRED",
+                )
+            )
 
     return issues
 
