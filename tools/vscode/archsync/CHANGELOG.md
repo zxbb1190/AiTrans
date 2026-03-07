@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.0.15 - 2026-03-07
+- Fixed the GitHub Actions release workflow by moving registry-token checks into shell steps; GitHub rejected `secrets.*` inside those step-level `if` expressions.
+
 ## 0.0.14 - 2026-03-07
 - Replaced third-party GitHub release/publish actions with CLI-based publishing steps so the release workflow can run under stricter GitHub Actions policies.
 

@@ -59,13 +59,23 @@ jobs:
           gh release upload "${GITHUB_REF_NAME}" "${{ steps.meta.outputs.vsix }}" --clobber
 
       - name: Publish to Open VSX
-        if: github.ref_type == 'tag' && secrets.OPEN_VSX_TOKEN != ''
+        if: github.ref_type == 'tag'
         env:
           OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
-        run: npx --yes ovsx publish "${{ steps.meta.outputs.vsix }}" -p "${OPEN_VSX_TOKEN}"
+        run: |
+          if [[ -z "${OPEN_VSX_TOKEN}" ]]; then
+            echo "OPEN_VSX_TOKEN not configured; skipping Open VSX publish."
+            exit 0
+          fi
+          npx --yes ovsx publish "${{ steps.meta.outputs.vsix }}" -p "${OPEN_VSX_TOKEN}"
 
       - name: Publish to VS Marketplace
-        if: github.ref_type == 'tag' && secrets.VS_MARKETPLACE_TOKEN != ''
+        if: github.ref_type == 'tag'
         env:
           VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
-        run: npx --yes @vscode/vsce publish --packagePath "${{ steps.meta.outputs.vsix }}"
+        run: |
+          if [[ -z "${VSCE_PAT}" ]]; then
+            echo "VS_MARKETPLACE_TOKEN not configured; skipping VS Marketplace publish."
+            exit 0
+          fi
+          npx --yes @vscode/vsce publish --packagePath "${{ steps.meta.outputs.vsix }}"
