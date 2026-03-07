@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.18 - 2026-03-07
+- Updated ArchSync packaged docs and Markdown snippets to reflect the new frontend primitive sink: domain `L0` examples now point to concrete frontend `L0` atoms such as `frontend.L0.M0[...]`, instead of the older coarse `frontend.L1.M0[...]` component-family reference.
+- Aligned the published guidance with the current structure-first layering: frontend primitive atoms -> generic component assembly -> domain atoms -> domain scenes.
+
 ## 0.0.17 - 2026-03-07
 - Synced ArchSync rule hints with the new cross-framework foundation ref syntax (`frontend.L1.M0[...]`) and the added validator rules `FW027` / `FW028`.
 - Updated the packaged docs and snippets to reflect the current structure-first stack: generic frontend structures, domain knowledge-base structures, and project-instantiated generation.

@@ -100,7 +100,7 @@ Tree generation behavior:
 - In file-level mode, growth edges are parsed from base lines that directly reference upstream modules, for example:
   - ``- `B3` ...：L0.M0[R2,R3] + L0.M1[R2,R3]。来源：`...`。``
 - Domain `L0` modules may also declare explicit external foundation refs, for example:
-  - ``- `B1` ...：frontend.L1.M0[R1,R3]。来源：`...`。``
+  - ``- `B1` ...：frontend.L0.M0[R1,R2]。来源：`...`。``
 - Growth edges only allow adjacent layers (`Lx-1 -> Lx`).
 - External foundation edges are limited to another framework's `L0/L1` modules and are intended only for structure carry-over, not for skipping the current framework's own layer growth.
 - Strict validator rejects missing or invalid inline upstream refs for non-`L0` modules; standalone tree generation now aborts on warnings instead of silently skipping invalid growth edges.
