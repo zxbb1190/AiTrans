@@ -1,9 +1,9 @@
 [project]
 project_id = "knowledge_base_basic"
 template = "knowledge_base_workbench"
-display_name = "Knowledge Base Workbench"
-description = "A structure-first knowledge workbench compiled from framework standards and instance configuration."
-version = "0.2.0"
+display_name = "ArchSync Knowledge Chat"
+description = "A ChatGPT-style knowledge chat client compiled from framework standards and one instance configuration."
+version = "0.3.0"
 
 [framework]
 frontend = "framework/frontend/L2-M0-前端框架标准模块.md"
@@ -12,27 +12,27 @@ backend = "framework/backend/L2-M0-知识库接口框架标准模块.md"
 preset = "document_chat_workbench"
 
 [surface]
-shell = "three_pane_workbench"
-layout_variant = "chat_first_knowledge_workbench"
-sidebar_width = "wide"
-preview_mode = "docked"
+shell = "conversation_sidebar_shell"
+layout_variant = "chatgpt_knowledge_client"
+sidebar_width = "md"
+preview_mode = "drawer"
 density = "comfortable"
 
 [surface.copy]
-hero_kicker = "Framework-Compiled Workbench"
-hero_title = "Knowledge Base Workbench"
-hero_copy = "The app surface, API contract, document preview, and citation-return loop are compiled from explicit framework structure plus one instance configuration."
-library_title = "Knowledge Files"
-preview_title = "Source Viewer"
-toc_title = "TOC"
+hero_kicker = "Framework-Compiled Chat Client"
+hero_title = "ArchSync Knowledge Chat"
+hero_copy = "A ChatGPT-style knowledge chat client with inline citations, on-demand source drawers, and secondary knowledge pages."
+library_title = "Knowledge Bases"
+preview_title = "Citation Sources"
+toc_title = "Source Sections"
 chat_title = "Knowledge Chat"
-empty_state_title = "Select a document"
-empty_state_copy = "The preview and citations will focus on the current document and section."
+empty_state_title = "Start a knowledge conversation"
+empty_state_copy = "Ask directly in the composer. Sources stay quiet until you open a citation."
 
 [visual]
 brand = "ArchSync"
-accent = "#0f6d62"
-surface_preset = "sand"
+accent = "#2563eb"
+surface_preset = "light"
 radius_scale = "xl"
 shadow_level = "md"
 font_scale = "md"
@@ -40,105 +40,117 @@ font_scale = "md"
 [route]
 home = "/"
 workbench = "/knowledge-base"
+knowledge_list = "/knowledge-bases"
+knowledge_detail = "/knowledge-bases/details"
+document_detail_prefix = "/knowledge-bases/details/documents"
 api_prefix = "/api/knowledge"
 workbench_spec = "/api/knowledge/workbench-spec"
 
 [a11y]
-reading_order = ["library", "toc", "preview", "chat"]
-keyboard_nav = ["library-query", "document-card", "toc-item", "chat-input"]
-announcements = ["current document", "current section", "citation return path"]
+reading_order = ["conversation_sidebar", "chat_header", "message_stream", "chat_composer", "citation_drawer"]
+keyboard_nav = ["new-chat", "conversation-item", "chat-input", "citation-ref", "citation-drawer-close"]
+announcements = ["current knowledge base", "active conversation", "citation source opened"]
 
 [library]
+knowledge_base_id = "research-and-standards"
+knowledge_base_name = "研发规范知识库"
+knowledge_base_description = "Framework standards, implementation rules, and generated project discipline for the shelf repository."
 enabled = true
 source_types = ["markdown"]
 metadata_fields = ["title", "tags", "updated_at"]
-default_focus = "first_document"
-list_variant = "stacked"
+default_focus = "current_knowledge_base"
+list_variant = "conversation_companion"
 allow_create = true
 allow_delete = true
 
 [library.copy]
-search_placeholder = "Search files, tags, and sections"
+search_placeholder = "Search knowledge files and snippets"
 
 [preview]
 enabled = true
 renderers = ["markdown"]
 anchor_mode = "heading"
 show_toc = true
-rail_variant = "sticky"
+preview_variant = "citation_drawer"
 
 [chat]
 enabled = true
 citations_enabled = true
 mode = "retrieval_stub"
-citation_style = "cards"
+citation_style = "inline_refs"
 bubble_variant = "assistant_soft"
-composer_variant = "expanded"
-system_prompt = "Answer with concrete section evidence from the selected knowledge documents."
+composer_variant = "chatgpt_compact"
+system_prompt = "Answer with concise structure-first guidance grounded in the selected knowledge base and cite concrete sections."
+welcome_prompts = [
+  "总结框架文档到生成代码的编译链",
+  "解释引用抽屉和文档详情页如何形成来源回路",
+  "说明哪些改动属于框架变更，哪些属于实例配置",
+  "基于知识库概括 ChatGPT 风格知识问答客户端的结构",
+]
 
 [chat.copy]
-placeholder = "Ask the knowledge base and require citations"
-welcome = "Ask a question about the selected document. The answer will cite concrete sections and let you jump back to the anchor."
+placeholder = "询问制度、方案、文档内容，系统会结合知识库回答…"
+welcome = "像用 ChatGPT 一样直接提问。回答会嵌入知识库引用，点开后可查看来源片段和文档详情。"
 
 [context]
-selection_mode = "manual_plus_auto"
+selection_mode = "knowledge_base_default"
 max_citations = 3
-max_preview_sections = 12
-sticky_document = true
+max_preview_sections = 10
+sticky_document = false
 
 [return]
 enabled = true
-targets = ["preview_anchor", "toc"]
+targets = ["citation_drawer", "document_detail"]
 anchor_restore = true
-citation_card_variant = "stacked"
+citation_card_variant = "chips"
 
 [[documents]]
-document_id = "framework-language"
-title = "Framework Language for AI Coding"
-summary = "Use a structure-first framework language so pages, APIs, state, and verification all grow from one explicit contract."
-tags = ["framework", "ai", "coding"]
-updated_at = "2026-03-07"
+document_id = "chat-client-principles"
+title = "Chat Client Principles"
+summary = "The primary product shape should feel like ChatGPT first and a knowledge platform second."
+tags = ["chat", "ux", "frontend"]
+updated_at = "2026-03-08"
 body_markdown = """
-## Structure Before Feature
-The framework should describe stable structures first. Capabilities are the result of structure, boundary, and rule composition.
+## Chat First
+The primary shell should stay close to ChatGPT: a conversation sidebar, one centered message stream, and one bottom composer.
 
-## Explicit Boundary Contracts
-A generated project must keep boundary definitions explicit. Routes, state surfaces, and extension points are configured values, not hidden implementation details.
+## Citation Second
+Citations should appear inline and stay lightweight by default. Source detail only expands when the user asks for it.
 
-## Compilation Pipeline
-The stable pipeline is framework markdown to framework IR, then instance configuration to generated workbench spec, then runtime code and verification evidence.
+## Auxiliary Pages
+Knowledge base list, knowledge base detail, and document detail pages exist as secondary pages. They support trust and traceability without replacing the main chat surface.
 """
 
 [[documents]]
-document_id = "knowledge-workbench"
-title = "Knowledge Workbench Contract"
-summary = "A knowledge workbench closes the loop between library, preview, chat, citation, and return path without inventing extra protocols."
-tags = ["knowledge-base", "contract", "workbench"]
-updated_at = "2026-03-06"
+document_id = "framework-compilation-chain"
+title = "Framework Compilation Chain"
+summary = "Framework markdown, instance configuration, generated contracts, and runtime code form one deterministic compile path."
+tags = ["framework", "generator", "traceability"]
+updated_at = "2026-03-08"
 body_markdown = """
-## Library Region
-The library region lists documents, metadata, and the current focus. Selection is explicit and observable.
+## Framework To IR
+Framework markdown defines structure, boundary, base, rule, and verification statements. The compiler parses them into framework IR.
 
-## Preview And TOC
-The preview region and TOC share one anchor model. Every citation must be able to return to the exact section anchor.
+## Instance To Spec
+Instance configuration selects legal values inside framework boundaries. The generator resolves those values into a concrete workbench spec.
 
-## Chat And Citation Loop
-The chat region consumes current document context and emits answer text plus citation cards. Citation cards are not decoration; they are the return path into preview.
+## Generated Runtime
+The final application surface, API contract, verification reports, and generated bundle all derive from the same framework plus instance inputs.
 """
 
 [[documents]]
-document_id = "instance-config"
-title = "Instance Configuration Rules"
-summary = "Project instances may change theme, copy, routes, and operational thresholds, but they do not redefine the framework chain."
-tags = ["instance", "config", "generator"]
-updated_at = "2026-03-05"
+document_id = "knowledge-citation-loop"
+title = "Knowledge Citation Loop"
+summary = "A knowledge answer is complete only when the user can inspect citations, reopen source context, and continue the same conversation."
+tags = ["knowledge-base", "citation", "return-path"]
+updated_at = "2026-03-08"
 body_markdown = """
-## Allowed Variation
-Themes, colors, labels, route prefixes, retrieval limits, and operational toggles belong to instance configuration.
+## Inline References
+Assistant answers should attach numbered inline references such as [1] and [2] instead of heavy source cards in the main reading flow.
 
-## Forbidden Variation
-Removing the chat region, removing citation return, or bypassing the preview anchor model is a framework change, not an instance variation.
+## Citation Drawer
+Clicking a citation opens a right-side drawer with document name, section name, snippet, and source navigation actions.
 
-## Generated Artifacts
-Each compile step should emit framework IR, generated workbench spec, and a generated code bundle so the resulting project remains traceable.
+## Document Detail
+From the drawer, the user can open a dedicated document detail page and continue tracing the original section in full context.
 """
