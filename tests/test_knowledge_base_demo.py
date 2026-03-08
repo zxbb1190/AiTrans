@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import date
 import unittest
 
 from fastapi.testclient import TestClient
@@ -12,13 +11,14 @@ class KnowledgeBaseDemoTest(unittest.TestCase):
     def setUp(self) -> None:
         self.client = TestClient(build_knowledge_base_demo_app())
 
-    def test_frontend_page_contains_workbench_regions(self) -> None:
+    def test_frontend_page_contains_generated_workbench_regions(self) -> None:
         response = self.client.get("/knowledge-base")
         self.assertEqual(response.status_code, 200)
         self.assertIn("Knowledge Base Workbench", response.text)
-        self.assertIn("Search", response.text)
-        self.assertIn("Read", response.text)
-        self.assertIn("Compose", response.text)
+        self.assertIn("Knowledge Files", response.text)
+        self.assertIn("Add Source", response.text)
+        self.assertIn("Ask With Citations", response.text)
+        self.assertIn("ChatGPT-style knowledge workspace", response.text)
 
     def test_root_exposes_project_summary(self) -> None:
         response = self.client.get("/")
@@ -26,83 +26,82 @@ class KnowledgeBaseDemoTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(payload["project"]["project"]["project_id"], "knowledge_base_basic")
         self.assertEqual(payload["frontend"], "/knowledge-base")
+        self.assertEqual(payload["workbench_spec"], "/api/knowledge/workbench-spec")
 
-    def test_list_articles_supports_filtering(self) -> None:
-        response = self.client.get("/api/knowledge/articles", params={"tag": "framework"})
+    def test_list_documents_supports_filtering(self) -> None:
+        response = self.client.get("/api/knowledge/documents", params={"tag": "framework"})
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertGreaterEqual(payload["total"], 1)
-        self.assertTrue(all("framework" in item["tags"] for item in payload["items"]))
+        self.assertGreaterEqual(len(payload), 1)
+        self.assertTrue(all("framework" in item["tags"] for item in payload))
 
-    def test_get_article_detail(self) -> None:
-        response = self.client.get("/api/knowledge/articles/framework-language-for-ai-coding")
+    def test_get_document_detail_and_section(self) -> None:
+        response = self.client.get("/api/knowledge/documents/framework-language")
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["slug"], "framework-language-for-ai-coding")
-        self.assertIn("stable workbench contract", payload["body"])
+        self.assertEqual(payload["document_id"], "framework-language")
+        self.assertGreaterEqual(len(payload["sections"]), 2)
 
-    def test_create_article_round_trip(self) -> None:
+        section_response = self.client.get("/api/knowledge/documents/framework-language/sections/compilation-pipeline")
+        self.assertEqual(section_response.status_code, 200)
+        section = section_response.json()
+        self.assertEqual(section["section_id"], "compilation-pipeline")
+        self.assertIn("generated workbench spec", section["plain_text"])
+
+    def test_create_and_delete_document(self) -> None:
         create_response = self.client.post(
-            "/api/knowledge/articles",
+            "/api/knowledge/documents",
             json={
-                "title": "Natural language code review checklist",
-                "summary": "Capture how framework clauses become review checkpoints before shipping.",
-                "body": (
-                    "A stable review checklist starts from capability, boundary, base, combination, and "
-                    "verification clauses. Each generated file should map back to one or more of them."
-                ),
-                "tags": ["review", "framework"],
-                "status": "draft",
+                "title": "Uploaded Source",
+                "summary": "A source added from the chat-first workbench should become searchable and citeable.",
+                "tags": ["upload", "knowledge-base"],
+                "body_markdown": "## Source Contract\\nUploaded files become previewable and citeable.\\n\\n## Return Path\\nCitations still reopen the source anchor.",
             },
         )
         self.assertEqual(create_response.status_code, 201)
         created = create_response.json()
-        self.assertEqual(created["status"], "draft")
-        self.assertEqual(created["updated_at"], date.today().isoformat())
+        self.assertEqual(created["title"], "Uploaded Source")
 
-        list_response = self.client.get("/api/knowledge/articles", params={"keyword": "review checklist"})
+        list_response = self.client.get("/api/knowledge/documents", params={"query": "uploaded"})
         self.assertEqual(list_response.status_code, 200)
-        payload = list_response.json()
-        self.assertGreaterEqual(payload["total"], 1)
-        self.assertTrue(any(item["slug"] == created["slug"] for item in payload["items"]))
+        listed = list_response.json()
+        self.assertEqual(listed[0]["document_id"], created["document_id"])
 
-    def test_update_article_round_trip(self) -> None:
-        update_response = self.client.put(
-            "/api/knowledge/articles/framework-language-for-ai-coding",
+        delete_response = self.client.delete(f"/api/knowledge/documents/{created['document_id']}")
+        self.assertEqual(delete_response.status_code, 200)
+        deleted = delete_response.json()
+        self.assertTrue(deleted["deleted"])
+
+        missing_response = self.client.get(f"/api/knowledge/documents/{created['document_id']}")
+        self.assertEqual(missing_response.status_code, 404)
+
+    def test_chat_turn_returns_citations_with_return_paths(self) -> None:
+        response = self.client.post(
+            "/api/knowledge/chat/turns",
             json={
-                "title": "Framework language for AI coding",
-                "summary": "Update the contract notes after validating the generated workbench.",
-                "body": (
-                    "A stable workbench contract needs create and update paths. The edit flow should reuse "
-                    "the same list, detail, and write result surface without introducing a second protocol."
-                ),
-                "tags": ["framework", "ai", "editing"],
-                "status": "published",
+                "message": "Explain the compilation pipeline and return path.",
+                "document_id": "framework-language",
+                "section_id": "compilation-pipeline",
             },
         )
-        self.assertEqual(update_response.status_code, 200)
-        updated = update_response.json()
-        self.assertEqual(updated["slug"], "framework-language-for-ai-coding")
-        self.assertIn("editing", updated["tags"])
-        self.assertEqual(updated["updated_at"], date.today().isoformat())
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("strongest evidence", payload["answer"].lower())
+        self.assertGreaterEqual(len(payload["citations"]), 1)
+        self.assertEqual(payload["citations"][0]["document_id"], "framework-language")
+        self.assertIn("/knowledge-base?document=framework-language", payload["citations"][0]["return_path"])
 
-        detail_response = self.client.get("/api/knowledge/articles/framework-language-for-ai-coding")
-        self.assertEqual(detail_response.status_code, 200)
-        detail = detail_response.json()
-        self.assertEqual(
-            detail["summary"],
-            "Update the contract notes after validating the generated workbench.",
-        )
-
-    def test_workspace_flow_exposes_verification_evidence(self) -> None:
-        response = self.client.get("/api/knowledge/workspace-flow")
+    def test_workbench_spec_exposes_verification_evidence(self) -> None:
+        response = self.client.get("/api/knowledge/workbench-spec")
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["project"]["project"]["project_id"], "knowledge_base_basic")
-        self.assertEqual(len(payload["scenes"]), 4)
+        self.assertEqual(len(payload["workspace_flow"]), 3)
         self.assertTrue(payload["frontend_verification"]["passed"])
         self.assertTrue(payload["workspace_verification"]["passed"])
         self.assertTrue(payload["backend_verification"]["passed"])
+        self.assertTrue(payload["project"]["generated_artifacts"])
+        self.assertTrue(payload["project"]["validation_reports"]["overall"]["passed"])
 
 
 if __name__ == "__main__":

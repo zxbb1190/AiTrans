@@ -10,16 +10,22 @@
 - 领域标准（前端通用框架 L0-L6）：`framework/frontend/Lx-Mn-*.md`
 - 领域标准（知识库领域框架 L0-L2）：`framework/knowledge_base/Lx-Mn-*.md`
 - 领域标准（知识库接口 L0-L2）：`framework/backend/Lx-M0-*.md`
-- 项目实例层：`projects/<project_id>/project.toml`
+- 项目实例层：`projects/<project_id>/instance.toml`
 - 工程执行规范：`AGENTS.md`
 
 ## 映射与验证
 - 映射注册：`mapping/mapping_registry.json`
 - 验证命令：
 ```bash
+uv run python scripts/materialize_project.py
 uv run python scripts/validate_strict_mapping.py
 uv run python scripts/validate_strict_mapping.py --check-changes
 ```
+
+项目实例铁律：
+- 不直接修改 `projects/<project_id>/generated/*`
+- 项目行为变更先改 `framework/*.md` 或 `projects/<project_id>/instance.toml`
+- 生成器内核在 `src/project_runtime/` 与 `src/*_framework/`，项目实例代码以物化产物为准
 
 ## 推送守卫（Git Hook）
 - 安装命令：
@@ -66,13 +72,22 @@ uv run python src/main.py
 
 ## 项目实例
 - 实例层说明：`projects/README.md`
-- 当前样板：`projects/knowledge_base_basic/project.toml`
+- 当前样板：`projects/knowledge_base_basic/instance.toml`
 - 运行时工厂：`src/project_runtime/`
+- 当前实例配置采用“边界大类 -> 同名 section”约定：
+  - frontend：`surface / visual / route / a11y`
+  - knowledge_base：`library / preview / chat / context / return`
 
 ## 知识库 Demo
 基于 `framework/frontend`、`framework/knowledge_base` 与 `framework/backend` 的第一个“项目实例配置驱动”样板位于：
-- 项目配置：`projects/knowledge_base_basic/project.toml`
-- 实现代码：`src/knowledge_base_demo/`
+- 项目配置：`projects/knowledge_base_basic/instance.toml`
+- 运行时模板：`src/knowledge_base_demo/`
+- 编译产物：`projects/knowledge_base_basic/generated/`
+
+物化项目产物：
+```bash
+uv run python scripts/materialize_project.py --project projects/knowledge_base_basic/instance.toml
+```
 
 按默认项目实例启动：
 ```bash
@@ -81,14 +96,14 @@ uv run uvicorn --app-dir src project_runtime.app_factory:app --reload
 
 切换项目文件启动：
 ```bash
-SHELF_PROJECT_FILE=projects/knowledge_base_basic/project.toml \
+SHELF_PROJECT_FILE=projects/knowledge_base_basic/instance.toml \
 uv run uvicorn --app-dir src project_runtime.app_factory:app --reload
 ```
 
 入口：
 - 页面：`http://127.0.0.1:8000/knowledge-base`
-- 工作台场景验证：`http://127.0.0.1:8000/api/knowledge/workspace-flow`
-- 接口：`http://127.0.0.1:8000/api/knowledge/articles`
+- 工作台编译 spec：`http://127.0.0.1:8000/api/knowledge/workbench-spec`
+- 接口：`http://127.0.0.1:8000/api/knowledge/documents`
 
 ## 看图（总入口）
 - 框架标准树结构图（来自 `framework/<module>/Lx-Mn-*.md`）：

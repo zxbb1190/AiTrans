@@ -1,175 +1,94 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field, replace
+from html import escape
+import hashlib
+import json
 from pathlib import Path
+import re
 import tomllib
 from typing import Any
 
+from framework_ir import FrameworkModuleIR, load_framework_registry, parse_framework_module
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_KNOWLEDGE_BASE_PROJECT_FILE = REPO_ROOT / "projects/knowledge_base_basic/project.toml"
+DEFAULT_KNOWLEDGE_BASE_PROJECT_FILE = REPO_ROOT / "projects/knowledge_base_basic/instance.toml"
 SUPPORTED_PROJECT_TEMPLATE = "knowledge_base_workbench"
 
+SURFACE_PRESETS: dict[str, dict[str, str]] = {
+    "sand": {
+        "bg": "#f4efe5",
+        "panel": "#fffaf2",
+        "panel_soft": "#f7f1e7",
+        "ink": "#1b1f24",
+        "muted": "#6d6a65",
+        "line": "rgba(27, 31, 36, 0.12)",
+    },
+    "light": {
+        "bg": "#f6f7fb",
+        "panel": "#ffffff",
+        "panel_soft": "#f4f6fb",
+        "ink": "#111827",
+        "muted": "#667085",
+        "line": "rgba(17, 24, 39, 0.10)",
+    },
+}
 
-@dataclass(frozen=True)
-class ProjectMetadata:
-    project_id: str
-    template: str
-    display_name: str
-    description: str
-    version: str
+RADIUS_PRESETS = {
+    "sm": "12px",
+    "md": "18px",
+    "lg": "24px",
+    "xl": "30px",
+}
 
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+SHADOW_PRESETS = {
+    "sm": "0 10px 28px rgba(15, 23, 42, 0.08)",
+    "md": "0 18px 48px rgba(15, 23, 42, 0.10)",
+    "lg": "0 24px 60px rgba(12, 17, 22, 0.30)",
+}
 
+FONT_PRESETS = {
+    "sm": {"body": "0.94rem", "title": "1.45rem", "hero": "1.55rem"},
+    "md": {"body": "1rem", "title": "1.6rem", "hero": "1.7rem"},
+    "lg": {"body": "1.05rem", "title": "1.72rem", "hero": "1.84rem"},
+}
 
-@dataclass(frozen=True)
-class ProjectFrameworkRefs:
-    frontend: str
-    workspace: str
-    backend: str
+SIDEBAR_WIDTH_PRESETS = {
+    "compact": "280px",
+    "md": "300px",
+    "wide": "320px",
+}
 
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+RAIL_WIDTH_PRESETS = {
+    "compact": "340px",
+    "md": "370px",
+    "wide": "390px",
+}
 
-
-@dataclass(frozen=True)
-class CompositionProfile:
-    surface: str
-    detail_flow: str
-    write_flow: str
-    supports_edit: bool
-    supports_draft: bool
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
-
-@dataclass(frozen=True)
-class RouteBoundaryValues:
-    home: str
-    workbench: str
-    api_prefix: str
-    workspace_flow: str
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
-
-@dataclass(frozen=True)
-class FrontendBoundaryValues:
-    page_title: str
-    hero_kicker: str
-    hero_title: str
-    hero_copy: str
-    contract_title: str
-    contract_value: str
-    contract_meta: str
-    boundary_title: str
-    boundary_meta: str
-    search_title: str
-    read_title: str
-    compose_title: str
-    query_button_label: str
-    reset_button_label: str
-    save_draft_label: str
-    publish_label: str
-    clear_label: str
-    edit_label: str
-    keyword_placeholder: str
-    title_placeholder: str
-    summary_placeholder: str
-    body_placeholder: str
-    tags_placeholder: str
-    list_empty_title: str
-    list_empty_description: str
-    list_error_title: str
-    list_error_description: str
-    detail_empty_title: str
-    detail_empty_description: str
-    detail_no_selection_title: str
-    detail_no_selection_description: str
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+DENSITY_PRESETS = {
+    "compact": {"shell_gap": "14px", "shell_padding": "14px", "panel_gap": "12px"},
+    "comfortable": {"shell_gap": "18px", "shell_padding": "18px", "panel_gap": "16px"},
+}
 
 
-@dataclass(frozen=True)
-class BackendConstraintProfile:
-    default_page_size: int
-    max_page_size: int
-    max_tags_per_article: int
-    min_title_length: int
-    max_title_length: int
-    min_summary_length: int
-    max_summary_length: int
-    min_body_length: int
-    max_body_length: int
-    allowed_statuses: tuple[str, ...]
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+def _relative_path(path: Path) -> str:
+    try:
+        return path.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return str(path)
 
 
-@dataclass(frozen=True)
-class SceneProfile:
-    scene_id: str
-    title: str
-    steps: tuple[str, ...]
-    entry_path: str
-    return_path: str
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+def _slugify(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return slug or "section"
 
 
-@dataclass(frozen=True)
-class SeedArticle:
-    slug: str
-    title: str
-    summary: str
-    body: str
-    tags: tuple[str, ...]
-    status: str
-    updated_at: str
-    related_slugs: tuple[str, ...]
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+def _sha256_text(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
-@dataclass(frozen=True)
-class KnowledgeBaseProjectConfig:
-    source_file: str
-    metadata: ProjectMetadata
-    framework_refs: ProjectFrameworkRefs
-    composition_profile: CompositionProfile
-    route_boundary_values: RouteBoundaryValues
-    frontend_boundary_values: FrontendBoundaryValues
-    backend_constraint_profile: BackendConstraintProfile
-    scenes: tuple[SceneProfile, ...]
-    seed_articles: tuple[SeedArticle, ...]
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
-    def public_summary(self) -> dict[str, Any]:
-        return {
-            "source_file": self.source_file,
-            "project": self.metadata.to_dict(),
-            "framework_refs": self.framework_refs.to_dict(),
-            "composition_profile": self.composition_profile.to_dict(),
-            "route_boundary_values": self.route_boundary_values.to_dict(),
-            "backend_constraint_profile": self.backend_constraint_profile.to_dict(),
-            "scene_count": len(self.scenes),
-            "seed_article_count": len(self.seed_articles),
-        }
-
-
-def _normalize_project_path(project_file: str | Path) -> Path:
-    project_path = Path(project_file)
-    if not project_path.is_absolute():
-        project_path = (REPO_ROOT / project_path).resolve()
-    return project_path
+def _tokenize(text: str) -> tuple[str, ...]:
+    return tuple(token for token in re.findall(r"[a-z0-9]{3,}", text.lower()) if token)
 
 
 def _read_toml_file(project_path: Path) -> dict[str, Any]:
@@ -182,6 +101,13 @@ def _read_toml_file(project_path: Path) -> dict[str, Any]:
     return data
 
 
+def _normalize_project_path(project_file: str | Path) -> Path:
+    project_path = Path(project_file)
+    if not project_path.is_absolute():
+        project_path = (REPO_ROOT / project_path).resolve()
+    return project_path
+
+
 def _require_table(parent: dict[str, Any], key: str) -> dict[str, Any]:
     value = parent.get(key)
     if not isinstance(value, dict):
@@ -189,10 +115,28 @@ def _require_table(parent: dict[str, Any], key: str) -> dict[str, Any]:
     return value
 
 
+def _optional_table(parent: dict[str, Any], key: str) -> dict[str, Any]:
+    value = parent.get(key)
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"optional table must decode into object: {key}")
+    return value
+
+
 def _require_string(parent: dict[str, Any], key: str) -> str:
     value = parent.get(key)
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"missing required string: {key}")
+    return value.strip()
+
+
+def _optional_string(parent: dict[str, Any], key: str) -> str | None:
+    value = parent.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"optional string must be non-empty when provided: {key}")
     return value.strip()
 
 
@@ -222,152 +166,605 @@ def _require_string_tuple(parent: dict[str, Any], key: str) -> tuple[str, ...]:
     return tuple(items)
 
 
-def _require_scene_profiles(data: dict[str, Any]) -> tuple[SceneProfile, ...]:
-    value = data.get("scenes")
-    if not isinstance(value, list) or not value:
-        raise ValueError("project config must define non-empty [[scenes]]")
+@dataclass(frozen=True)
+class ProjectMetadata:
+    project_id: str
+    template: str
+    display_name: str
+    description: str
+    version: str
 
-    seen_scene_ids: set[str] = set()
-    scenes: list[SceneProfile] = []
-    for raw_scene in value:
-        if not isinstance(raw_scene, dict):
-            raise ValueError("each [[scenes]] entry must be a table")
-        scene = SceneProfile(
-            scene_id=_require_string(raw_scene, "scene_id"),
-            title=_require_string(raw_scene, "title"),
-            steps=_require_string_tuple(raw_scene, "steps"),
-            entry_path=_require_string(raw_scene, "entry_path"),
-            return_path=_require_string(raw_scene, "return_path"),
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class FrameworkSelection:
+    frontend: str
+    domain: str
+    backend: str
+    preset: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class SurfaceCopyConfig:
+    hero_kicker: str
+    hero_title: str
+    hero_copy: str
+    library_title: str
+    preview_title: str
+    toc_title: str
+    chat_title: str
+    empty_state_title: str
+    empty_state_copy: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class SurfaceConfig:
+    shell: str
+    layout_variant: str
+    sidebar_width: str
+    preview_mode: str
+    density: str
+    copy: SurfaceCopyConfig
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "shell": self.shell,
+            "layout_variant": self.layout_variant,
+            "sidebar_width": self.sidebar_width,
+            "preview_mode": self.preview_mode,
+            "density": self.density,
+            "copy": self.copy.to_dict(),
+        }
+
+
+@dataclass(frozen=True)
+class VisualConfig:
+    brand: str
+    accent: str
+    surface_preset: str
+    radius_scale: str
+    shadow_level: str
+    font_scale: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class FeatureConfig:
+    library: bool
+    preview: bool
+    chat: bool
+    citation: bool
+    return_to_anchor: bool
+    upload: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class RouteConfig:
+    home: str
+    workbench: str
+    api_prefix: str
+    workbench_spec: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class A11yConfig:
+    reading_order: tuple[str, ...]
+    keyboard_nav: tuple[str, ...]
+    announcements: tuple[str, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "reading_order": list(self.reading_order),
+            "keyboard_nav": list(self.keyboard_nav),
+            "announcements": list(self.announcements),
+        }
+
+
+@dataclass(frozen=True)
+class LibraryConfig:
+    enabled: bool
+    source_types: tuple[str, ...]
+    metadata_fields: tuple[str, ...]
+    default_focus: str
+    list_variant: str
+    allow_create: bool
+    allow_delete: bool
+    search_placeholder: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "enabled": self.enabled,
+            "source_types": list(self.source_types),
+            "metadata_fields": list(self.metadata_fields),
+            "default_focus": self.default_focus,
+            "list_variant": self.list_variant,
+            "allow_create": self.allow_create,
+            "allow_delete": self.allow_delete,
+            "search_placeholder": self.search_placeholder,
+        }
+
+
+@dataclass(frozen=True)
+class PreviewConfig:
+    enabled: bool
+    renderers: tuple[str, ...]
+    anchor_mode: str
+    show_toc: bool
+    rail_variant: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "enabled": self.enabled,
+            "renderers": list(self.renderers),
+            "anchor_mode": self.anchor_mode,
+            "show_toc": self.show_toc,
+            "rail_variant": self.rail_variant,
+        }
+
+
+@dataclass(frozen=True)
+class ChatConfig:
+    enabled: bool
+    citations_enabled: bool
+    mode: str
+    citation_style: str
+    bubble_variant: str
+    composer_variant: str
+    system_prompt: str
+    placeholder: str
+    welcome: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class ContextConfig:
+    selection_mode: str
+    max_citations: int
+    max_preview_sections: int
+    sticky_document: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class ReturnConfig:
+    enabled: bool
+    targets: tuple[str, ...]
+    anchor_restore: bool
+    citation_card_variant: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "enabled": self.enabled,
+            "targets": list(self.targets),
+            "anchor_restore": self.anchor_restore,
+            "citation_card_variant": self.citation_card_variant,
+        }
+
+
+@dataclass(frozen=True)
+class SeedDocumentSource:
+    document_id: str
+    title: str
+    summary: str
+    body_markdown: str
+    tags: tuple[str, ...]
+    updated_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class KnowledgeBaseInstanceConfig:
+    source_file: str
+    metadata: ProjectMetadata
+    framework: FrameworkSelection
+    surface: SurfaceConfig
+    visual: VisualConfig
+    features: FeatureConfig
+    route: RouteConfig
+    a11y: A11yConfig
+    library: LibraryConfig
+    preview: PreviewConfig
+    chat: ChatConfig
+    context: ContextConfig
+    return_config: ReturnConfig
+    documents: tuple[SeedDocumentSource, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class KnowledgeDocumentSection:
+    section_id: str
+    title: str
+    level: int
+    markdown: str
+    html: str
+    plain_text: str
+    search_text: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class KnowledgeDocument:
+    document_id: str
+    title: str
+    summary: str
+    body_markdown: str
+    body_html: str
+    tags: tuple[str, ...]
+    updated_at: str
+    sections: tuple[KnowledgeDocumentSection, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "document_id": self.document_id,
+            "title": self.title,
+            "summary": self.summary,
+            "body_markdown": self.body_markdown,
+            "body_html": self.body_html,
+            "tags": list(self.tags),
+            "updated_at": self.updated_at,
+            "sections": [item.to_dict() for item in self.sections],
+        }
+
+
+@dataclass(frozen=True)
+class GeneratedArtifactPaths:
+    directory: str
+    framework_ir_json: str
+    workbench_spec_json: str
+    project_bundle_py: str
+    generation_manifest_json: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class KnowledgeBaseProject:
+    source_file: str
+    metadata: ProjectMetadata
+    framework: FrameworkSelection
+    surface: SurfaceConfig
+    visual: VisualConfig
+    visual_tokens: dict[str, str]
+    features: FeatureConfig
+    route: RouteConfig
+    a11y: A11yConfig
+    library: LibraryConfig
+    preview: PreviewConfig
+    chat: ChatConfig
+    context: ContextConfig
+    return_config: ReturnConfig
+    copy: dict[str, str]
+    frontend_ir: FrameworkModuleIR
+    domain_ir: FrameworkModuleIR
+    backend_ir: FrameworkModuleIR
+    resolved_modules: tuple[FrameworkModuleIR, ...]
+    documents: tuple[KnowledgeDocument, ...]
+    frontend_contract: dict[str, Any] = field(default_factory=dict)
+    workbench_contract: dict[str, Any] = field(default_factory=dict)
+    validation_reports: dict[str, Any] = field(default_factory=dict)
+    generated_artifacts: GeneratedArtifactPaths | None = None
+
+    @property
+    def routes(self) -> RouteConfig:
+        return self.route
+
+    @property
+    def theme(self) -> VisualConfig:
+        return self.visual
+
+    @property
+    def theme_tokens(self) -> dict[str, str]:
+        return self.visual_tokens
+
+    def to_spec_dict(self) -> dict[str, Any]:
+        return {
+            "source_file": self.source_file,
+            "project": self.metadata.to_dict(),
+            "framework": {
+                **self.framework.to_dict(),
+                "primary_modules": [
+                    self.frontend_ir.to_dict(),
+                    self.domain_ir.to_dict(),
+                    self.backend_ir.to_dict(),
+                ],
+                "resolved_modules": [item.to_dict() for item in self.resolved_modules],
+            },
+            "surface": self.surface.to_dict(),
+            "visual": {
+                **self.visual.to_dict(),
+                "tokens": self.visual_tokens,
+            },
+            "features": self.features.to_dict(),
+            "route": self.route.to_dict(),
+            "routes": {
+                **self.route.to_dict(),
+                "api": {
+                    "documents": f"{self.route.api_prefix}/documents",
+                    "create_document": f"{self.route.api_prefix}/documents",
+                    "document_detail": f"{self.route.api_prefix}/documents/{{document_id}}",
+                    "delete_document": f"{self.route.api_prefix}/documents/{{document_id}}",
+                    "section_detail": f"{self.route.api_prefix}/documents/{{document_id}}/sections/{{section_id}}",
+                    "tags": f"{self.route.api_prefix}/tags",
+                    "chat_turns": f"{self.route.api_prefix}/chat/turns",
+                    "workbench_spec": self.route.workbench_spec,
+                },
+            },
+            "a11y": self.a11y.to_dict(),
+            "library": self.library.to_dict(),
+            "preview": self.preview.to_dict(),
+            "chat": self.chat.to_dict(),
+            "context": self.context.to_dict(),
+            "return": self.return_config.to_dict(),
+            "copy": self.copy,
+            "boundary_config": {
+                "SURFACE": {"section": "surface", "values": self.surface.to_dict()},
+                "VISUAL": {"section": "visual", "values": self.visual.to_dict()},
+                "ROUTE": {"section": "route", "values": self.route.to_dict()},
+                "A11Y": {"section": "a11y", "values": self.a11y.to_dict()},
+                "LIBRARY": {"section": "library", "values": self.library.to_dict()},
+                "PREVIEW": {"section": "preview", "values": self.preview.to_dict()},
+                "CHAT": {"section": "chat", "values": self.chat.to_dict()},
+                "CONTEXT": {"section": "context", "values": self.context.to_dict()},
+                "RETURN": {"section": "return", "values": self.return_config.to_dict()},
+            },
+            "documents": [item.to_dict() for item in self.documents],
+            "frontend_contract": self.frontend_contract,
+            "workbench_contract": self.workbench_contract,
+            "validation_reports": self.validation_reports,
+            "generated_artifacts": self.generated_artifacts.to_dict() if self.generated_artifacts else None,
+        }
+
+    def public_summary(self) -> dict[str, Any]:
+        return {
+            "source_file": self.source_file,
+            "project": self.metadata.to_dict(),
+            "framework": self.framework.to_dict(),
+            "surface": self.surface.to_dict(),
+            "visual": self.visual.to_dict(),
+            "route": self.route.to_dict(),
+            "a11y": self.a11y.to_dict(),
+            "routes": {
+                **self.route.to_dict(),
+                "api": {
+                    "documents": f"{self.route.api_prefix}/documents",
+                    "create_document": f"{self.route.api_prefix}/documents",
+                    "document_detail": f"{self.route.api_prefix}/documents/{{document_id}}",
+                    "delete_document": f"{self.route.api_prefix}/documents/{{document_id}}",
+                    "section_detail": f"{self.route.api_prefix}/documents/{{document_id}}/sections/{{section_id}}",
+                    "tags": f"{self.route.api_prefix}/tags",
+                    "chat_turns": f"{self.route.api_prefix}/chat/turns",
+                    "workbench_spec": self.route.workbench_spec,
+                },
+            },
+            "document_count": len(self.documents),
+            "resolved_module_ids": [item.module_id for item in self.resolved_modules],
+            "validation_reports": self.validation_reports,
+            "validation_summary": {
+                key: {
+                    "passed": value["passed"],
+                    "passed_count": value["passed_count"],
+                    "rule_count": value["rule_count"],
+                }
+                for key, value in self.validation_reports.items()
+                if isinstance(value, dict) and {"passed", "passed_count", "rule_count"} <= set(value)
+            },
+            "generated_artifacts": self.generated_artifacts.to_dict() if self.generated_artifacts else None,
+        }
+
+
+def _render_markdown(markdown: str) -> str:
+    lines = markdown.strip().splitlines()
+    html_parts: list[str] = []
+    in_list = False
+    for raw_line in lines:
+        line = raw_line.rstrip()
+        stripped = line.strip()
+        if not stripped:
+            if in_list:
+                html_parts.append("</ul>")
+                in_list = False
+            continue
+        if stripped.startswith("### "):
+            if in_list:
+                html_parts.append("</ul>")
+                in_list = False
+            html_parts.append(f"<h4>{escape(stripped[4:])}</h4>")
+            continue
+        if stripped.startswith("## "):
+            if in_list:
+                html_parts.append("</ul>")
+                in_list = False
+            html_parts.append(f"<h3>{escape(stripped[3:])}</h3>")
+            continue
+        if stripped.startswith("- "):
+            if not in_list:
+                html_parts.append("<ul>")
+                in_list = True
+            html_parts.append(f"<li>{escape(stripped[2:])}</li>")
+            continue
+        if in_list:
+            html_parts.append("</ul>")
+            in_list = False
+        html_parts.append(f"<p>{escape(stripped)}</p>")
+    if in_list:
+        html_parts.append("</ul>")
+    return "\n".join(html_parts)
+
+
+def _plain_text(markdown: str) -> str:
+    text = re.sub(r"^#{2,3}\s+", "", markdown, flags=re.MULTILINE)
+    text = re.sub(r"^-\s+", "", text, flags=re.MULTILINE)
+    return " ".join(part.strip() for part in text.splitlines() if part.strip())
+
+
+def _split_markdown_sections(summary: str, body_markdown: str) -> tuple[KnowledgeDocumentSection, ...]:
+    sections: list[KnowledgeDocumentSection] = [
+        KnowledgeDocumentSection(
+            section_id="summary",
+            title="Summary",
+            level=2,
+            markdown=summary.strip(),
+            html=_render_markdown(summary.strip()),
+            plain_text=_plain_text(summary.strip()),
+            search_text=f"summary {summary.strip()}",
         )
-        if scene.scene_id in seen_scene_ids:
-            raise ValueError(f"duplicate scene_id: {scene.scene_id}")
-        seen_scene_ids.add(scene.scene_id)
-        scenes.append(scene)
-    return tuple(scenes)
+    ]
+    seen_ids = {"summary"}
+    current_title = "Overview"
+    current_level = 2
+    current_lines: list[str] = []
+    saw_heading = False
 
-
-def _require_seed_articles(data: dict[str, Any]) -> tuple[SeedArticle, ...]:
-    value = data.get("seed_articles")
-    if not isinstance(value, list) or not value:
-        raise ValueError("project config must define non-empty [[seed_articles]]")
-
-    seen_slugs: set[str] = set()
-    articles: list[SeedArticle] = []
-    for raw_article in value:
-        if not isinstance(raw_article, dict):
-            raise ValueError("each [[seed_articles]] entry must be a table")
-        article = SeedArticle(
-            slug=_require_string(raw_article, "slug"),
-            title=_require_string(raw_article, "title"),
-            summary=_require_string(raw_article, "summary"),
-            body=_require_string(raw_article, "body"),
-            tags=_require_string_tuple(raw_article, "tags"),
-            status=_require_string(raw_article, "status"),
-            updated_at=_require_string(raw_article, "updated_at"),
-            related_slugs=_require_string_tuple(raw_article, "related_slugs")
-            if raw_article.get("related_slugs")
-            else tuple(),
+    def flush() -> None:
+        nonlocal current_title, current_level, current_lines
+        content = "\n".join(current_lines).strip()
+        if not content:
+            current_lines = []
+            return
+        section_id = _slugify(current_title)
+        counter = 2
+        while section_id in seen_ids:
+            section_id = f"{section_id}-{counter}"
+            counter += 1
+        seen_ids.add(section_id)
+        plain_text = _plain_text(content)
+        sections.append(
+            KnowledgeDocumentSection(
+                section_id=section_id,
+                title=current_title,
+                level=current_level,
+                markdown=content,
+                html=_render_markdown(content),
+                plain_text=plain_text,
+                search_text=f"{current_title} {plain_text}",
+            )
         )
-        if article.slug in seen_slugs:
-            raise ValueError(f"duplicate seed article slug: {article.slug}")
-        seen_slugs.add(article.slug)
-        articles.append(article)
-    return tuple(articles)
+        current_lines = []
+
+    for raw_line in body_markdown.strip().splitlines():
+        stripped = raw_line.strip()
+        if stripped.startswith("## "):
+            saw_heading = True
+            flush()
+            current_title = stripped[3:].strip()
+            current_level = 2
+            continue
+        if stripped.startswith("### "):
+            saw_heading = True
+            flush()
+            current_title = stripped[4:].strip()
+            current_level = 3
+            continue
+        current_lines.append(raw_line)
+
+    if not saw_heading and body_markdown.strip():
+        current_title = "Overview"
+        current_level = 2
+    flush()
+    return tuple(sections)
 
 
-def _validate_project_config(config: KnowledgeBaseProjectConfig) -> KnowledgeBaseProjectConfig:
-    if config.metadata.template != SUPPORTED_PROJECT_TEMPLATE:
-        raise ValueError(f"unsupported project template: {config.metadata.template}")
-
-    for framework_file in config.framework_refs.to_dict().values():
-        framework_path = REPO_ROOT / framework_file
-        if not framework_path.exists():
-            raise ValueError(f"framework ref does not exist: {framework_file}")
-
-    routes = config.route_boundary_values
-    for route_value in routes.to_dict().values():
-        if not route_value.startswith("/"):
-            raise ValueError(f"route must start with '/': {route_value}")
-    if routes.home == routes.workbench:
-        raise ValueError("home route must not equal workbench route")
-    if not routes.api_prefix.startswith("/api"):
-        raise ValueError("api_prefix must start with '/api'")
-    if not routes.workspace_flow.startswith(routes.api_prefix):
-        raise ValueError("workspace_flow must stay under api_prefix")
-
-    constraints = config.backend_constraint_profile
-    if constraints.default_page_size <= 0:
-        raise ValueError("default_page_size must be positive")
-    if constraints.max_page_size < constraints.default_page_size:
-        raise ValueError("max_page_size must be >= default_page_size")
-    if constraints.max_tags_per_article <= 0:
-        raise ValueError("max_tags_per_article must be positive")
-    if constraints.min_title_length <= 0 or constraints.max_title_length < constraints.min_title_length:
-        raise ValueError("title length constraints are invalid")
-    if constraints.min_summary_length <= 0 or constraints.max_summary_length < constraints.min_summary_length:
-        raise ValueError("summary length constraints are invalid")
-    if constraints.min_body_length <= 0 or constraints.max_body_length < constraints.min_body_length:
-        raise ValueError("body length constraints are invalid")
-    if not constraints.allowed_statuses:
-        raise ValueError("allowed_statuses must not be empty")
-    if len(set(constraints.allowed_statuses)) != len(constraints.allowed_statuses):
-        raise ValueError("allowed_statuses must not contain duplicates")
-    if "published" not in constraints.allowed_statuses:
-        raise ValueError("allowed_statuses must include published")
-    if config.composition_profile.supports_draft and "draft" not in constraints.allowed_statuses:
-        raise ValueError("draft support requires draft in allowed_statuses")
-
-    scene_ids = {scene.scene_id for scene in config.scenes}
-    required_scene_ids = {"browse", "read", "write"}
-    if config.composition_profile.supports_edit:
-        required_scene_ids.add("edit")
-    missing_scenes = sorted(required_scene_ids.difference(scene_ids))
-    if missing_scenes:
-        raise ValueError(f"missing required scenes for template: {missing_scenes}")
-
-    seen_article_titles: set[str] = set()
-    for article in config.seed_articles:
-        if article.status not in constraints.allowed_statuses:
-            raise ValueError(f"seed article uses unsupported status: {article.slug}")
-        if not constraints.min_title_length <= len(article.title.strip()) <= constraints.max_title_length:
-            raise ValueError(f"seed article title violates title length constraints: {article.slug}")
-        if not constraints.min_summary_length <= len(article.summary.strip()) <= constraints.max_summary_length:
-            raise ValueError(f"seed article summary violates summary length constraints: {article.slug}")
-        if not constraints.min_body_length <= len(article.body.strip()) <= constraints.max_body_length:
-            raise ValueError(f"seed article body violates body length constraints: {article.slug}")
-        if len(article.tags) > constraints.max_tags_per_article:
-            raise ValueError(f"seed article tags exceed max_tags_per_article: {article.slug}")
-        normalized_title = article.title.strip().lower()
-        if normalized_title in seen_article_titles:
-            raise ValueError(f"duplicate seed article title: {article.title}")
-        seen_article_titles.add(normalized_title)
-
-    return config
+def _compile_document(source: SeedDocumentSource) -> KnowledgeDocument:
+    sections = _split_markdown_sections(source.summary, source.body_markdown)
+    body_html = "\n".join(
+        f"<section id=\"{escape(item.section_id)}\" data-level=\"{item.level}\"><h3>{escape(item.title)}</h3>{item.html}</section>"
+        for item in sections
+    )
+    return KnowledgeDocument(
+        document_id=source.document_id,
+        title=source.title,
+        summary=source.summary,
+        body_markdown=source.body_markdown,
+        body_html=body_html,
+        tags=source.tags,
+        updated_at=source.updated_at,
+        sections=sections,
+    )
 
 
-def load_knowledge_base_project(
-    project_file: str | Path = DEFAULT_KNOWLEDGE_BASE_PROJECT_FILE,
-) -> KnowledgeBaseProjectConfig:
-    project_path = _normalize_project_path(project_file)
+def compile_knowledge_document_source(source: SeedDocumentSource) -> KnowledgeDocument:
+    return _compile_document(source)
+
+
+def _require_documents(data: dict[str, Any]) -> tuple[SeedDocumentSource, ...]:
+    value = data.get("documents")
+    if not isinstance(value, list) or not value:
+        raise ValueError("project config must define non-empty [[documents]]")
+    seen_ids: set[str] = set()
+    items: list[SeedDocumentSource] = []
+    for raw_document in value:
+        if not isinstance(raw_document, dict):
+            raise ValueError("each [[documents]] entry must be a table")
+        document = SeedDocumentSource(
+            document_id=_require_string(raw_document, "document_id"),
+            title=_require_string(raw_document, "title"),
+            summary=_require_string(raw_document, "summary"),
+            body_markdown=_require_string(raw_document, "body_markdown"),
+            tags=_require_string_tuple(raw_document, "tags"),
+            updated_at=_require_string(raw_document, "updated_at"),
+        )
+        if document.document_id in seen_ids:
+            raise ValueError(f"duplicate document_id: {document.document_id}")
+        seen_ids.add(document.document_id)
+        items.append(document)
+    return tuple(items)
+
+
+def _load_instance_config(project_path: Path) -> KnowledgeBaseInstanceConfig:
     raw = _read_toml_file(project_path)
-    try:
-        source_file = project_path.relative_to(REPO_ROOT).as_posix()
-    except ValueError:
-        source_file = str(project_path)
-
     project_table = _require_table(raw, "project")
-    framework_refs_table = _require_table(raw, "framework_refs")
-    composition_table = _require_table(raw, "composition_profile")
+    framework_table = _require_table(raw, "framework")
+    surface_table = _require_table(raw, "surface")
+    surface_copy_table = _require_table(surface_table, "copy")
+    visual_table = _require_table(raw, "visual")
+    route_table = _require_table(raw, "route")
+    a11y_table = _require_table(raw, "a11y")
+    library_table = _require_table(raw, "library")
+    library_copy_table = _require_table(library_table, "copy")
+    preview_table = _require_table(raw, "preview")
+    chat_table = _require_table(raw, "chat")
+    chat_copy_table = _require_table(chat_table, "copy")
+    context_table = _require_table(raw, "context")
+    return_table = _require_table(raw, "return")
 
-    boundary_values = _require_table(raw, "boundary_values")
-    route_table = _require_table(boundary_values, "routes")
-    frontend_table = _require_table(boundary_values, "frontend")
+    library_enabled = _require_bool(library_table, "enabled")
+    preview_enabled = _require_bool(preview_table, "enabled")
+    chat_enabled = _require_bool(chat_table, "enabled")
+    citations_enabled = _require_bool(chat_table, "citations_enabled")
+    return_enabled = _require_bool(return_table, "enabled")
+    allow_create = _require_bool(library_table, "allow_create")
+    allow_delete = _require_bool(library_table, "allow_delete")
 
-    constraint_profile = _require_table(raw, "constraint_profile")
-    backend_table = _require_table(constraint_profile, "backend")
-
-    config = KnowledgeBaseProjectConfig(
-        source_file=source_file,
+    return KnowledgeBaseInstanceConfig(
+        source_file=_relative_path(project_path),
         metadata=ProjectMetadata(
             project_id=_require_string(project_table, "project_id"),
             template=_require_string(project_table, "template"),
@@ -375,70 +772,456 @@ def load_knowledge_base_project(
             description=_require_string(project_table, "description"),
             version=_require_string(project_table, "version"),
         ),
-        framework_refs=ProjectFrameworkRefs(
-            frontend=_require_string(framework_refs_table, "frontend"),
-            workspace=_require_string(framework_refs_table, "workspace"),
-            backend=_require_string(framework_refs_table, "backend"),
+        framework=FrameworkSelection(
+            frontend=_require_string(framework_table, "frontend"),
+            domain=_require_string(framework_table, "domain"),
+            backend=_require_string(framework_table, "backend"),
+            preset=_require_string(framework_table, "preset"),
         ),
-        composition_profile=CompositionProfile(
-            surface=_require_string(composition_table, "surface"),
-            detail_flow=_require_string(composition_table, "detail_flow"),
-            write_flow=_require_string(composition_table, "write_flow"),
-            supports_edit=_require_bool(composition_table, "supports_edit"),
-            supports_draft=_require_bool(composition_table, "supports_draft"),
+        surface=SurfaceConfig(
+            shell=_require_string(surface_table, "shell"),
+            layout_variant=_require_string(surface_table, "layout_variant"),
+            sidebar_width=_require_string(surface_table, "sidebar_width"),
+            preview_mode=_require_string(surface_table, "preview_mode"),
+            density=_require_string(surface_table, "density"),
+            copy=SurfaceCopyConfig(
+                hero_kicker=_require_string(surface_copy_table, "hero_kicker"),
+                hero_title=_require_string(surface_copy_table, "hero_title"),
+                hero_copy=_require_string(surface_copy_table, "hero_copy"),
+                library_title=_require_string(surface_copy_table, "library_title"),
+                preview_title=_require_string(surface_copy_table, "preview_title"),
+                toc_title=_require_string(surface_copy_table, "toc_title"),
+                chat_title=_require_string(surface_copy_table, "chat_title"),
+                empty_state_title=_require_string(surface_copy_table, "empty_state_title"),
+                empty_state_copy=_require_string(surface_copy_table, "empty_state_copy"),
+            ),
         ),
-        route_boundary_values=RouteBoundaryValues(
+        visual=VisualConfig(
+            brand=_require_string(visual_table, "brand"),
+            accent=_require_string(visual_table, "accent"),
+            surface_preset=_require_string(visual_table, "surface_preset"),
+            radius_scale=_require_string(visual_table, "radius_scale"),
+            shadow_level=_require_string(visual_table, "shadow_level"),
+            font_scale=_require_string(visual_table, "font_scale"),
+        ),
+        features=FeatureConfig(
+            library=library_enabled,
+            preview=preview_enabled,
+            chat=chat_enabled,
+            citation=citations_enabled,
+            return_to_anchor=return_enabled,
+            upload=allow_create or allow_delete,
+        ),
+        route=RouteConfig(
             home=_require_string(route_table, "home"),
             workbench=_require_string(route_table, "workbench"),
             api_prefix=_require_string(route_table, "api_prefix"),
-            workspace_flow=_require_string(route_table, "workspace_flow"),
+            workbench_spec=_require_string(route_table, "workbench_spec"),
         ),
-        frontend_boundary_values=FrontendBoundaryValues(
-            page_title=_require_string(frontend_table, "page_title"),
-            hero_kicker=_require_string(frontend_table, "hero_kicker"),
-            hero_title=_require_string(frontend_table, "hero_title"),
-            hero_copy=_require_string(frontend_table, "hero_copy"),
-            contract_title=_require_string(frontend_table, "contract_title"),
-            contract_value=_require_string(frontend_table, "contract_value"),
-            contract_meta=_require_string(frontend_table, "contract_meta"),
-            boundary_title=_require_string(frontend_table, "boundary_title"),
-            boundary_meta=_require_string(frontend_table, "boundary_meta"),
-            search_title=_require_string(frontend_table, "search_title"),
-            read_title=_require_string(frontend_table, "read_title"),
-            compose_title=_require_string(frontend_table, "compose_title"),
-            query_button_label=_require_string(frontend_table, "query_button_label"),
-            reset_button_label=_require_string(frontend_table, "reset_button_label"),
-            save_draft_label=_require_string(frontend_table, "save_draft_label"),
-            publish_label=_require_string(frontend_table, "publish_label"),
-            clear_label=_require_string(frontend_table, "clear_label"),
-            edit_label=_require_string(frontend_table, "edit_label"),
-            keyword_placeholder=_require_string(frontend_table, "keyword_placeholder"),
-            title_placeholder=_require_string(frontend_table, "title_placeholder"),
-            summary_placeholder=_require_string(frontend_table, "summary_placeholder"),
-            body_placeholder=_require_string(frontend_table, "body_placeholder"),
-            tags_placeholder=_require_string(frontend_table, "tags_placeholder"),
-            list_empty_title=_require_string(frontend_table, "list_empty_title"),
-            list_empty_description=_require_string(frontend_table, "list_empty_description"),
-            list_error_title=_require_string(frontend_table, "list_error_title"),
-            list_error_description=_require_string(frontend_table, "list_error_description"),
-            detail_empty_title=_require_string(frontend_table, "detail_empty_title"),
-            detail_empty_description=_require_string(frontend_table, "detail_empty_description"),
-            detail_no_selection_title=_require_string(frontend_table, "detail_no_selection_title"),
-            detail_no_selection_description=_require_string(frontend_table, "detail_no_selection_description"),
+        a11y=A11yConfig(
+            reading_order=_require_string_tuple(a11y_table, "reading_order"),
+            keyboard_nav=_require_string_tuple(a11y_table, "keyboard_nav"),
+            announcements=_require_string_tuple(a11y_table, "announcements"),
         ),
-        backend_constraint_profile=BackendConstraintProfile(
-            default_page_size=_require_int(backend_table, "default_page_size"),
-            max_page_size=_require_int(backend_table, "max_page_size"),
-            max_tags_per_article=_require_int(backend_table, "max_tags_per_article"),
-            min_title_length=_require_int(backend_table, "min_title_length"),
-            max_title_length=_require_int(backend_table, "max_title_length"),
-            min_summary_length=_require_int(backend_table, "min_summary_length"),
-            max_summary_length=_require_int(backend_table, "max_summary_length"),
-            min_body_length=_require_int(backend_table, "min_body_length"),
-            max_body_length=_require_int(backend_table, "max_body_length"),
-            allowed_statuses=_require_string_tuple(backend_table, "allowed_statuses"),
+        library=LibraryConfig(
+            enabled=library_enabled,
+            source_types=_require_string_tuple(library_table, "source_types"),
+            metadata_fields=_require_string_tuple(library_table, "metadata_fields"),
+            default_focus=_require_string(library_table, "default_focus"),
+            list_variant=_require_string(library_table, "list_variant"),
+            allow_create=allow_create,
+            allow_delete=allow_delete,
+            search_placeholder=_require_string(library_copy_table, "search_placeholder"),
         ),
-        scenes=_require_scene_profiles(raw),
-        seed_articles=_require_seed_articles(raw),
+        preview=PreviewConfig(
+            enabled=preview_enabled,
+            renderers=_require_string_tuple(preview_table, "renderers"),
+            anchor_mode=_require_string(preview_table, "anchor_mode"),
+            show_toc=_require_bool(preview_table, "show_toc"),
+            rail_variant=_require_string(preview_table, "rail_variant"),
+        ),
+        chat=ChatConfig(
+            enabled=chat_enabled,
+            citations_enabled=citations_enabled,
+            mode=_require_string(chat_table, "mode"),
+            citation_style=_require_string(chat_table, "citation_style"),
+            bubble_variant=_require_string(chat_table, "bubble_variant"),
+            composer_variant=_require_string(chat_table, "composer_variant"),
+            system_prompt=_require_string(chat_table, "system_prompt"),
+            placeholder=_require_string(chat_copy_table, "placeholder"),
+            welcome=_require_string(chat_copy_table, "welcome"),
+        ),
+        context=ContextConfig(
+            selection_mode=_require_string(context_table, "selection_mode"),
+            max_citations=_require_int(context_table, "max_citations"),
+            max_preview_sections=_require_int(context_table, "max_preview_sections"),
+            sticky_document=_require_bool(context_table, "sticky_document"),
+        ),
+        return_config=ReturnConfig(
+            enabled=return_enabled,
+            targets=_require_string_tuple(return_table, "targets"),
+            anchor_restore=_require_bool(return_table, "anchor_restore"),
+            citation_card_variant=_require_string(return_table, "citation_card_variant"),
+        ),
+        documents=_require_documents(raw),
     )
-    return _validate_project_config(config)
+
+
+def _resolve_framework_module(ref: str) -> FrameworkModuleIR:
+    framework_path = REPO_ROOT / ref
+    if not framework_path.exists():
+        raise ValueError(f"framework ref does not exist: {ref}")
+    return parse_framework_module(framework_path)
+
+
+def _collect_framework_closure(*roots: FrameworkModuleIR) -> tuple[FrameworkModuleIR, ...]:
+    registry = load_framework_registry()
+    ordered: list[FrameworkModuleIR] = []
+    seen: set[str] = set()
+
+    def visit(module: FrameworkModuleIR) -> None:
+        if module.module_id in seen:
+            return
+        seen.add(module.module_id)
+        ordered.append(module)
+        for base in module.bases:
+            for ref in base.upstream_refs:
+                upstream = registry.get_module(ref.framework, ref.level, ref.module)
+                visit(upstream)
+
+    for root in roots:
+        visit(root)
+    return tuple(ordered)
+
+
+def _build_visual_tokens(visual: VisualConfig, surface: SurfaceConfig, preview: PreviewConfig) -> dict[str, str]:
+    surface_tokens = SURFACE_PRESETS.get(visual.surface_preset)
+    if surface_tokens is None:
+        raise ValueError(f"unsupported visual.surface_preset: {visual.surface_preset}")
+    radius_value = RADIUS_PRESETS.get(visual.radius_scale)
+    if radius_value is None:
+        raise ValueError(f"unsupported visual.radius_scale: {visual.radius_scale}")
+    shadow_value = SHADOW_PRESETS.get(visual.shadow_level)
+    if shadow_value is None:
+        raise ValueError(f"unsupported visual.shadow_level: {visual.shadow_level}")
+    font_values = FONT_PRESETS.get(visual.font_scale)
+    if font_values is None:
+        raise ValueError(f"unsupported visual.font_scale: {visual.font_scale}")
+    sidebar_width = SIDEBAR_WIDTH_PRESETS.get(surface.sidebar_width)
+    if sidebar_width is None:
+        raise ValueError(f"unsupported surface.sidebar_width: {surface.sidebar_width}")
+    rail_width = RAIL_WIDTH_PRESETS.get(surface.sidebar_width)
+    if rail_width is None:
+        raise ValueError(f"unsupported rail width preset for surface.sidebar_width: {surface.sidebar_width}")
+    density_values = DENSITY_PRESETS.get(surface.density)
+    if density_values is None:
+        raise ValueError(f"unsupported surface.density: {surface.density}")
+    return {
+        **surface_tokens,
+        "accent": visual.accent,
+        "accent_soft": f"{visual.accent}22",
+        "radius": radius_value,
+        "brand": visual.brand,
+        "shadow": shadow_value,
+        "font_body": font_values["body"],
+        "font_title": font_values["title"],
+        "font_hero": font_values["hero"],
+        "sidebar_width": sidebar_width,
+        "rail_width": rail_width,
+        "shell_gap": density_values["shell_gap"],
+        "shell_padding": density_values["shell_padding"],
+        "panel_gap": density_values["panel_gap"],
+        "preview_mode": surface.preview_mode,
+        "rail_variant": preview.rail_variant,
+    }
+
+
+def _pick_boundary_name(module: FrameworkModuleIR, boundary_id: str, fallback: str) -> str:
+    for item in module.boundaries:
+        if item.boundary_id == boundary_id:
+            return item.name
+    return fallback
+
+
+def _derive_copy(
+    instance: KnowledgeBaseInstanceConfig,
+    frontend_ir: FrameworkModuleIR,
+    domain_ir: FrameworkModuleIR,
+    backend_ir: FrameworkModuleIR,
+) -> dict[str, str]:
+    hero_copy = " ".join(
+        [
+            frontend_ir.capabilities[0].statement if frontend_ir.capabilities else "",
+            domain_ir.capabilities[0].statement if domain_ir.capabilities else "",
+            backend_ir.capabilities[0].statement if backend_ir.capabilities else "",
+        ]
+    ).strip()
+    base_labels = " / ".join(item.name for item in domain_ir.bases)
+    boundary_labels = ", ".join(item.boundary_id for item in domain_ir.boundaries)
+    surface_copy = instance.surface.copy
+    return {
+        "hero_kicker": surface_copy.hero_kicker or instance.visual.brand,
+        "hero_title": surface_copy.hero_title or instance.metadata.display_name,
+        "hero_copy": surface_copy.hero_copy or hero_copy,
+        "contract_title": "Framework Contract",
+        "contract_value": base_labels,
+        "contract_meta": f"Boundaries: {boundary_labels}",
+        "library_title": surface_copy.library_title or _pick_boundary_name(domain_ir, "LIBRARY", "Library"),
+        "preview_title": surface_copy.preview_title or _pick_boundary_name(domain_ir, "PREVIEW", "Preview"),
+        "toc_title": surface_copy.toc_title or "TOC",
+        "chat_title": surface_copy.chat_title or _pick_boundary_name(domain_ir, "CHAT", "Chat"),
+        "search_placeholder": instance.library.search_placeholder,
+        "chat_placeholder": instance.chat.placeholder,
+        "chat_welcome": instance.chat.welcome,
+        "empty_state_title": surface_copy.empty_state_title,
+        "empty_state_copy": surface_copy.empty_state_copy,
+    }
+
+
+def _validate_instance_config(
+    instance: KnowledgeBaseInstanceConfig,
+    frontend_ir: FrameworkModuleIR,
+    domain_ir: FrameworkModuleIR,
+    backend_ir: FrameworkModuleIR,
+) -> None:
+    if instance.metadata.template != SUPPORTED_PROJECT_TEMPLATE:
+        raise ValueError(f"unsupported project template: {instance.metadata.template}")
+    if instance.surface.shell != "three_pane_workbench":
+        raise ValueError("surface.shell must be three_pane_workbench")
+    if instance.surface.layout_variant != "chat_first_knowledge_workbench":
+        raise ValueError("surface.layout_variant must be chat_first_knowledge_workbench")
+    if instance.surface.preview_mode != "docked":
+        raise ValueError("surface.preview_mode must be docked")
+    if not all(
+        (
+            instance.library.enabled,
+            instance.preview.enabled,
+            instance.chat.enabled,
+            instance.chat.citations_enabled,
+            instance.return_config.enabled,
+        )
+    ):
+        raise ValueError("knowledge_base_workbench requires library, preview, chat, citations, and return")
+    if not instance.route.home.startswith("/") or not instance.route.workbench.startswith("/"):
+        raise ValueError("route.home and route.workbench must start with '/'")
+    if not instance.route.api_prefix.startswith("/api"):
+        raise ValueError("route.api_prefix must start with '/api'")
+    if not instance.route.workbench_spec.startswith(instance.route.api_prefix):
+        raise ValueError("route.workbench_spec must stay under route.api_prefix")
+    if "markdown" not in instance.library.source_types:
+        raise ValueError("library.source_types must include markdown")
+    if "title" not in instance.library.metadata_fields:
+        raise ValueError("library.metadata_fields must include title")
+    if not instance.library.allow_create and instance.library.allow_delete:
+        raise ValueError("library.allow_delete cannot be true when library.allow_create is false")
+    if instance.preview.anchor_mode != "heading":
+        raise ValueError("preview.anchor_mode must be heading")
+    if not instance.preview.show_toc:
+        raise ValueError("preview.show_toc must stay enabled for the knowledge-base workbench")
+    if instance.chat.mode != "retrieval_stub":
+        raise ValueError("chat.mode must be retrieval_stub")
+    if instance.chat.citation_style != "cards":
+        raise ValueError("chat.citation_style must be cards")
+    if instance.context.max_citations <= 0 or instance.context.max_preview_sections <= 0:
+        raise ValueError("context max values must be positive")
+    if not instance.return_config.anchor_restore:
+        raise ValueError("return.anchor_restore must stay enabled")
+    if "preview_anchor" not in instance.return_config.targets:
+        raise ValueError("return.targets must include preview_anchor")
+    if tuple(instance.a11y.reading_order) != ("library", "toc", "preview", "chat"):
+        raise ValueError("a11y.reading_order must stay library -> toc -> preview -> chat")
+    if len(instance.documents) < 1:
+        raise ValueError("at least one document is required")
+    if not frontend_ir.bases or not domain_ir.bases or not backend_ir.bases:
+        raise ValueError("selected framework modules must define bases")
+    for document in instance.documents:
+        if len(_tokenize(document.summary)) < 3:
+            raise ValueError(f"document summary is too short for retrieval: {document.document_id}")
+        if "## " not in document.body_markdown:
+            raise ValueError(f"document body must contain level-2 headings for anchor navigation: {document.document_id}")
+
+
+def _collect_validation_reports(project: KnowledgeBaseProject) -> dict[str, Any]:
+    from frontend_kernel import summarize_frontend_rules, validate_frontend_rules
+    from knowledge_base_framework import summarize_workbench_rules, validate_workbench_rules
+
+    frontend_results = validate_frontend_rules(project)
+    workbench_results = validate_workbench_rules(project)
+    frontend_summary = summarize_frontend_rules(frontend_results)
+    workbench_summary = summarize_workbench_rules(workbench_results)
+    return {
+        "frontend": frontend_summary,
+        "knowledge_base": workbench_summary,
+        "overall": {
+            "passed": frontend_summary["passed"] and workbench_summary["passed"],
+            "passed_count": frontend_summary["passed_count"] + workbench_summary["passed_count"],
+            "rule_count": frontend_summary["rule_count"] + workbench_summary["rule_count"],
+        },
+    }
+
+
+def _raise_on_validation_failures(reports: dict[str, Any]) -> None:
+    errors: list[str] = []
+    for scope in ("frontend", "knowledge_base"):
+        report = reports.get(scope)
+        if not isinstance(report, dict):
+            continue
+        for item in report.get("rules", []):
+            if item.get("passed"):
+                continue
+            reasons = ", ".join(item.get("reasons", [])) or "unknown rule failure"
+            errors.append(f"{scope}.{item.get('rule_id')}: {reasons}")
+    if errors:
+        raise ValueError("framework rule validation failed: " + " | ".join(errors))
+
+
+def _build_generated_artifact_payloads(project: KnowledgeBaseProject) -> dict[str, str]:
+    generated_artifacts = project.generated_artifacts
+    if generated_artifacts is None:
+        raise ValueError("generated_artifacts must be populated before payload generation")
+
+    framework_ir_payload = {
+        "primary_modules": [
+            project.frontend_ir.to_dict(),
+            project.domain_ir.to_dict(),
+            project.backend_ir.to_dict(),
+        ],
+        "resolved_modules": [item.to_dict() for item in project.resolved_modules],
+    }
+    framework_ir_text = json.dumps(framework_ir_payload, ensure_ascii=False, indent=2)
+
+    workbench_spec = project.to_spec_dict()
+    workbench_spec_text = json.dumps(workbench_spec, ensure_ascii=False, indent=2)
+    project_bundle_text = "\n".join(
+        [
+            "from __future__ import annotations",
+            "",
+            "# GENERATED FILE. DO NOT EDIT.",
+            "# Change framework markdown or projects/<project_id>/instance.toml, then re-materialize.",
+            "",
+            "import json",
+            "",
+            f"PROJECT_SPEC = json.loads(r'''{json.dumps(workbench_spec, ensure_ascii=False)}''')",
+            "",
+        ]
+    )
+    generation_manifest_text = json.dumps(
+        {
+            "project_id": project.metadata.project_id,
+            "template": project.metadata.template,
+            "source_file": project.source_file,
+            "generator": {
+                "entry": "project_runtime.knowledge_base.materialize_knowledge_base_project",
+                "discipline": (
+                    "project behavior is derived from framework markdown and instance configuration; "
+                    "generated code must not be edited directly"
+                ),
+            },
+            "framework_inputs": {
+                "frontend": project.frontend_ir.path,
+                "domain": project.domain_ir.path,
+                "backend": project.backend_ir.path,
+                "resolved_modules": [item.path for item in project.resolved_modules],
+            },
+            "generated_files": {
+                "framework_ir_json": generated_artifacts.framework_ir_json,
+                "workbench_spec_json": generated_artifacts.workbench_spec_json,
+                "project_bundle_py": generated_artifacts.project_bundle_py,
+            },
+            "content_sha256": {
+                "framework_ir_json": _sha256_text(framework_ir_text),
+                "workbench_spec_json": _sha256_text(workbench_spec_text),
+                "project_bundle_py": _sha256_text(project_bundle_text),
+            },
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
+    return {
+        "framework_ir.json": framework_ir_text,
+        "workbench_spec.json": workbench_spec_text,
+        "project_bundle.py": project_bundle_text,
+        "generation_manifest.json": generation_manifest_text,
+    }
+
+
+def _compile_project(instance: KnowledgeBaseInstanceConfig) -> KnowledgeBaseProject:
+    from frontend_kernel import build_frontend_contract
+    from knowledge_base_framework import build_workbench_contract
+
+    frontend_ir = _resolve_framework_module(instance.framework.frontend)
+    domain_ir = _resolve_framework_module(instance.framework.domain)
+    backend_ir = _resolve_framework_module(instance.framework.backend)
+    _validate_instance_config(instance, frontend_ir, domain_ir, backend_ir)
+    documents = tuple(_compile_document(item) for item in instance.documents)
+    project = KnowledgeBaseProject(
+        source_file=instance.source_file,
+        metadata=instance.metadata,
+        framework=instance.framework,
+        surface=instance.surface,
+        visual=instance.visual,
+        visual_tokens=_build_visual_tokens(instance.visual, instance.surface, instance.preview),
+        features=instance.features,
+        route=instance.route,
+        a11y=instance.a11y,
+        library=instance.library,
+        preview=instance.preview,
+        chat=instance.chat,
+        context=instance.context,
+        return_config=instance.return_config,
+        copy=_derive_copy(instance, frontend_ir, domain_ir, backend_ir),
+        frontend_ir=frontend_ir,
+        domain_ir=domain_ir,
+        backend_ir=backend_ir,
+        resolved_modules=_collect_framework_closure(frontend_ir, domain_ir, backend_ir),
+        documents=documents,
+    )
+    project = replace(
+        project,
+        frontend_contract=build_frontend_contract(project),
+        workbench_contract=build_workbench_contract(project),
+    )
+    validation_reports = _collect_validation_reports(project)
+    _raise_on_validation_failures(validation_reports)
+    return replace(project, validation_reports=validation_reports)
+
+
+def load_knowledge_base_project(
+    project_file: str | Path = DEFAULT_KNOWLEDGE_BASE_PROJECT_FILE,
+) -> KnowledgeBaseProject:
+    project_path = _normalize_project_path(project_file)
+    instance = _load_instance_config(project_path)
+    return _compile_project(instance)
+
+
+def materialize_knowledge_base_project(
+    project_file: str | Path = DEFAULT_KNOWLEDGE_BASE_PROJECT_FILE,
+    output_dir: str | Path | None = None,
+) -> KnowledgeBaseProject:
+    project_path = _normalize_project_path(project_file)
+    project = load_knowledge_base_project(project_path)
+    generated_dir = project_path.parent / "generated"
+    output_path = _normalize_project_path(output_dir) if output_dir is not None else generated_dir
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    framework_ir_path = output_path / "framework_ir.json"
+    workbench_spec_path = output_path / "workbench_spec.json"
+    project_bundle_path = output_path / "project_bundle.py"
+    generation_manifest_path = output_path / "generation_manifest.json"
+    project = replace(
+        project,
+        generated_artifacts=GeneratedArtifactPaths(
+            directory=_relative_path(generated_dir),
+            framework_ir_json=_relative_path(generated_dir / "framework_ir.json"),
+            workbench_spec_json=_relative_path(generated_dir / "workbench_spec.json"),
+            project_bundle_py=_relative_path(generated_dir / "project_bundle.py"),
+            generation_manifest_json=_relative_path(generated_dir / "generation_manifest.json"),
+        ),
+    )
+    payloads = _build_generated_artifact_payloads(project)
+    framework_ir_path.write_text(payloads["framework_ir.json"], encoding="utf-8")
+    workbench_spec_path.write_text(payloads["workbench_spec.json"], encoding="utf-8")
+    project_bundle_path.write_text(payloads["project_bundle.py"], encoding="utf-8")
+    generation_manifest_path.write_text(payloads["generation_manifest.json"], encoding="utf-8")
+
+    return project

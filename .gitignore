@@ -18,11 +18,15 @@ node_modules/
 .DS_Store
 .env
 .env.*
+.VSCodeCounter/
 
 # Codex workspace
 .codex/**
 !.codex/prompts/
 !.codex/prompts/*.md
+
+# Generated project-instance artifacts
+projects/*/generated/
 
 # ArchSync local icon exploration artifacts
 tools/vscode/archsync/releases/

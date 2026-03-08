@@ -10,6 +10,7 @@
 ### 2. 运行与验证命令
 - 运行主程序：`uv run python src/main.py`
 - 静态类型检查：`uv run mypy`
+- 项目生成产物物化：`uv run python scripts/materialize_project.py`
 - 严格映射验证：`uv run python scripts/validate_strict_mapping.py`
 - 变更传导验证：`uv run python scripts/validate_strict_mapping.py --check-changes`
 - 公开发布与版本说明标准：`specs/code/发布与版本说明标准.md`
@@ -17,6 +18,7 @@
 ### 3. 变更执行要求
 - 修改标准或代码后，必须执行对应验证命令。
 - Python 代码变更后，必须通过静态类型检查（`uv run mypy`）。
+- 项目实例行为变更必须先改 `framework/*.md` 或 `projects/<project_id>/instance.toml`，再执行 `uv run python scripts/materialize_project.py` 生成产物；禁止直接手改 `projects/<project_id>/generated/*`。
 - 禁止在仓库规范文档中引入 `pip install` 作为标准流程。
 - 必须启用仓库 `pre-push` hook：`bash scripts/install_git_hooks.sh`。
 - 若严格映射验证不通过，禁止推送。

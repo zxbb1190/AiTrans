@@ -6,41 +6,42 @@ from fastapi.responses import HTMLResponse
 from knowledge_base_demo.backend import build_knowledge_base_router, verify_knowledge_base_backend
 from knowledge_base_demo.frontend import compose_knowledge_base_page, verify_knowledge_base_frontend
 from knowledge_base_demo.workspace import compose_workspace_flow, verify_workspace_flow
-from project_runtime.knowledge_base import KnowledgeBaseProjectConfig, load_knowledge_base_project
+from project_runtime.knowledge_base import (
+    KnowledgeBaseProject,
+    load_knowledge_base_project,
+    materialize_knowledge_base_project,
+)
 
 
-def build_knowledge_base_demo_app(
-    project_config: KnowledgeBaseProjectConfig | None = None,
-) -> FastAPI:
-    config = project_config or load_knowledge_base_project()
+def build_knowledge_base_demo_app(project: KnowledgeBaseProject | None = None) -> FastAPI:
+    resolved = project or materialize_knowledge_base_project()
     app = FastAPI(
-        title=config.metadata.display_name,
-        summary=config.metadata.description,
-        version=config.metadata.version,
+        title=resolved.metadata.display_name,
+        summary=resolved.metadata.description,
+        version=resolved.metadata.version,
     )
-    app.include_router(build_knowledge_base_router(config))
+    app.include_router(build_knowledge_base_router(resolved))
 
-    @app.get(config.route_boundary_values.home, include_in_schema=False)
+    @app.get(resolved.route.home, include_in_schema=False)
     def root() -> dict[str, object]:
         return {
-            "project": config.public_summary(),
-            "frontend": config.route_boundary_values.workbench,
-            "openapi": "/docs",
-            "workspace_flow": config.route_boundary_values.workspace_flow,
+            "project": resolved.public_summary(),
+            "frontend": resolved.route.workbench,
+            "workbench_spec": resolved.route.workbench_spec,
         }
 
-    @app.get(config.route_boundary_values.workbench, response_class=HTMLResponse, include_in_schema=False)
+    @app.get(resolved.route.workbench, response_class=HTMLResponse, include_in_schema=False)
     def knowledge_base_page() -> str:
-        return compose_knowledge_base_page(config)
+        return compose_knowledge_base_page(resolved)
 
-    @app.get(config.route_boundary_values.workspace_flow)
-    def workspace_flow() -> dict[str, object]:
+    @app.get(resolved.route.workbench_spec)
+    def workbench_spec() -> dict[str, object]:
         return {
-            "project": config.public_summary(),
-            "scenes": [item.to_dict() for item in compose_workspace_flow(config)],
-            "frontend_verification": verify_knowledge_base_frontend(config).to_dict(),
-            "workspace_verification": verify_workspace_flow(config).to_dict(),
-            "backend_verification": verify_knowledge_base_backend(config).to_dict(),
+            "project": resolved.to_spec_dict(),
+            "workspace_flow": [item.to_dict() for item in compose_workspace_flow(resolved)],
+            "frontend_verification": verify_knowledge_base_frontend(resolved).to_dict(),
+            "workspace_verification": verify_workspace_flow(resolved).to_dict(),
+            "backend_verification": verify_knowledge_base_backend(resolved).to_dict(),
         }
 
     return app

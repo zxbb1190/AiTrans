@@ -1,0 +1,144 @@
+[project]
+project_id = "knowledge_base_basic"
+template = "knowledge_base_workbench"
+display_name = "Knowledge Base Workbench"
+description = "A structure-first knowledge workbench compiled from framework standards and instance configuration."
+version = "0.2.0"
+
+[framework]
+frontend = "framework/frontend/L2-M0-前端框架标准模块.md"
+domain = "framework/knowledge_base/L2-M0-知识库工作台场景模块.md"
+backend = "framework/backend/L2-M0-知识库接口框架标准模块.md"
+preset = "document_chat_workbench"
+
+[surface]
+shell = "three_pane_workbench"
+layout_variant = "chat_first_knowledge_workbench"
+sidebar_width = "wide"
+preview_mode = "docked"
+density = "comfortable"
+
+[surface.copy]
+hero_kicker = "Framework-Compiled Workbench"
+hero_title = "Knowledge Base Workbench"
+hero_copy = "The app surface, API contract, document preview, and citation-return loop are compiled from explicit framework structure plus one instance configuration."
+library_title = "Knowledge Files"
+preview_title = "Source Viewer"
+toc_title = "TOC"
+chat_title = "Knowledge Chat"
+empty_state_title = "Select a document"
+empty_state_copy = "The preview and citations will focus on the current document and section."
+
+[visual]
+brand = "ArchSync"
+accent = "#0f6d62"
+surface_preset = "sand"
+radius_scale = "xl"
+shadow_level = "md"
+font_scale = "md"
+
+[route]
+home = "/"
+workbench = "/knowledge-base"
+api_prefix = "/api/knowledge"
+workbench_spec = "/api/knowledge/workbench-spec"
+
+[a11y]
+reading_order = ["library", "toc", "preview", "chat"]
+keyboard_nav = ["library-query", "document-card", "toc-item", "chat-input"]
+announcements = ["current document", "current section", "citation return path"]
+
+[library]
+enabled = true
+source_types = ["markdown"]
+metadata_fields = ["title", "tags", "updated_at"]
+default_focus = "first_document"
+list_variant = "stacked"
+allow_create = true
+allow_delete = true
+
+[library.copy]
+search_placeholder = "Search files, tags, and sections"
+
+[preview]
+enabled = true
+renderers = ["markdown"]
+anchor_mode = "heading"
+show_toc = true
+rail_variant = "sticky"
+
+[chat]
+enabled = true
+citations_enabled = true
+mode = "retrieval_stub"
+citation_style = "cards"
+bubble_variant = "assistant_soft"
+composer_variant = "expanded"
+system_prompt = "Answer with concrete section evidence from the selected knowledge documents."
+
+[chat.copy]
+placeholder = "Ask the knowledge base and require citations"
+welcome = "Ask a question about the selected document. The answer will cite concrete sections and let you jump back to the anchor."
+
+[context]
+selection_mode = "manual_plus_auto"
+max_citations = 3
+max_preview_sections = 12
+sticky_document = true
+
+[return]
+enabled = true
+targets = ["preview_anchor", "toc"]
+anchor_restore = true
+citation_card_variant = "stacked"
+
+[[documents]]
+document_id = "framework-language"
+title = "Framework Language for AI Coding"
+summary = "Use a structure-first framework language so pages, APIs, state, and verification all grow from one explicit contract."
+tags = ["framework", "ai", "coding"]
+updated_at = "2026-03-07"
+body_markdown = """
+## Structure Before Feature
+The framework should describe stable structures first. Capabilities are the result of structure, boundary, and rule composition.
+
+## Explicit Boundary Contracts
+A generated project must keep boundary definitions explicit. Routes, state surfaces, and extension points are configured values, not hidden implementation details.
+
+## Compilation Pipeline
+The stable pipeline is framework markdown to framework IR, then instance configuration to generated workbench spec, then runtime code and verification evidence.
+"""
+
+[[documents]]
+document_id = "knowledge-workbench"
+title = "Knowledge Workbench Contract"
+summary = "A knowledge workbench closes the loop between library, preview, chat, citation, and return path without inventing extra protocols."
+tags = ["knowledge-base", "contract", "workbench"]
+updated_at = "2026-03-06"
+body_markdown = """
+## Library Region
+The library region lists documents, metadata, and the current focus. Selection is explicit and observable.
+
+## Preview And TOC
+The preview region and TOC share one anchor model. Every citation must be able to return to the exact section anchor.
+
+## Chat And Citation Loop
+The chat region consumes current document context and emits answer text plus citation cards. Citation cards are not decoration; they are the return path into preview.
+"""
+
+[[documents]]
+document_id = "instance-config"
+title = "Instance Configuration Rules"
+summary = "Project instances may change theme, copy, routes, and operational thresholds, but they do not redefine the framework chain."
+tags = ["instance", "config", "generator"]
+updated_at = "2026-03-05"
+body_markdown = """
+## Allowed Variation
+Themes, colors, labels, route prefixes, retrieval limits, and operational toggles belong to instance configuration.
+
+## Forbidden Variation
+Removing the chat region, removing citation return, or bypassing the preview anchor model is a framework change, not an instance variation.
+
+## Generated Artifacts
+Each compile step should emit framework IR, generated workbench spec, and a generated code bundle so the resulting project remains traceable.
+"""

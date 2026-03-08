@@ -1,72 +1,85 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import date
 import re
 from typing import Iterable
 
 from fastapi import APIRouter, HTTPException, Query, status
 from framework_core import Base, BoundaryDefinition, BoundaryItem, Capability, VerificationInput, VerificationResult, verify
-from project_runtime.knowledge_base import KnowledgeBaseProjectConfig, SeedArticle, load_knowledge_base_project
+from project_runtime.knowledge_base import (
+    KnowledgeBaseProject,
+    KnowledgeDocument,
+    KnowledgeDocumentSection,
+    SeedDocumentSource,
+    compile_knowledge_document_source,
+    load_knowledge_base_project,
+)
 from pydantic import BaseModel, Field
 
+
+def _resolve_project(project: KnowledgeBaseProject | None) -> KnowledgeBaseProject:
+    return project or load_knowledge_base_project()
+
+
+def _module_capabilities(project: KnowledgeBaseProject) -> tuple[Capability, ...]:
+    return tuple(Capability(item.capability_id, item.statement) for item in project.backend_ir.capabilities)
+
+
+def _module_boundary(project: KnowledgeBaseProject) -> BoundaryDefinition:
+    return BoundaryDefinition(
+        items=tuple(BoundaryItem(item.boundary_id, item.statement) for item in project.backend_ir.boundaries)
+    )
+
+
+def _module_bases(project: KnowledgeBaseProject) -> tuple[Base, ...]:
+    return tuple(Base(item.base_id, item.name, item.inline_expr or item.statement) for item in project.backend_ir.bases)
+
+
 KNOWLEDGE_BASE_API_CAPABILITIES = (
-    Capability("C1", "Provide stable list, detail, and tag query endpoints"),
-    Capability("C2", "Provide stable create and optional update write endpoints"),
-    Capability("C3", "Accept knowledge workbench contracts with one consistent result surface"),
-    Capability("C4", "Exclude storage-engine, indexing, and permission-engine internals"),
+    Capability("C1", "稳定提供文件列表、创建、删除、文档详情、章节锚点与标签接口。"),
+    Capability("C2", "稳定提供正文预览、目录定位与章节读取接口。"),
+    Capability("C3", "稳定提供问答、引用条目与返回路径接口。"),
 )
 
 KNOWLEDGE_BASE_API_BOUNDARY = BoundaryDefinition(
     items=(
-        BoundaryItem("LIST", "list endpoint supports keyword, tag, status, and pagination"),
-        BoundaryItem("DETAIL", "detail endpoint returns body, tags, summary, and related slugs"),
-        BoundaryItem("TAGS", "tag endpoint supports filter panel bootstrap"),
-        BoundaryItem("WRITE", "write endpoint supports configured write states"),
-        BoundaryItem("RESULT", "query and write results use one stable contract surface"),
-        BoundaryItem("AUTH", "write actions must keep an explicit authorization strategy"),
-        BoundaryItem("TRACE", "request parameters and write outcomes stay observable"),
+        BoundaryItem("LIBRARY", "文件列表、聚焦与标签过滤接口必须统一。"),
+        BoundaryItem("PREVIEW", "正文、章节和锚点接口必须返回完整预览结构。"),
+        BoundaryItem("CHAT", "对话输入、回答与引用条目结构必须统一。"),
+        BoundaryItem("RESULT", "接口返回结构必须保持稳定。"),
+        BoundaryItem("AUTH", "写入类能力需由实例策略显式声明。"),
+        BoundaryItem("TRACE", "请求参数、错误原因与引用来源必须可追踪。"),
     )
 )
 
 KNOWLEDGE_BASE_API_BASES = (
-    Base("B1", "query surface base", "L1.M0[R1,R3]"),
-    Base("B2", "write surface base", "L1.M0[R2,R3]"),
-    Base("B3", "contract governance base", "L1.M0[R1,R2,R3]"),
+    Base("B1", "文件预览接口基", "document list + detail + section + tag endpoints"),
+    Base("B2", "对话引用接口基", "chat turn + citation return endpoints"),
+    Base("B3", "接口治理基", "workbench spec + route trace + feature policy"),
 )
 
 
-@dataclass(frozen=True)
-class KnowledgeArticleRecord:
-    slug: str
-    title: str
-    summary: str
-    body: str
-    tags: tuple[str, ...]
-    status: str
-    updated_at: str
-    related_slugs: tuple[str, ...] = ()
-
-
-class KnowledgeArticleSummary(BaseModel):
-    slug: str
+class KnowledgeDocumentSummaryResponse(BaseModel):
+    document_id: str
     title: str
     summary: str
     tags: list[str]
-    status: str
     updated_at: str
+    section_count: int
 
 
-class KnowledgeArticleDetail(KnowledgeArticleSummary):
-    body: str
-    related_slugs: list[str]
+class KnowledgeSectionResponse(BaseModel):
+    section_id: str
+    title: str
+    level: int
+    html: str
+    plain_text: str
 
 
-class KnowledgeArticleListResponse(BaseModel):
-    items: list[KnowledgeArticleSummary]
-    total: int
-    page: int
-    page_size: int
+class KnowledgeDocumentDetailResponse(KnowledgeDocumentSummaryResponse):
+    body_html: str
+    sections: list[KnowledgeSectionResponse]
 
 
 class KnowledgeTagItem(BaseModel):
@@ -78,313 +91,318 @@ class KnowledgeTagListResponse(BaseModel):
     items: list[KnowledgeTagItem]
 
 
-class KnowledgeArticleWritePayload(BaseModel):
-    title: str = Field()
-    summary: str = Field()
-    body: str = Field()
+class KnowledgeDocumentCreateRequest(BaseModel):
+    document_id: str | None = None
+    title: str = Field(min_length=3)
+    summary: str = Field(min_length=12)
+    body_markdown: str = Field(min_length=20)
     tags: list[str] = Field(default_factory=list)
-    status: str | None = Field(default=None)
+    updated_at: str | None = None
 
 
-def _slugify(title: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
-    return slug or "knowledge-note"
+class KnowledgeCitationResponse(BaseModel):
+    document_id: str
+    document_title: str
+    section_id: str
+    section_title: str
+    snippet: str
+    return_path: str
 
 
-def _today_iso() -> str:
-    return date.today().isoformat()
+class KnowledgeChatTurnRequest(BaseModel):
+    message: str = Field(min_length=3)
+    document_id: str | None = None
+    section_id: str | None = None
 
 
-def _resolve_project_config(project_config: KnowledgeBaseProjectConfig | None) -> KnowledgeBaseProjectConfig:
-    return project_config or load_knowledge_base_project()
+class KnowledgeChatTurnResponse(BaseModel):
+    answer: str
+    citations: list[KnowledgeCitationResponse]
+    context_document_id: str | None
+    context_section_id: str | None
 
 
-def _seed_article_to_record(article: SeedArticle) -> KnowledgeArticleRecord:
-    return KnowledgeArticleRecord(
-        slug=article.slug,
-        title=article.title,
-        summary=article.summary,
-        body=article.body,
-        tags=article.tags,
-        status=article.status,
-        updated_at=article.updated_at,
-        related_slugs=article.related_slugs,
-    )
+class KnowledgeDocumentDeleteResponse(BaseModel):
+    document_id: str
+    deleted: bool
 
 
-def _normalize_tags(raw_tags: Iterable[str]) -> tuple[str, ...]:
-    return tuple(sorted({item.strip().lower() for item in raw_tags if item.strip()}))
+@dataclass(frozen=True)
+class RankedSection:
+    document: KnowledgeDocument
+    section: KnowledgeDocumentSection
+    score: int
 
 
-def _to_summary(article: KnowledgeArticleRecord) -> KnowledgeArticleSummary:
-    return KnowledgeArticleSummary(
-        slug=article.slug,
-        title=article.title,
-        summary=article.summary,
-        tags=list(article.tags),
-        status=article.status,
-        updated_at=article.updated_at,
-    )
-
-
-def _to_detail(article: KnowledgeArticleRecord) -> KnowledgeArticleDetail:
-    summary = _to_summary(article)
-    return KnowledgeArticleDetail(
-        **summary.model_dump(),
-        body=article.body,
-        related_slugs=list(article.related_slugs),
-    )
+def _make_document_id(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return slug or "knowledge-document"
 
 
 class KnowledgeRepository:
-    def __init__(
-        self,
-        project_config: KnowledgeBaseProjectConfig | None = None,
-        seed: Iterable[KnowledgeArticleRecord] | None = None,
-    ) -> None:
-        self.project_config = _resolve_project_config(project_config)
-        self.constraints = self.project_config.backend_constraint_profile
-        default_seed = tuple(_seed_article_to_record(article) for article in self.project_config.seed_articles)
-        self._articles = list(seed or default_seed)
+    def __init__(self, project: KnowledgeBaseProject | None = None) -> None:
+        self.project = _resolve_project(project)
+        self._documents = {item.document_id: item for item in self.project.documents}
+        self._document_order = [item.document_id for item in self.project.documents]
 
-    def resolve_write_status(self, raw_status: str | None) -> str:
-        normalized = (raw_status or "").strip().lower()
-        if normalized:
-            return normalized
-        return "draft" if self.project_config.composition_profile.supports_draft else "published"
-
-    def list_articles(
-        self,
-        *,
-        keyword: str = "",
-        tag: str | None = None,
-        status_filter: str | None = None,
-        page: int = 1,
-        page_size: int = 10,
-    ) -> tuple[list[KnowledgeArticleRecord], int]:
-        keyword_normalized = keyword.strip().lower()
+    def list_documents(self, query: str = "", tag: str | None = None) -> list[KnowledgeDocument]:
+        query_tokens = set(query.lower().split())
         tag_normalized = tag.strip().lower() if tag else None
-        status_normalized = status_filter.strip().lower() if status_filter else None
-
-        filtered = []
-        for article in self._articles:
-            haystack = " ".join((article.title, article.summary, article.body)).lower()
-            if keyword_normalized and keyword_normalized not in haystack:
+        items: list[KnowledgeDocument] = []
+        for document_id in self._document_order:
+            document = self._documents[document_id]
+            if tag_normalized and tag_normalized not in {item.lower() for item in document.tags}:
                 continue
-            if tag_normalized and tag_normalized not in {item.lower() for item in article.tags}:
-                continue
-            if status_normalized and article.status != status_normalized:
-                continue
-            filtered.append(article)
+            if query_tokens:
+                haystack = f"{document.title} {document.summary} {document.body_markdown}".lower()
+                if not all(token in haystack for token in query_tokens):
+                    continue
+            items.append(document)
+        return items
 
-        filtered.sort(key=lambda item: (item.updated_at, item.title), reverse=True)
-        total = len(filtered)
-        start = max(0, (page - 1) * page_size)
-        end = start + page_size
-        return filtered[start:end], total
+    def get_document(self, document_id: str) -> KnowledgeDocument | None:
+        return self._documents.get(document_id)
 
-    def get_article(self, slug: str) -> KnowledgeArticleRecord | None:
-        for article in self._articles:
-            if article.slug == slug:
-                return article
+    def get_section(self, document_id: str, section_id: str) -> KnowledgeDocumentSection | None:
+        document = self.get_document(document_id)
+        if document is None:
+            return None
+        for section in document.sections:
+            if section.section_id == section_id:
+                return section
         return None
 
     def list_tags(self) -> list[KnowledgeTagItem]:
         counts: dict[str, int] = {}
-        for article in self._articles:
-            for tag in article.tags:
+        for document_id in self._document_order:
+            document = self._documents[document_id]
+            for tag in document.tags:
                 counts[tag] = counts.get(tag, 0) + 1
         return [KnowledgeTagItem(name=name, count=count) for name, count in sorted(counts.items())]
 
-    def validate_write_payload(self, payload: KnowledgeArticleWritePayload) -> list[str]:
-        errors: list[str] = []
-        constraints = self.constraints
-        resolved_status = self.resolve_write_status(payload.status)
-        title = payload.title.strip()
-        summary = payload.summary.strip()
-        body = payload.body.strip()
-        tags = _normalize_tags(payload.tags)
-
-        if not constraints.min_title_length <= len(title) <= constraints.max_title_length:
-            errors.append(
-                f"title length must be between {constraints.min_title_length} and {constraints.max_title_length}"
-            )
-        if not constraints.min_summary_length <= len(summary) <= constraints.max_summary_length:
-            errors.append(
-                f"summary length must be between {constraints.min_summary_length} and {constraints.max_summary_length}"
-            )
-        if not constraints.min_body_length <= len(body) <= constraints.max_body_length:
-            errors.append(
-                f"body length must be between {constraints.min_body_length} and {constraints.max_body_length}"
-            )
-        if len(tags) > constraints.max_tags_per_article:
-            errors.append(f"tags must contain at most {constraints.max_tags_per_article} items")
-        if resolved_status not in constraints.allowed_statuses:
-            errors.append(f"status must be one of {', '.join(constraints.allowed_statuses)}")
-        return errors
-
-    def create_article(self, payload: KnowledgeArticleWritePayload) -> KnowledgeArticleRecord:
-        resolved_status = self.resolve_write_status(payload.status)
-        slug_base = _slugify(payload.title)
-        slug = slug_base
-        suffix = 2
-        while self.get_article(slug) is not None:
-            slug = f"{slug_base}-{suffix}"
-            suffix += 1
-
-        article = KnowledgeArticleRecord(
-            slug=slug,
+    def create_document(self, payload: KnowledgeDocumentCreateRequest) -> KnowledgeDocument:
+        if not self.project.library.allow_create:
+            raise ValueError("document creation is disabled by the current instance configuration")
+        document_id = payload.document_id or _make_document_id(payload.title)
+        if document_id in self._documents:
+            raise ValueError(f"document_id already exists: {document_id}")
+        normalized_tags = [item.strip() for item in payload.tags if item.strip()]
+        source = SeedDocumentSource(
+            document_id=document_id,
             title=payload.title.strip(),
             summary=payload.summary.strip(),
-            body=payload.body.strip(),
-            tags=_normalize_tags(payload.tags),
-            status=resolved_status,
-            updated_at=_today_iso(),
-            related_slugs=tuple(),
+            body_markdown=payload.body_markdown.strip(),
+            tags=tuple(normalized_tags),
+            updated_at=payload.updated_at or date.today().isoformat(),
         )
-        self._articles.insert(0, article)
-        return article
+        document = compile_knowledge_document_source(source)
+        self._documents[document.document_id] = document
+        self._document_order.insert(0, document.document_id)
+        return document
 
-    def update_article(
+    def delete_document(self, document_id: str) -> None:
+        if not self.project.library.allow_delete:
+            raise ValueError("document deletion is disabled by the current instance configuration")
+        if document_id not in self._documents:
+            raise KeyError(document_id)
+        del self._documents[document_id]
+        self._document_order = [item for item in self._document_order if item != document_id]
+
+    def answer_question(
         self,
-        slug: str,
-        payload: KnowledgeArticleWritePayload,
-    ) -> KnowledgeArticleRecord | None:
-        resolved_status = self.resolve_write_status(payload.status)
-        for index, article in enumerate(self._articles):
-            if article.slug != slug:
-                continue
-
-            updated = replace(
-                article,
-                title=payload.title.strip(),
-                summary=payload.summary.strip(),
-                body=payload.body.strip(),
-                tags=_normalize_tags(payload.tags),
-                status=resolved_status,
-                updated_at=_today_iso(),
+        message: str,
+        document_id: str | None = None,
+        section_id: str | None = None,
+    ) -> KnowledgeChatTurnResponse:
+        ranked = self._rank_sections(message, document_id=document_id, section_id=section_id)
+        citations = [
+            KnowledgeCitationResponse(
+                document_id=item.document.document_id,
+                document_title=item.document.title,
+                section_id=item.section.section_id,
+                section_title=item.section.title,
+                snippet=item.section.plain_text[:180],
+                return_path=(
+                    f"{self.project.route.workbench}?document={item.document.document_id}&section={item.section.section_id}"
+                ),
             )
-            self._articles[index] = updated
-            return updated
-
-        return None
-
-def verify_knowledge_base_backend(
-    project_config: KnowledgeBaseProjectConfig | None = None,
-) -> VerificationResult:
-    config = _resolve_project_config(project_config)
-    write_surface_pass_criterion = (
-        (
-            "create and update endpoints accept draft and published writes"
-            if config.composition_profile.supports_draft
-            else "create and update endpoints accept published writes"
+            for item in ranked[: self.project.context.max_citations]
+        ]
+        if not citations:
+            answer = (
+                "No strong section match was found. Try selecting a document or use more concrete terms from the "
+                "library and preview panels."
+            )
+        else:
+            lead = citations[0]
+            answer_parts = [
+                f"The strongest evidence is in {lead.document_title} / {lead.section_title}.",
+            ]
+            for citation in citations:
+                answer_parts.append(f"{citation.section_title}: {citation.snippet}")
+            answer = " ".join(answer_parts)
+        return KnowledgeChatTurnResponse(
+            answer=answer,
+            citations=citations,
+            context_document_id=document_id,
+            context_section_id=section_id,
         )
-        if config.composition_profile.supports_edit
-        else (
-            "create endpoint accepts draft and published writes"
-            if config.composition_profile.supports_draft
-            else "create endpoint accepts published writes"
-        )
+
+    def _rank_sections(
+        self,
+        message: str,
+        document_id: str | None = None,
+        section_id: str | None = None,
+    ) -> list[RankedSection]:
+        query_tokens = {token for token in message.lower().split() if len(token) >= 3}
+        if not query_tokens:
+            return []
+
+        documents = tuple(self._documents[item] for item in self._document_order)
+        if document_id:
+            focused = self.get_document(document_id)
+            if focused is None:
+                return []
+            documents = (focused,)
+
+        ranked: list[RankedSection] = []
+        for document in documents:
+            for section in document.sections[: self.project.context.max_preview_sections]:
+                if section_id and document.document_id == document_id and section.section_id == section_id:
+                    score = 4
+                else:
+                    score = 0
+                haystack = f"{document.title} {document.summary} {section.search_text}".lower()
+                for token in query_tokens:
+                    if token in haystack:
+                        score += 3
+                if score == 0:
+                    continue
+                ranked.append(RankedSection(document=document, section=section, score=score))
+        ranked.sort(key=lambda item: (-item.score, item.document.title, item.section.title))
+        return ranked
+
+
+def _to_document_summary(document: KnowledgeDocument) -> KnowledgeDocumentSummaryResponse:
+    return KnowledgeDocumentSummaryResponse(
+        document_id=document.document_id,
+        title=document.title,
+        summary=document.summary,
+        tags=list(document.tags),
+        updated_at=document.updated_at,
+        section_count=len(document.sections),
     )
-    boundary_valid, boundary_errors = KNOWLEDGE_BASE_API_BOUNDARY.validate()
-    base_result = verify(
+
+
+def _to_document_detail(document: KnowledgeDocument) -> KnowledgeDocumentDetailResponse:
+    return KnowledgeDocumentDetailResponse(
+        **_to_document_summary(document).model_dump(),
+        body_html=document.body_html,
+        sections=[
+            KnowledgeSectionResponse(
+                section_id=section.section_id,
+                title=section.title,
+                level=section.level,
+                html=section.html,
+                plain_text=section.plain_text,
+            )
+            for section in document.sections
+        ],
+    )
+
+
+def verify_knowledge_base_backend(project: KnowledgeBaseProject | None = None) -> VerificationResult:
+    resolved = _resolve_project(project)
+    boundary = _module_boundary(resolved)
+    boundary_valid, boundary_errors = boundary.validate()
+    result = verify(
         VerificationInput(
             subject="knowledge base backend",
             pass_criteria=[
-                "list, detail, and tag endpoints all exist",
-                write_surface_pass_criterion,
-                "query and write responses keep one stable result structure",
+                "document list, create, delete, detail, section, tag, and chat endpoints all exist",
+                "chat answers cite concrete sections and expose return paths",
+                "workbench spec endpoint exposes generated framework and instance evidence",
             ],
             evidence={
-                "project": config.public_summary(),
-                "capabilities": [item.to_dict() for item in KNOWLEDGE_BASE_API_CAPABILITIES],
-                "boundary": KNOWLEDGE_BASE_API_BOUNDARY.to_dict(),
-                "bases": [item.to_dict() for item in KNOWLEDGE_BASE_API_BASES],
+                "project": resolved.public_summary(),
+                "capabilities": [item.to_dict() for item in _module_capabilities(resolved)],
+                "boundary": boundary.to_dict(),
+                "bases": [item.to_dict() for item in _module_bases(resolved)],
+                "routes": resolved.to_spec_dict()["routes"]["api"],
+                "upload_enabled": resolved.features.upload,
             },
         )
     )
-    reasons = [*boundary_errors, *base_result.reasons]
     return VerificationResult(
-        passed=boundary_valid and base_result.passed,
-        reasons=reasons,
-        evidence=base_result.evidence,
+        passed=boundary_valid and result.passed,
+        reasons=[*boundary_errors, *result.reasons],
+        evidence=result.evidence,
     )
 
 
 def build_knowledge_base_router(
-    project_config: KnowledgeBaseProjectConfig | None = None,
+    project: KnowledgeBaseProject | None = None,
     repository: KnowledgeRepository | None = None,
 ) -> APIRouter:
-    config = _resolve_project_config(project_config)
-    constraints = config.backend_constraint_profile
-    repo = repository or KnowledgeRepository(config)
-    router = APIRouter(
-        prefix=config.route_boundary_values.api_prefix,
-        tags=[config.metadata.project_id],
-    )
+    resolved = _resolve_project(project)
+    repo = repository or KnowledgeRepository(resolved)
+    router = APIRouter(prefix=resolved.route.api_prefix, tags=[resolved.metadata.project_id])
 
-    @router.get("/articles", response_model=KnowledgeArticleListResponse)
-    def list_articles(
-        keyword: str = "",
-        tag: str | None = None,
-        status_filter: str | None = Query(default=None),
-        page: int = Query(default=1, ge=1),
-        page_size: int = Query(default=constraints.default_page_size, ge=1, le=constraints.max_page_size),
-    ) -> KnowledgeArticleListResponse:
-        if status_filter is not None and status_filter not in constraints.allowed_statuses:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"status_filter must be one of {', '.join(constraints.allowed_statuses)}",
-            )
-        items, total = repo.list_articles(
-            keyword=keyword,
-            tag=tag,
-            status_filter=status_filter,
-            page=page,
-            page_size=page_size,
-        )
-        return KnowledgeArticleListResponse(
-            items=[_to_summary(item) for item in items],
-            total=total,
-            page=page,
-            page_size=page_size,
+    @router.get("/documents", response_model=list[KnowledgeDocumentSummaryResponse])
+    def list_documents(
+        query: str = "",
+        tag: str | None = Query(default=None),
+    ) -> list[KnowledgeDocumentSummaryResponse]:
+        return [_to_document_summary(item) for item in repo.list_documents(query=query, tag=tag)]
+
+    @router.post("/documents", response_model=KnowledgeDocumentDetailResponse, status_code=status.HTTP_201_CREATED)
+    def create_document(payload: KnowledgeDocumentCreateRequest) -> KnowledgeDocumentDetailResponse:
+        try:
+            document = repo.create_document(payload)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        return _to_document_detail(document)
+
+    @router.get("/documents/{document_id}", response_model=KnowledgeDocumentDetailResponse)
+    def get_document(document_id: str) -> KnowledgeDocumentDetailResponse:
+        document = repo.get_document(document_id)
+        if document is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+        return _to_document_detail(document)
+
+    @router.get("/documents/{document_id}/sections/{section_id}", response_model=KnowledgeSectionResponse)
+    def get_section(document_id: str, section_id: str) -> KnowledgeSectionResponse:
+        section = repo.get_section(document_id, section_id)
+        if section is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Section not found")
+        return KnowledgeSectionResponse(
+            section_id=section.section_id,
+            title=section.title,
+            level=section.level,
+            html=section.html,
+            plain_text=section.plain_text,
         )
 
-    @router.get("/articles/{slug}", response_model=KnowledgeArticleDetail)
-    def get_article(slug: str) -> KnowledgeArticleDetail:
-        article = repo.get_article(slug)
-        if article is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
-        return _to_detail(article)
+    @router.delete("/documents/{document_id}", response_model=KnowledgeDocumentDeleteResponse)
+    def delete_document(document_id: str) -> KnowledgeDocumentDeleteResponse:
+        try:
+            repo.delete_document(document_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        return KnowledgeDocumentDeleteResponse(document_id=document_id, deleted=True)
 
     @router.get("/tags", response_model=KnowledgeTagListResponse)
     def list_tags() -> KnowledgeTagListResponse:
         return KnowledgeTagListResponse(items=repo.list_tags())
 
-    @router.post("/articles", response_model=KnowledgeArticleDetail, status_code=status.HTTP_201_CREATED)
-    def create_article(payload: KnowledgeArticleWritePayload) -> KnowledgeArticleDetail:
-        errors = repo.validate_write_payload(payload)
-        if errors:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="; ".join(errors),
-            )
-        article = repo.create_article(payload)
-        return _to_detail(article)
-
-    if config.composition_profile.supports_edit:
-
-        @router.put("/articles/{slug}", response_model=KnowledgeArticleDetail)
-        def update_article(slug: str, payload: KnowledgeArticleWritePayload) -> KnowledgeArticleDetail:
-            errors = repo.validate_write_payload(payload)
-            if errors:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="; ".join(errors),
-                )
-            article = repo.update_article(slug, payload)
-            if article is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
-            return _to_detail(article)
+    @router.post("/chat/turns", response_model=KnowledgeChatTurnResponse)
+    def create_chat_turn(payload: KnowledgeChatTurnRequest) -> KnowledgeChatTurnResponse:
+        return repo.answer_question(
+            payload.message,
+            document_id=payload.document_id,
+            section_id=payload.section_id,
+        )
 
     return router

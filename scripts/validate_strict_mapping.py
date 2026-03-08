@@ -6,13 +6,19 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+SRC_DIR = REPO_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 REGISTRY_PATH = REPO_ROOT / "mapping/mapping_registry.json"
 FRAMEWORK_DIR = REPO_ROOT / "framework"
+PROJECTS_DIR = REPO_ROOT / "projects"
 CORE_L1_STANDARD_FILE = "specs/框架设计核心标准.md"
 COMPATIBILITY_FACADE_FILE = "src/shelf_framework.py"
 SHELF_DOMAIN_FILE = "src/shelf_domain.py"
@@ -76,6 +82,38 @@ REQUIRED_FRAMEWORK_DIRECTIVE_SECTIONS = (
     "## 4. 基组合原则",
     "## 5. 验证",
 )
+PROJECT_ALLOWED_TOP_LEVEL_DIRS = {"assets", "generated"}
+PROJECT_ALLOWED_ROOT_FILES = {"instance.toml"}
+PROJECT_ALLOWED_DOC_SUFFIXES = {".md"}
+PROJECT_REQUIRED_GENERATED_FILES = (
+    "framework_ir.json",
+    "workbench_spec.json",
+    "project_bundle.py",
+    "generation_manifest.json",
+)
+PROJECT_REQUIRED_INSTANCE_TOP_LEVEL_KEYS = {
+    "project",
+    "framework",
+    "surface",
+    "visual",
+    "route",
+    "a11y",
+    "library",
+    "preview",
+    "chat",
+    "context",
+    "return",
+    "documents",
+}
+PROJECT_ALLOWED_INSTANCE_TOP_LEVEL_KEYS = set(PROJECT_REQUIRED_INSTANCE_TOP_LEVEL_KEYS)
+PROJECT_REQUIRED_INSTANCE_NESTED_TABLES: dict[str, set[str]] = {
+    "surface": {"copy"},
+    "library": {"copy"},
+    "chat": {"copy"},
+}
+PROJECT_ALLOWED_INSTANCE_NESTED_TABLES: dict[str, set[str]] = {
+    key: set(value) for key, value in PROJECT_REQUIRED_INSTANCE_NESTED_TABLES.items()
+}
 
 Issue = dict[str, Any]
 
@@ -211,6 +249,235 @@ def collect_changed_files() -> set[str]:
                 changed.add(item)
 
     return changed
+
+
+def discover_project_instance_files(projects_dir: Path = PROJECTS_DIR) -> list[Path]:
+    if not projects_dir.exists():
+        return []
+    return sorted(projects_dir.glob("*/instance.toml"))
+
+
+def _read_file_bytes(path: Path) -> bytes:
+    return path.read_bytes()
+
+
+def _load_toml_text_and_data(path: Path) -> tuple[str, dict[str, Any]]:
+    text = read_text(path)
+    data = tomllib.loads(text)
+    if not isinstance(data, dict):
+        raise ValueError("instance.toml must decode into a table")
+    return text, data
+
+
+def validate_project_instance_layout(instance_files: list[Path] | None = None) -> list[Issue]:
+    issues: list[Issue] = []
+    project_instance_files = instance_files or discover_project_instance_files()
+    if not project_instance_files:
+        return issues
+
+    for instance_file in project_instance_files:
+        rel_instance = instance_file.relative_to(REPO_ROOT).as_posix()
+        try:
+            text, data = _load_toml_text_and_data(instance_file)
+        except Exception as exc:
+            issues.append(
+                make_issue(
+                    f"failed to parse instance.toml: {exc}",
+                    rel_instance,
+                    1,
+                    code="PROJECT_INSTANCE_PARSE_FAILED",
+                )
+            )
+            continue
+
+        top_level_keys = set(data)
+        for key in sorted(PROJECT_REQUIRED_INSTANCE_TOP_LEVEL_KEYS - top_level_keys):
+            issues.append(
+                make_issue(
+                    f"missing required instance section or array: {key}",
+                    rel_instance,
+                    1,
+                    code="PROJECT_INSTANCE_SECTION_MISSING",
+                )
+            )
+
+        for key in sorted(top_level_keys - PROJECT_ALLOWED_INSTANCE_TOP_LEVEL_KEYS):
+            line = find_line(text, f"[{key}]")
+            if line == 1:
+                line = find_line(text, f"[[{key}]]")
+            issues.append(
+                make_issue(
+                    (
+                        f"unknown instance top-level section: {key}; keep instance config grouped by "
+                        "framework big-category sections only"
+                    ),
+                    rel_instance,
+                    line,
+                    code="PROJECT_INSTANCE_SECTION_UNKNOWN",
+                )
+            )
+
+        for parent, required_children in PROJECT_REQUIRED_INSTANCE_NESTED_TABLES.items():
+            parent_value = data.get(parent)
+            if not isinstance(parent_value, dict):
+                continue
+            nested_table_keys = {key for key, value in parent_value.items() if isinstance(value, dict)}
+            for child in sorted(required_children - nested_table_keys):
+                issues.append(
+                    make_issue(
+                        f"missing required nested instance section: [{parent}.{child}]",
+                        rel_instance,
+                        find_line(text, f"[{parent}]"),
+                        code="PROJECT_INSTANCE_NESTED_SECTION_MISSING",
+                    )
+                )
+            allowed_children = PROJECT_ALLOWED_INSTANCE_NESTED_TABLES.get(parent, set())
+            for child in sorted(nested_table_keys - allowed_children):
+                issues.append(
+                    make_issue(
+                        (
+                            f"unknown nested instance section: [{parent}.{child}]; nested sections must remain "
+                            "inside the owning big-category boundary"
+                        ),
+                        rel_instance,
+                        find_line(text, f"[{parent}.{child}]"),
+                        code="PROJECT_INSTANCE_NESTED_SECTION_UNKNOWN",
+                    )
+                )
+
+    return issues
+
+
+def validate_project_generation_discipline(
+    instance_files: list[Path] | None = None,
+) -> list[Issue]:
+    issues: list[Issue] = []
+    project_instance_files = instance_files or discover_project_instance_files()
+    if not project_instance_files:
+        return issues
+
+    issues.extend(validate_project_instance_layout(project_instance_files))
+
+    try:
+        from project_runtime.knowledge_base import materialize_knowledge_base_project
+    except Exception as exc:
+        issues.append(
+            make_issue(
+                f"failed to import project materializer: {exc}",
+                REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                1,
+                code="PROJECT_GENERATOR_IMPORT_FAILED",
+            )
+        )
+        return issues
+
+    for instance_file in project_instance_files:
+        instance_file = instance_file.resolve()
+        project_dir = instance_file.parent
+        rel_instance_file = instance_file.relative_to(REPO_ROOT).as_posix()
+
+        for file_path in sorted(project_dir.rglob("*")):
+            if not file_path.is_file():
+                continue
+            rel_parts = file_path.relative_to(project_dir).parts
+            top_level = rel_parts[0]
+            if top_level in PROJECT_ALLOWED_TOP_LEVEL_DIRS:
+                continue
+            if len(rel_parts) == 1 and file_path.name in PROJECT_ALLOWED_ROOT_FILES:
+                continue
+            if file_path.suffix.lower() in PROJECT_ALLOWED_DOC_SUFFIXES:
+                continue
+            issues.append(
+                make_issue(
+                    (
+                        "project instances must not contain direct implementation files outside "
+                        "generated/ or assets/; change framework markdown or instance.toml instead"
+                    ),
+                    file_path.relative_to(REPO_ROOT).as_posix(),
+                    1,
+                    code="PROJECT_DIRECT_CODE_FORBIDDEN",
+                    related=[
+                        {
+                            "message": "Project source of truth",
+                            "file": rel_instance_file,
+                            "line": 1,
+                            "column": 1,
+                        }
+                    ],
+                )
+            )
+
+        actual_generated_dir = project_dir / "generated"
+        if not actual_generated_dir.exists():
+            issues.append(
+                make_issue(
+                    (
+                        "missing generated project artifacts; run "
+                        f"`uv run python scripts/materialize_project.py --project {rel_instance_file}`"
+                    ),
+                    rel_instance_file,
+                    1,
+                    code="PROJECT_GENERATED_MISSING",
+                )
+            )
+            continue
+
+        try:
+            with tempfile.TemporaryDirectory(dir=REPO_ROOT) as temp_dir:
+                temp_generated_dir = Path(temp_dir) / "generated"
+                materialize_knowledge_base_project(instance_file, output_dir=temp_generated_dir)
+                for required_name in PROJECT_REQUIRED_GENERATED_FILES:
+                    actual_file = actual_generated_dir / required_name
+                    expected_file = temp_generated_dir / required_name
+                    if not actual_file.exists():
+                        issues.append(
+                            make_issue(
+                                f"missing generated artifact: {required_name}",
+                                rel_instance_file,
+                                1,
+                                code="PROJECT_GENERATED_FILE_MISSING",
+                                related=[
+                                    {
+                                        "message": "Expected generated file",
+                                        "file": actual_file.relative_to(REPO_ROOT).as_posix(),
+                                        "line": 1,
+                                        "column": 1,
+                                    }
+                                ],
+                            )
+                        )
+                        continue
+                    if _read_file_bytes(actual_file) != _read_file_bytes(expected_file):
+                        issues.append(
+                            make_issue(
+                                (
+                                    f"generated artifact is stale or manually edited: {required_name}; "
+                                    "re-materialize from framework markdown and instance.toml"
+                                ),
+                                actual_file.relative_to(REPO_ROOT).as_posix(),
+                                1,
+                                code="PROJECT_GENERATED_OUT_OF_SYNC",
+                                related=[
+                                    {
+                                        "message": "Project source of truth",
+                                        "file": rel_instance_file,
+                                        "line": 1,
+                                        "column": 1,
+                                    }
+                                ],
+                            )
+                        )
+        except Exception as exc:
+            issues.append(
+                make_issue(
+                    f"project materialization failed for {rel_instance_file}: {exc}",
+                    rel_instance_file,
+                    1,
+                    code="PROJECT_GENERATION_FAILED",
+                )
+            )
+
+    return issues
 
 
 def line_from_offset(text: str, offset: int) -> int:
@@ -1727,6 +1994,9 @@ def main() -> int:
                     code="MAPPING_CONTENT_VALIDATION_FAILED",
                 )
             )
+
+    if not issues:
+        issues.extend(validate_project_generation_discipline())
 
     if args.check_changes and parsed_registry is not None:
         changed = collect_changed_files()

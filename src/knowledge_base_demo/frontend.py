@@ -4,879 +4,1202 @@ from html import escape
 import json
 
 from framework_core import Base, BoundaryDefinition, BoundaryItem, Capability, VerificationInput, VerificationResult, verify
-from knowledge_base_demo.workspace import compose_workspace_flow
-from project_runtime.knowledge_base import KnowledgeBaseProjectConfig, load_knowledge_base_project
+from project_runtime.knowledge_base import KnowledgeBaseProject, load_knowledge_base_project
+
+
+def _resolve_project(project: KnowledgeBaseProject | None) -> KnowledgeBaseProject:
+    return project or load_knowledge_base_project()
+
+
+def _module_capabilities(project: KnowledgeBaseProject) -> tuple[Capability, ...]:
+    return tuple(Capability(item.capability_id, item.statement) for item in project.frontend_ir.capabilities)
+
+
+def _module_boundary(project: KnowledgeBaseProject) -> BoundaryDefinition:
+    return BoundaryDefinition(
+        items=tuple(BoundaryItem(item.boundary_id, item.statement) for item in project.frontend_ir.boundaries)
+    )
+
+
+def _module_bases(project: KnowledgeBaseProject) -> tuple[Base, ...]:
+    return tuple(Base(item.base_id, item.name, item.inline_expr or item.statement) for item in project.frontend_ir.bases)
+
 
 KNOWLEDGE_BASE_FRONTEND_CAPABILITIES = (
-    Capability("C1", "Compose search, filter, result, detail, and edit-ready compose regions into a stable knowledge workbench page"),
-    Capability("C2", "Keep reading flow and create-or-edit write flow consistent inside one frontend surface"),
-    Capability("C3", "Accept backend contracts without leaking backend implementation details"),
-    Capability("C4", "Exclude storage, ranking, and permission engine internals"),
+    Capability("C1", "把输入、展示、导航与反馈原子装配为稳定前端界面结构。"),
+    Capability("C2", "以统一结构承接浏览、预览、对话与引用返回等不同场景交互。"),
+    Capability("C3", "为知识库工作台输出稳定 UI 承接面，而不泄漏底层实现细节。"),
 )
 
 KNOWLEDGE_BASE_FRONTEND_BOUNDARY = BoundaryDefinition(
     items=(
-        BoundaryItem("VIEW", "search, filter, list, detail, and compose regions must stay explicit"),
-        BoundaryItem("QUERY", "keyword, tag, status, and page parameters must stay stable"),
-        BoundaryItem("DETAIL", "title, body, tags, and related articles must be readable"),
-        BoundaryItem("WRITE", "create, optional draft, publish, and edit actions must expose stable feedback"),
-        BoundaryItem("RESP", "loading, empty, error, and success states must remain explicit"),
-        BoundaryItem("ROUTE", "workspace entry and deep-link routes must be stable"),
-        BoundaryItem("A11Y", "keyboard navigation and reading order must stay intact"),
+        BoundaryItem("SURFACE", "library、preview、toc 与 chat 承载面职责必须明确。"),
+        BoundaryItem("INTERACT", "搜索、选择、跳锚点、提问与引用返回出口必须稳定。"),
+        BoundaryItem("STATE", "当前文档、当前章节、空态与消息历史必须显式可见。"),
+        BoundaryItem("EXTEND", "领域工作台和后端契约只能通过固定槽位接入。"),
+        BoundaryItem("ROUTE", "页面入口、深链查询参数与返回路径必须可承接。"),
+        BoundaryItem("A11Y", "阅读顺序、键盘路径与当前焦点提示必须稳定。"),
     )
 )
 
 KNOWLEDGE_BASE_FRONTEND_BASES = (
-    Base("B1", "retrieval-reading layout base", "L1.M0[R1,R2]"),
-    Base("B2", "write-feedback interaction base", "L1.M0[R2,R3]"),
-    Base("B3", "contract handoff base", "L1.M0[R1,R3]"),
+    Base("B1", "界面装配基", "library / preview / toc / chat surface assembly"),
+    Base("B2", "交互契约基", "search / selection / anchor jump / chat / citation return contract"),
+    Base("B3", "领域承接基", "knowledge-base domain and backend extension slots"),
 )
 
 
-def _resolve_project_config(project_config: KnowledgeBaseProjectConfig | None) -> KnowledgeBaseProjectConfig:
-    return project_config or load_knowledge_base_project()
-
-
-def compose_knowledge_base_page(
-    project_config: KnowledgeBaseProjectConfig | None = None,
-    api_base_url: str | None = None,
-) -> str:
-    config = _resolve_project_config(project_config)
-    frontend_copy = config.frontend_boundary_values
-    resolved_api_base = api_base_url or config.route_boundary_values.api_prefix
-    supports_draft = config.composition_profile.supports_draft
-    scenario_markup = "\n".join(
-        (
-            f"<li><strong>{escape(scene.title)}</strong><span>{' -> '.join(escape(step) for step in scene.steps)}</span></li>"
-            for scene in compose_workspace_flow(config)
+def verify_knowledge_base_frontend(project: KnowledgeBaseProject | None = None) -> VerificationResult:
+    resolved = _resolve_project(project)
+    boundary = _module_boundary(resolved)
+    boundary_valid, boundary_errors = boundary.validate()
+    result = verify(
+        VerificationInput(
+            subject="knowledge base frontend",
+            pass_criteria=[
+                "library, preview, toc, and chat surfaces all exist in one workbench shell",
+                "anchor navigation and citation return stay explicit in the page contract",
+                "theme tokens and route contracts are compiled from one instance config",
+            ],
+            evidence={
+                "project": resolved.public_summary(),
+                "capabilities": [item.to_dict() for item in _module_capabilities(resolved)],
+                "boundary": boundary.to_dict(),
+                "bases": [item.to_dict() for item in _module_bases(resolved)],
+                "frontend_contract": resolved.frontend_contract,
+                "rule_validation": resolved.validation_reports.get("frontend", {}),
+                "copy": resolved.copy,
+                "visual": resolved.visual_tokens,
+            },
         )
     )
+    return VerificationResult(
+        passed=boundary_valid and result.passed,
+        reasons=[*boundary_errors, *result.reasons],
+        evidence=result.evidence,
+    )
 
-    html = """
+
+def compose_knowledge_base_page(project: KnowledgeBaseProject | None = None) -> str:
+    resolved = _resolve_project(project)
+    spec = resolved.to_spec_dict()
+    visual = resolved.visual_tokens
+    copy = resolved.copy
+    base_labels = " / ".join(item.name for item in resolved.domain_ir.bases)
+    overall_validation = resolved.validation_reports.get("overall", {})
+    artifacts = resolved.generated_artifacts.to_dict() if resolved.generated_artifacts else {}
+    bundle_path = artifacts.get("project_bundle_py", "not materialized")
+    upload_button_style = "" if resolved.library.allow_create else ' style="display:none"'
+    spec_json = json.dumps(spec, ensure_ascii=False)
+    return f"""
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>__PAGE_TITLE__</title>
+    <title>{escape(resolved.metadata.display_name)}</title>
     <style>
-      :root {
-        --bg: #f4f1e8;
-        --panel: rgba(255, 252, 245, 0.88);
-        --panel-strong: #fffaf0;
-        --ink: #1b1c1f;
-        --muted: #6a6760;
-        --accent: #0f6d62;
-        --accent-soft: #d7efe9;
-        --line: rgba(27, 28, 31, 0.12);
-        --warn: #b2552f;
-        --shadow: 0 18px 45px rgba(26, 31, 33, 0.12);
-        --radius: 22px;
-      }
+      :root {{
+        --bg: {visual["bg"]};
+        --panel: {visual["panel"]};
+        --panel-soft: {visual["panel_soft"]};
+        --ink: {visual["ink"]};
+        --muted: {visual["muted"]};
+        --accent: {visual["accent"]};
+        --accent-soft: {visual["accent_soft"]};
+        --line: {visual["line"]};
+        --radius: {visual["radius"]};
+        --shadow: {visual["shadow"]};
+        --font-body: {visual["font_body"]};
+        --font-title: {visual["font_title"]};
+        --font-hero: {visual["font_hero"]};
+        --sidebar-width: {visual["sidebar_width"]};
+        --rail-width: {visual["rail_width"]};
+        --shell-gap: {visual["shell_gap"]};
+        --shell-padding: {visual["shell_padding"]};
+        --panel-gap: {visual["panel_gap"]};
+        --sidebar-bg: #162028;
+        --sidebar-ink: #f6f3ed;
+        --sidebar-muted: rgba(246, 243, 237, 0.72);
+        --danger: #b42318;
+      }}
 
-      * { box-sizing: border-box; }
-      body {
+      * {{ box-sizing: border-box; }}
+      body {{
         margin: 0;
-        font-family: "IBM Plex Sans", "Source Sans 3", sans-serif;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        font-size: var(--font-body);
         color: var(--ink);
         background:
-          radial-gradient(circle at top left, rgba(15, 109, 98, 0.12), transparent 28%),
-          radial-gradient(circle at bottom right, rgba(178, 85, 47, 0.10), transparent 24%),
-          linear-gradient(180deg, #fcf7ec 0%, #f3eee5 100%);
-      }
+          radial-gradient(circle at top left, rgba(15, 109, 98, 0.10), transparent 24%),
+          radial-gradient(circle at bottom right, rgba(15, 109, 98, 0.08), transparent 18%),
+          var(--bg);
+      }}
 
-      .shell {
-        max-width: 1480px;
-        margin: 0 auto;
-        padding: 32px 20px 40px;
-      }
+      button,
+      input,
+      textarea {{
+        font: inherit;
+      }}
 
-      .hero {
+      button {{
+        cursor: pointer;
+      }}
+
+      .app-shell {{
+        min-height: 100vh;
         display: grid;
-        grid-template-columns: 1.35fr 0.85fr;
-        gap: 20px;
-        margin-bottom: 20px;
-      }
+        grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--rail-width);
+        gap: var(--shell-gap);
+        padding: var(--shell-padding);
+      }}
 
-      .hero-card,
-      .panel,
-      .aside-card {
-        background: var(--panel);
-        border: 1px solid var(--line);
+      .sidebar,
+      .conversation-stage,
+      .source-rail {{
+        min-height: calc(100vh - 36px);
         border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(14px);
-      }
-
-      .hero-card {
-        padding: 28px;
-        position: relative;
         overflow: hidden;
-      }
+      }}
 
-      .hero-card::after {
-        content: "";
-        position: absolute;
-        inset: auto -40px -70px auto;
-        width: 180px;
-        height: 180px;
-        border-radius: 999px;
-        background: linear-gradient(135deg, rgba(15, 109, 98, 0.2), rgba(178, 85, 47, 0.08));
-      }
+      .sidebar {{
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        gap: var(--panel-gap);
+        padding: var(--shell-padding);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 26%),
+          var(--sidebar-bg);
+        color: var(--sidebar-ink);
+        box-shadow: 0 24px 60px rgba(12, 17, 22, 0.30);
+      }}
 
-      .hero-kicker {
+      .eyebrow {{
         display: inline-flex;
-        padding: 8px 12px;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.10);
+        color: var(--sidebar-muted);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.72rem;
+      }}
+
+      .brand-block h1 {{
+        margin: 14px 0 10px;
+        font-size: var(--font-hero);
+        line-height: 1.08;
+        overflow-wrap: anywhere;
+      }}
+
+      .brand-copy {{
+        margin: 0;
+        color: var(--sidebar-muted);
+        line-height: 1.6;
+      }}
+
+      .sidebar-actions {{
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }}
+
+      .sidebar-actions button,
+      .composer-actions button,
+      .modal-actions button {{
+        border: 0;
+        border-radius: 999px;
+        padding: 11px 14px;
+      }}
+
+      .primary-btn {{
+        background: var(--accent);
+        color: white;
+      }}
+
+      .ghost-btn {{
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--sidebar-ink);
+        border: 1px solid rgba(255, 255, 255, 0.10);
+      }}
+
+      .library-panel,
+      .contract-panel {{
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 28px;
+        padding: 16px;
+      }}
+
+      .section-head {{
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }}
+
+      .section-head h2 {{
+        margin: 0;
+        font-size: 0.92rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }}
+
+      .meta-note {{
+        color: var(--muted);
+        font-size: 0.82rem;
+      }}
+
+      .sidebar .meta-note {{
+        color: var(--sidebar-muted);
+      }}
+
+      .library-tools {{
+        display: grid;
+        gap: 10px;
+        margin-bottom: 12px;
+      }}
+
+      .sidebar input,
+      .composer textarea,
+      .modal textarea,
+      .modal input {{
+        width: 100%;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        padding: 12px 14px;
+      }}
+
+      .sidebar input {{
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--sidebar-ink);
+        border-color: rgba(255, 255, 255, 0.10);
+      }}
+
+      .sidebar input::placeholder {{
+        color: rgba(246, 243, 237, 0.46);
+      }}
+
+      .tag-strip {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }}
+
+      .tag-chip {{
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        border-radius: 999px;
+        padding: 6px 10px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--sidebar-ink);
+      }}
+
+      .tag-chip.active {{
+        background: var(--accent);
+      }}
+
+      .library-list {{
+        display: grid;
+        gap: 10px;
+        max-height: 100%;
+        overflow: auto;
+        padding-right: 4px;
+      }}
+
+      .file-card {{
+        display: grid;
+        gap: 8px;
+        padding: 14px;
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid transparent;
+        transition: border-color 120ms ease, transform 120ms ease;
+      }}
+
+      .file-card.active {{
+        border-color: rgba(255, 255, 255, 0.28);
+        transform: translateY(-1px);
+      }}
+
+      .file-card-top {{
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }}
+
+      .file-select {{
+        border: 0;
+        padding: 0;
+        margin: 0;
+        background: transparent;
+        color: inherit;
+        text-align: left;
+        width: 100%;
+      }}
+
+      .file-delete {{
+        border: 0;
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background: rgba(180, 35, 24, 0.18);
+        color: #ffd6cf;
+      }}
+
+      .file-title {{
+        font-weight: 700;
+        color: var(--sidebar-ink);
+      }}
+
+      .file-copy,
+      .file-meta {{
+        color: var(--sidebar-muted);
+        line-height: 1.55;
+      }}
+
+      .pill-row {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }}
+
+      .pill {{
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: rgba(17, 24, 39, 0.06);
+        color: var(--muted);
+        font-size: 0.72rem;
+      }}
+
+      .sidebar .pill {{
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--sidebar-muted);
+      }}
+
+      .contract-panel {{
+        display: grid;
+        gap: 10px;
+      }}
+
+      .contract-stat {{
+        font-size: 1.55rem;
+        font-weight: 700;
+      }}
+
+      .micro-list {{
+        margin: 0;
+        padding-left: 18px;
+        display: grid;
+        gap: 8px;
+        color: var(--sidebar-muted);
+      }}
+
+      .conversation-stage {{
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        background: rgba(255, 255, 255, 0.70);
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }}
+
+      .stage-header {{
+        padding: 20px 24px 16px;
+        border-bottom: 1px solid var(--line);
+      }}
+
+      .stage-topline {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 12px;
+      }}
+
+      .stage-chip {{
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
         border-radius: 999px;
         background: var(--accent-soft);
         color: var(--accent);
-        font-size: 12px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
+        font-size: 0.8rem;
+      }}
 
-      h1 {
-        margin: 18px 0 10px;
-        font-size: clamp(2rem, 4vw, 3.4rem);
-        line-height: 1.05;
-      }
+      .stage-header h2 {{
+        margin: 0;
+        font-size: var(--font-title);
+      }}
 
-      .hero-copy {
-        max-width: 760px;
-        font-size: 1.02rem;
+      .stage-copy {{
+        margin: 10px 0 0;
         color: var(--muted);
         line-height: 1.6;
-      }
+      }}
 
-      .scene-list {
-        list-style: none;
-        padding: 0;
-        margin: 18px 0 0;
-        display: grid;
-        gap: 10px;
-      }
+      .conversation-scroll {{
+        overflow: auto;
+        padding: 24px;
+      }}
 
-      .scene-list li {
-        display: grid;
-        gap: 4px;
-        padding: 14px 16px;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.7);
-        border: 1px solid rgba(27, 28, 31, 0.08);
-      }
+      .intro-card {{
+        padding: 18px 20px;
+        border-radius: 26px;
+        background: linear-gradient(180deg, rgba(15, 109, 98, 0.10), rgba(15, 109, 98, 0.03));
+        border: 1px solid rgba(15, 109, 98, 0.12);
+        margin-bottom: 16px;
+      }}
 
-      .scene-list span {
-        color: var(--muted);
-        font-size: 0.94rem;
-      }
-
-      .hero-side {
-        display: grid;
-        gap: 20px;
-      }
-
-      .aside-card {
-        padding: 20px;
-      }
-
-      .aside-card h2,
-      .panel h2 {
-        margin: 0 0 10px;
+      .intro-card h3 {{
+        margin: 0 0 8px;
         font-size: 1rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }
+      }}
 
-      .aside-value {
-        font-size: 2.2rem;
-        font-weight: 700;
-      }
-
-      .aside-meta {
+      .intro-card ul {{
+        margin: 0;
+        padding-left: 18px;
         color: var(--muted);
-        line-height: 1.5;
-      }
+        line-height: 1.7;
+      }}
 
-      .workspace {
+      .message-stack {{
         display: grid;
-        grid-template-columns: 0.9fr 1.4fr 1.15fr;
-        gap: 20px;
-        align-items: start;
-      }
+        gap: 16px;
+      }}
 
-      .panel {
-        padding: 22px;
-      }
+      .message {{
+        max-width: 860px;
+        padding: 18px;
+        border-radius: 26px;
+        background: rgba(255, 255, 255, 0.86);
+        border: 1px solid var(--line);
+      }}
 
-      .search-row {
+      .message.user {{
+        margin-left: auto;
+        background: rgba(15, 109, 98, 0.10);
+      }}
+
+      .message-role {{
+        margin-bottom: 10px;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.76rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }}
+
+      .message-body {{
+        white-space: pre-wrap;
+        line-height: 1.72;
+      }}
+
+      .citation-list {{
         display: grid;
-        grid-template-columns: 1fr auto;
         gap: 10px;
-        margin-bottom: 12px;
-      }
+        margin-top: 12px;
+      }}
 
-      input,
-      textarea,
-      select,
-      button {
-        font: inherit;
-      }
-
-      input,
-      textarea {
+      .citation {{
         width: 100%;
-        border: 1px solid rgba(27, 28, 31, 0.14);
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid var(--line);
+        border-radius: 18px;
         padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.92);
         color: var(--ink);
-      }
+        text-align: left;
+      }}
 
-      textarea {
-        min-height: 140px;
+      .citation strong {{
+        display: block;
+        margin-bottom: 4px;
+      }}
+
+      .composer {{
+        border-top: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.78);
+        padding: 18px 20px 22px;
+      }}
+
+      .composer textarea {{
+        min-height: 110px;
         resize: vertical;
-      }
+        background: white;
+      }}
 
-      button {
-        border: 0;
-        border-radius: 999px;
-        padding: 12px 16px;
-        background: var(--ink);
-        color: #fff;
-        cursor: pointer;
-        transition: transform 180ms ease, opacity 180ms ease;
-      }
-
-      button:hover { transform: translateY(-1px); }
-      button:disabled { opacity: 0.56; cursor: not-allowed; }
-      .ghost {
-        background: transparent;
-        color: var(--ink);
-        border: 1px solid rgba(27, 28, 31, 0.16);
-      }
-
-      .tag-strip,
-      .status-strip,
-      .action-row {
+      .composer-actions {{
         display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 12px;
+      }}
 
-      .tag-chip,
-      .status-chip {
-        background: rgba(255, 255, 255, 0.75);
-        border: 1px solid rgba(27, 28, 31, 0.14);
-        color: var(--ink);
-      }
+      .composer-meta {{
+        color: var(--muted);
+        font-size: 0.92rem;
+      }}
 
-      .tag-chip.active,
-      .status-chip.active {
-        background: var(--accent);
-        color: #fff;
-        border-color: var(--accent);
-      }
-
-      .list {
+      .source-rail {{
         display: grid;
-        gap: 10px;
-        margin-top: 16px;
-      }
+        grid-template-rows: auto auto auto minmax(0, 1fr);
+        gap: 14px;
+        padding: 18px;
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }}
 
-      .article-card {
+      .rail-panel {{
+        background: var(--panel-soft);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        padding: 16px;
+      }}
+
+      .source-summary h2,
+      .toc-card h2,
+      .preview-card h2 {{
+        margin: 0 0 10px;
+        font-size: 0.9rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }}
+
+      .source-summary p {{
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.62;
+      }}
+
+      .toc-list {{
+        display: grid;
+        gap: 8px;
+      }}
+
+      .toc-item {{
+        border: 1px solid transparent;
+        border-radius: 16px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.84);
+        text-align: left;
+      }}
+
+      .toc-item.active {{
+        border-color: var(--accent);
+      }}
+
+      .preview-card {{
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+      }}
+
+      .preview-scroll {{
+        overflow: auto;
+        padding-right: 4px;
+      }}
+
+      .section-block {{
         padding: 16px;
         border-radius: 18px;
-        border: 1px solid rgba(27, 28, 31, 0.1);
-        background: rgba(255, 255, 255, 0.8);
-        cursor: pointer;
-        transition: transform 180ms ease, border-color 180ms ease;
-      }
+        background: rgba(255, 255, 255, 0.88);
+        border: 1px solid var(--line);
+        margin-bottom: 12px;
+      }}
 
-      .article-card:hover,
-      .article-card.active {
-        transform: translateY(-2px);
-        border-color: rgba(15, 109, 98, 0.42);
-      }
+      .section-block.active {{
+        border-color: var(--accent);
+        box-shadow: inset 0 0 0 1px rgba(15, 109, 98, 0.15);
+      }}
 
-      .article-title {
-        font-size: 1.05rem;
-        font-weight: 700;
-        margin-bottom: 6px;
-      }
+      .section-block h3 {{
+        margin: 0 0 10px;
+      }}
 
-      .article-summary,
-      .muted {
-        color: var(--muted);
-      }
-
-      .meta-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 10px;
-      }
-
-      .meta-pill {
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: rgba(15, 109, 98, 0.08);
-        font-size: 0.82rem;
-      }
-
-      .detail-body {
+      .section-block p,
+      .section-block li {{
         line-height: 1.7;
-        white-space: pre-wrap;
-      }
+      }}
 
-      .banner {
-        margin-bottom: 12px;
-        padding: 12px 14px;
-        border-radius: 14px;
-        background: rgba(15, 109, 98, 0.1);
-        color: var(--accent);
-        min-height: 48px;
-      }
-
-      .banner.error {
-        background: rgba(178, 85, 47, 0.12);
-        color: var(--warn);
-      }
-
-      .field {
+      .modal-backdrop {{
+        position: fixed;
+        inset: 0;
+        padding: 24px;
+        background: rgba(16, 20, 24, 0.52);
         display: grid;
-        gap: 8px;
-        margin-bottom: 12px;
-      }
+        place-items: center;
+      }}
 
-      .field label {
-        font-size: 0.92rem;
-        font-weight: 600;
-      }
+      .modal-backdrop.hidden {{
+        display: none;
+      }}
 
-      .panel-foot {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 12px;
+      .modal {{
+        width: min(780px, 100%);
+        max-height: calc(100vh - 48px);
+        overflow: auto;
+        padding: 22px;
+        border-radius: 30px;
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid var(--line);
+        box-shadow: 0 30px 80px rgba(15, 23, 42, 0.24);
+      }}
+
+      .modal h2 {{
+        margin: 0 0 8px;
+      }}
+
+      .modal p {{
+        margin: 0 0 18px;
         color: var(--muted);
-      }
+      }}
 
-      @media (max-width: 1180px) {
-        .hero,
-        .workspace {
+      .modal-grid {{
+        display: grid;
+        gap: 12px;
+      }}
+
+      .modal textarea {{
+        min-height: 220px;
+        resize: vertical;
+        background: white;
+      }}
+
+      .modal-actions {{
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 16px;
+      }}
+
+      .secondary-btn {{
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--ink);
+      }}
+
+      @media (max-width: 1320px) {{
+        .app-shell {{
+          grid-template-columns: 280px minmax(0, 1fr) 340px;
+        }}
+      }}
+
+      @media (max-width: 1100px) {{
+        .app-shell {{
           grid-template-columns: 1fr;
-        }
-      }
+        }}
+
+        .sidebar,
+        .conversation-stage,
+        .source-rail {{
+          min-height: unset;
+        }}
+      }}
     </style>
   </head>
   <body>
-    <main class="shell">
-      <section class="hero">
-        <article class="hero-card">
-          <span class="hero-kicker">__HERO_KICKER__</span>
-          <h1>__HERO_TITLE__</h1>
-          <p class="hero-copy">__HERO_COPY__</p>
-          <ul class="scene-list">__SCENES__</ul>
-        </article>
-        <div class="hero-side">
-          <section class="aside-card">
-            <h2>__CONTRACT_TITLE__</h2>
-            <div class="aside-value">__CONTRACT_VALUE__</div>
-            <p class="aside-meta">__CONTRACT_META__</p>
-          </section>
-          <section class="aside-card">
-            <h2>__BOUNDARY_TITLE__</h2>
-            <p class="aside-meta">__BOUNDARY_META__</p>
-          </section>
-        </div>
-      </section>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <section class="brand-block">
+          <span class="eyebrow">{escape(copy["hero_kicker"])}</span>
+          <h1>{escape(copy["hero_title"])}</h1>
+          <p class="brand-copy">{escape(copy["hero_copy"])}</p>
+        </section>
 
-      <section class="workspace">
-        <section class="panel">
-          <h2>__SEARCH_TITLE__</h2>
-          <form id="search-form">
-            <div class="search-row">
-              <input id="keyword" name="keyword" type="search" placeholder="__KEYWORD_PLACEHOLDER__">
-              <button type="submit">__QUERY_BUTTON_LABEL__</button>
-            </div>
-            <div class="field">
-              <label>Status</label>
-              <div class="status-strip" id="status-strip"></div>
-            </div>
-            <div class="field">
-              <label>Tags</label>
-              <div class="tag-strip" id="tag-strip"></div>
-            </div>
-          </form>
-          <div class="panel-foot">
-            <span id="list-meta">No results loaded</span>
-            <button id="reset-button" class="ghost" type="button">__RESET_BUTTON_LABEL__</button>
+        <section class="sidebar-actions">
+          <button class="ghost-btn" id="new-chat" type="button">New Chat</button>
+          <button class="primary-btn" id="open-source-modal" type="button"{upload_button_style}>Add Source</button>
+        </section>
+
+        <section class="library-panel">
+          <div class="section-head">
+            <h2>{escape(copy["library_title"])}</h2>
+            <span class="meta-note" id="library-meta"></span>
           </div>
-          <div class="list" id="article-list"></div>
+          <div class="library-tools">
+            <input id="library-query" type="search" placeholder="{escape(copy['search_placeholder'])}">
+            <div class="tag-strip" id="tag-strip"></div>
+          </div>
+          <div class="library-list" id="library-list"></div>
         </section>
 
-        <section class="panel">
-          <div class="banner" id="detail-banner">Select an article to read.</div>
-          <h2>__READ_TITLE__</h2>
-          <div id="detail-view">
-            <h3>__DETAIL_EMPTY_TITLE__</h3>
-            <p class="muted">__DETAIL_EMPTY_DESCRIPTION__</p>
+        <section class="contract-panel">
+          <div class="section-head">
+            <h2>System Contract</h2>
+            <span class="meta-note">{escape(resolved.visual.brand)}</span>
+          </div>
+          <div class="contract-stat">{overall_validation.get("passed_count", 0)} / {overall_validation.get("rule_count", 0)}</div>
+          <div class="meta-note">Rules passing across frontend and workbench contracts</div>
+          <div>{escape(base_labels)}</div>
+          <ul class="micro-list">
+            <li>layout: {escape(resolved.frontend_contract.get("layout_variant", "chat_first_knowledge_workbench"))}</li>
+            <li>route: {escape(resolved.route.workbench)}</li>
+            <li>bundle: {escape(bundle_path)}</li>
+          </ul>
+        </section>
+      </aside>
+
+      <main class="conversation-stage">
+        <header class="stage-header">
+          <div class="stage-topline">
+            <span class="stage-chip">ChatGPT-style knowledge workspace</span>
+            <span class="stage-chip" id="scope-chip">Current scope: whole knowledge base</span>
+          </div>
+          <h2>{escape(copy["chat_title"])}</h2>
+          <p class="stage-copy">Chat first, but grounded in managed knowledge files, explicit source focus, and citation return paths.</p>
+        </header>
+
+        <section class="conversation-scroll">
+          <article class="intro-card" id="intro-card">
+            <h3>What this workspace does</h3>
+            <ul>
+              <li>Manage knowledge files instead of chatting against a blind prompt.</li>
+              <li>Keep the current file and current section explicit while you ask questions.</li>
+              <li>Return every cited answer back to the exact source anchor.</li>
+            </ul>
+          </article>
+          <div class="message-stack" id="chat-messages"></div>
+        </section>
+
+        <form class="composer" id="chat-form">
+          <textarea id="chat-input" rows="5" placeholder="{escape(copy['chat_placeholder'])}"></textarea>
+          <div class="composer-actions">
+            <div class="composer-meta" id="composer-meta">Scope: all documents</div>
+            <button class="primary-btn" type="submit">Ask With Citations</button>
+          </div>
+        </form>
+      </main>
+
+      <aside class="source-rail">
+        <section class="rail-panel source-summary" id="source-summary">
+          <h2>{escape(copy["preview_title"])}</h2>
+          <p>Select a document to inspect summary, sections, anchors, and citation return targets.</p>
+        </section>
+
+        <section class="rail-panel toc-card">
+          <div class="section-head">
+            <h2>{escape(copy["toc_title"])}</h2>
+            <span class="meta-note" id="preview-meta"></span>
+          </div>
+          <div class="toc-list" id="toc-list"></div>
+        </section>
+
+        <section class="rail-panel">
+          <div class="section-head">
+            <h2>Citation Return</h2>
+            <span class="meta-note">Click any citation to reopen the source section</span>
           </div>
         </section>
 
-        <section class="panel">
-          <div class="banner" id="action-banner">__ACTION_IDLE_BANNER__</div>
-          <h2>__COMPOSE_TITLE__</h2>
-          <form id="create-form">
-            <input id="editing-slug" name="editing_slug" type="hidden">
-            <div class="field">
-              <label for="title">Title</label>
-              <input id="title" name="title" required minlength="__TITLE_MIN__" maxlength="__TITLE_MAX__" placeholder="__TITLE_PLACEHOLDER__">
-            </div>
-            <div class="field">
-              <label for="summary">Summary</label>
-              <textarea id="summary" name="summary" required minlength="__SUMMARY_MIN__" maxlength="__SUMMARY_MAX__" placeholder="__SUMMARY_PLACEHOLDER__"></textarea>
-            </div>
-            <div class="field">
-              <label for="body">Body</label>
-              <textarea id="body" name="body" required minlength="__BODY_MIN__" maxlength="__BODY_MAX__" placeholder="__BODY_PLACEHOLDER__"></textarea>
-            </div>
-            <div class="field">
-              <label for="tags">Tags</label>
-              <input id="tags" name="tags" placeholder="__TAGS_PLACEHOLDER__">
-            </div>
-            <div class="action-row">
-              __SAVE_DRAFT_BUTTON__
-              <button type="submit" data-status="published" class="ghost">__PUBLISH_LABEL__</button>
-              <button id="clear-compose" type="button" class="ghost">__CLEAR_LABEL__</button>
-            </div>
-          </form>
+        <section class="rail-panel preview-card">
+          <h2>Source Preview</h2>
+          <div class="preview-scroll" id="preview-content">
+            <div class="meta-note">{escape(copy["empty_state_copy"])}</div>
+          </div>
         </section>
-      </section>
-    </main>
+      </aside>
+    </div>
+
+    <div class="modal-backdrop hidden" id="source-modal">
+      <div class="modal">
+        <h2>Add Knowledge Source</h2>
+        <p>Create a new document directly inside the current knowledge workspace. The file becomes searchable, previewable, and citeable immediately.</p>
+        <form id="source-form">
+          <div class="modal-grid">
+            <input id="source-title" type="text" placeholder="Source title" required>
+            <input id="source-summary-field" type="text" placeholder="One-sentence summary" required>
+            <input id="source-tags" type="text" placeholder="Tags, comma separated">
+            <textarea id="source-body" placeholder="Markdown body with ## headings for citeable anchors" required></textarea>
+          </div>
+          <div class="modal-actions">
+            <button class="secondary-btn" id="close-source-modal" type="button">Cancel</button>
+            <button class="primary-btn" type="submit">Create Source</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <script>
-      const apiBase = __API_BASE_JSON__;
-      const frontendCopy = __FRONTEND_COPY_JSON__;
-      const configuredStatuses = __STATUS_OPTIONS__;
-      const supportsEdit = __SUPPORTS_EDIT__;
-      const supportsDraft = __SUPPORTS_DRAFT__;
-      const state = {
-        keyword: "",
+      const projectSpec = {spec_json};
+      const state = {{
+        query: "",
         tag: "",
-        status: "",
-        selectedSlug: "",
-        routeMode: "",
-        submitStatus: supportsDraft ? "draft" : "published",
-      };
+        documentId: "",
+        sectionId: "",
+        documents: [],
+        currentDocument: null,
+        tags: [],
+        sourceModalOpen: false,
+        messages: [
+          {{
+            role: "assistant",
+            answer: projectSpec.copy.chat_welcome,
+            citations: []
+          }}
+        ]
+      }};
 
-      const articleList = document.getElementById("article-list");
-      const detailView = document.getElementById("detail-view");
-      const detailBanner = document.getElementById("detail-banner");
-      const actionBanner = document.getElementById("action-banner");
+      const queryInput = document.getElementById("library-query");
+      const libraryMeta = document.getElementById("library-meta");
+      const libraryList = document.getElementById("library-list");
       const tagStrip = document.getElementById("tag-strip");
-      const statusStrip = document.getElementById("status-strip");
-      const listMeta = document.getElementById("list-meta");
-      const keywordInput = document.getElementById("keyword");
-      const createForm = document.getElementById("create-form");
-      const editingSlugInput = document.getElementById("editing-slug");
-      const titleInput = document.getElementById("title");
-      const summaryInput = document.getElementById("summary");
-      const bodyInput = document.getElementById("body");
-      const tagsInput = document.getElementById("tags");
-      const clearComposeButton = document.getElementById("clear-compose");
-      const resetButton = document.getElementById("reset-button");
-      const initialParams = new URLSearchParams(window.location.search);
+      const previewMeta = document.getElementById("preview-meta");
+      const tocList = document.getElementById("toc-list");
+      const previewContent = document.getElementById("preview-content");
+      const sourceSummary = document.getElementById("source-summary");
+      const chatMessages = document.getElementById("chat-messages");
+      const chatForm = document.getElementById("chat-form");
+      const chatInput = document.getElementById("chat-input");
+      const composerMeta = document.getElementById("composer-meta");
+      const scopeChip = document.getElementById("scope-chip");
+      const introCard = document.getElementById("intro-card");
+      const newChatButton = document.getElementById("new-chat");
+      const sourceModal = document.getElementById("source-modal");
+      const openSourceModalButton = document.getElementById("open-source-modal");
+      const closeSourceModalButton = document.getElementById("close-source-modal");
+      const sourceForm = document.getElementById("source-form");
+      const sourceTitle = document.getElementById("source-title");
+      const sourceSummaryInput = document.getElementById("source-summary-field");
+      const sourceTags = document.getElementById("source-tags");
+      const sourceBody = document.getElementById("source-body");
 
-      function escapeHtml(value) {
+      function escapeHtml(value) {{
         return String(value)
           .replaceAll("&", "&amp;")
           .replaceAll("<", "&lt;")
           .replaceAll(">", "&gt;")
           .replaceAll('"', "&quot;")
           .replaceAll("'", "&#39;");
-      }
+      }}
 
-      function setBanner(element, text, isError = false) {
-        element.textContent = text;
-        element.classList.toggle("error", isError);
-      }
+      function openSourceModal() {{
+        state.sourceModalOpen = true;
+        sourceModal.classList.remove("hidden");
+        sourceTitle.focus();
+      }}
 
-      function formatStatusLabel(value) {
-        return value
-          .split("_")
-          .map((item) => item.charAt(0).toUpperCase() + item.slice(1))
-          .join(" ");
-      }
+      function closeSourceModal() {{
+        state.sourceModalOpen = false;
+        sourceModal.classList.add("hidden");
+        sourceForm.reset();
+      }}
 
-      function syncRoute() {
+      function resetConversation() {{
+        state.messages = [
+          {{
+            role: "assistant",
+            answer: projectSpec.copy.chat_welcome,
+            citations: []
+          }}
+        ];
+        renderMessages();
+      }}
+
+      function syncRoute() {{
         const params = new URLSearchParams();
-        if (state.keyword) params.set("keyword", state.keyword);
+        if (state.query) params.set("query", state.query);
         if (state.tag) params.set("tag", state.tag);
-        if (state.status) params.set("status", state.status);
+        if (state.documentId) params.set("document", state.documentId);
+        if (state.sectionId) params.set("section", state.sectionId);
+        const query = params.toString();
+        const next = query ? `${{window.location.pathname}}?${{query}}` : window.location.pathname;
+        window.history.replaceState(null, "", next);
+      }}
 
-        if (supportsEdit && state.routeMode === "edit" && editingSlugInput.value.trim()) {
-          params.set("mode", "edit");
-          params.set("slug", editingSlugInput.value.trim());
-        } else if (state.routeMode === "create") {
-          params.set("mode", "create");
-        } else if (state.selectedSlug) {
-          params.set("focus", "detail");
-          params.set("slug", state.selectedSlug);
-        }
-
-        const nextQuery = params.toString();
-        const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
-        window.history.replaceState(null, "", nextUrl);
-      }
-
-      function setComposeMode(article = null) {
-        if (!article) {
-          editingSlugInput.value = "";
-          createForm.reset();
-          state.routeMode = "create";
-          state.submitStatus = supportsDraft ? "draft" : "published";
-          setBanner(actionBanner, supportsDraft ? "Draft state is idle." : "Compose state is idle.");
-          syncRoute();
-          return;
-        }
-
-        editingSlugInput.value = article.slug;
-        state.selectedSlug = article.slug;
-        state.routeMode = supportsEdit ? "edit" : "";
-        titleInput.value = article.title;
-        summaryInput.value = article.summary;
-        bodyInput.value = article.body;
-        tagsInput.value = article.tags.join(", ");
-        state.submitStatus = article.status;
-        setBanner(
-          actionBanner,
-          supportsEdit
-            ? `Editing "${article.title}" as ${article.status}.`
-            : `Loaded "${article.title}" into compose.`
-        );
-        syncRoute();
-      }
-
-      function renderStatusChips() {
-        const options = [{ value: "", label: "All" }].concat(
-          configuredStatuses.map((value) => ({ value, label: formatStatusLabel(value) }))
-        );
-        statusStrip.innerHTML = "";
-        for (const option of options) {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "status-chip" + (state.status === option.value ? " active" : "");
-          button.textContent = option.label;
-          button.addEventListener("click", () => {
-            state.status = option.value;
-            renderStatusChips();
-            loadArticles();
-          });
-          statusStrip.appendChild(button);
-        }
-      }
-
-      async function loadTags() {
-        const response = await fetch(`${apiBase}/tags`);
-        if (!response.ok) {
-          throw new Error("Failed to load tags.");
-        }
-        const payload = await response.json();
+      function renderTags() {{
         tagStrip.innerHTML = "";
-
-        const allButton = document.createElement("button");
-        allButton.type = "button";
-        allButton.className = "tag-chip" + (state.tag === "" ? " active" : "");
-        allButton.textContent = "All tags";
-        allButton.addEventListener("click", () => {
-          state.tag = "";
-          loadTags();
-          loadArticles();
-        });
-        tagStrip.appendChild(allButton);
-
-        for (const item of payload.items) {
+        const allTags = [{{ name: "", count: state.documents.length }}].concat(state.tags);
+        for (const tag of allTags) {{
           const button = document.createElement("button");
           button.type = "button";
-          button.className = "tag-chip" + (state.tag === item.name ? " active" : "");
-          button.textContent = `${item.name} (${item.count})`;
-          button.addEventListener("click", () => {
-            state.tag = item.name;
-            loadTags();
-            loadArticles();
-          });
+          button.className = "tag-chip" + (state.tag === tag.name ? " active" : "");
+          button.textContent = tag.name ? `${{tag.name}} (${{tag.count}})` : "All tags";
+          button.addEventListener("click", () => {{
+            state.tag = tag.name;
+            loadDocuments();
+          }});
           tagStrip.appendChild(button);
-        }
-      }
+        }}
+      }}
 
-      function renderArticleCard(article) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "article-card" + (state.selectedSlug === article.slug ? " active" : "");
-        button.innerHTML = `
-          <div class="article-title">${escapeHtml(article.title)}</div>
-          <div class="article-summary">${escapeHtml(article.summary)}</div>
-          <div class="meta-row">
-            ${article.tags.map((tag) => `<span class="meta-pill">${escapeHtml(tag)}</span>`).join("")}
-            <span class="meta-pill">${escapeHtml(article.status)}</span>
-            <span class="meta-pill">${escapeHtml(article.updated_at)}</span>
+      function renderLibrary() {{
+        libraryList.innerHTML = "";
+        libraryMeta.textContent = `${{state.documents.length}} files`;
+        for (const docItem of state.documents) {{
+          const article = document.createElement("article");
+          article.className = "file-card" + (state.documentId === docItem.document_id ? " active" : "");
+
+          const top = document.createElement("div");
+          top.className = "file-card-top";
+
+          const selector = document.createElement("button");
+          selector.type = "button";
+          selector.className = "file-select";
+          selector.innerHTML = `
+            <div class="file-title">${{escapeHtml(docItem.title)}}</div>
+            <div class="file-copy">${{escapeHtml(docItem.summary)}}</div>
+            <div class="pill-row">
+              ${{docItem.tags.map((tag) => `<span class="pill">${{escapeHtml(tag)}}</span>`).join("")}}
+              <span class="pill">${{escapeHtml(docItem.updated_at)}}</span>
+            </div>
+          `;
+          selector.addEventListener("click", () => {{
+            state.documentId = docItem.document_id;
+            state.sectionId = "summary";
+            loadDocument(docItem.document_id, state.sectionId);
+          }});
+          top.appendChild(selector);
+
+          if (projectSpec.library.allow_delete) {{
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "file-delete";
+            remove.textContent = "×";
+            remove.title = "Delete source";
+            remove.addEventListener("click", async (event) => {{
+              event.stopPropagation();
+              if (!window.confirm(`Delete ${{docItem.title}}?`)) return;
+              const response = await fetch(projectSpec.routes.api.delete_document.replace("{{document_id}}", docItem.document_id), {{
+                method: "DELETE"
+              }});
+              if (!response.ok) {{
+                const payload = await response.json();
+                window.alert(payload.detail || "Failed to delete source.");
+                return;
+              }}
+              if (state.documentId === docItem.document_id) {{
+                state.documentId = "";
+                state.sectionId = "summary";
+              }}
+              await loadTags();
+              await loadDocuments();
+            }});
+            top.appendChild(remove);
+          }}
+
+          article.appendChild(top);
+          libraryList.appendChild(article);
+        }}
+      }}
+
+      function renderPreview() {{
+        if (!state.currentDocument) {{
+          sourceSummary.innerHTML = `
+            <h2>${{escapeHtml(projectSpec.copy.preview_title)}}</h2>
+            <p>${{escapeHtml(projectSpec.copy.empty_state_copy)}}</p>
+          `;
+          previewContent.innerHTML = `<div class="meta-note">${{escapeHtml(projectSpec.copy.empty_state_copy)}}</div>`;
+          tocList.innerHTML = "";
+          previewMeta.textContent = "No source selected";
+          composerMeta.textContent = "Scope: all documents";
+          scopeChip.textContent = "Current scope: whole knowledge base";
+          return;
+        }}
+        previewMeta.textContent = state.currentDocument.title;
+        composerMeta.textContent = `Scope: ${{state.currentDocument.title}} / ${{state.sectionId || "summary"}}`;
+        scopeChip.textContent = `Current scope: ${{state.currentDocument.title}}`;
+        sourceSummary.innerHTML = `
+          <h2>${{escapeHtml(state.currentDocument.title)}}</h2>
+          <p>${{escapeHtml(state.currentDocument.summary)}}</p>
+          <div class="pill-row">
+            ${{state.currentDocument.tags.map((tag) => `<span class="pill">${{escapeHtml(tag)}}</span>`).join("")}}
+            <span class="pill">${{escapeHtml(state.currentDocument.updated_at)}}</span>
           </div>
         `;
-        button.addEventListener("click", () => {
-          state.selectedSlug = article.slug;
-          state.routeMode = "";
-          syncRoute();
-          loadArticles();
-          loadDetail(article.slug);
-        });
-        return button;
-      }
+        tocList.innerHTML = "";
+        for (const section of state.currentDocument.sections) {{
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "toc-item" + (state.sectionId === section.section_id ? " active" : "");
+          button.textContent = section.title;
+          button.addEventListener("click", () => {{
+            state.sectionId = section.section_id;
+            renderPreview();
+            syncRoute();
+          }});
+          tocList.appendChild(button);
+        }}
 
-      async function loadArticles() {
-        const params = new URLSearchParams();
-        if (state.keyword) params.set("keyword", state.keyword);
-        if (state.tag) params.set("tag", state.tag);
-        if (state.status) params.set("status_filter", state.status);
-        setBanner(detailBanner, "Loading article list...");
+        previewContent.innerHTML = state.currentDocument.sections
+          .map((section) => `
+            <section class="section-block${{state.sectionId === section.section_id ? " active" : ""}}" id="section-${{section.section_id}}">
+              <h3>${{escapeHtml(section.title)}}</h3>
+              ${{section.html}}
+            </section>
+          `)
+          .join("");
+        const target = document.getElementById(`section-${{state.sectionId}}`);
+        if (target) {{
+          target.scrollIntoView({{ block: "start", behavior: "smooth" }});
+        }}
+      }}
 
-        const response = await fetch(`${apiBase}/articles?${params.toString()}`);
-        if (!response.ok) {
-          articleList.innerHTML = "";
-          detailView.innerHTML = `<h3>${escapeHtml(frontendCopy.list_error_title)}</h3><p class="muted">${escapeHtml(frontendCopy.list_error_description)}</p>`;
-          listMeta.textContent = "List failed";
-          setBanner(detailBanner, "Failed to load article list.", true);
-          return;
-        }
+      function renderMessages() {{
+        chatMessages.innerHTML = "";
+        introCard.style.display = state.messages.length > 1 ? "none" : "block";
+        state.messages.forEach((message) => {{
+          const article = document.createElement("article");
+          article.className = "message " + message.role;
+          article.innerHTML = `
+            <div class="message-role">${{message.role === "user" ? "You" : "Assistant"}}</div>
+            <div class="message-body">${{escapeHtml(message.answer)}}</div>
+          `;
+          if (message.citations && message.citations.length) {{
+            const list = document.createElement("div");
+            list.className = "citation-list";
+            message.citations.forEach((citation) => {{
+              const button = document.createElement("button");
+              button.type = "button";
+              button.className = "citation";
+              button.innerHTML = `
+                <strong>${{escapeHtml(citation.section_title)}}</strong><br>
+                <span class="subtle">${{escapeHtml(citation.document_title)}}</span><br>
+                <span class="subtle">${{escapeHtml(citation.snippet)}}</span>
+              `;
+              button.addEventListener("click", () => {{
+                state.documentId = citation.document_id;
+                state.sectionId = citation.section_id;
+                loadDocument(citation.document_id, citation.section_id);
+              }});
+              list.appendChild(button);
+            }});
+            article.appendChild(list);
+          }}
+          chatMessages.appendChild(article);
+        }});
+      }}
+
+      async function loadTags() {{
+        const response = await fetch(projectSpec.routes.api.tags);
         const payload = await response.json();
-        articleList.innerHTML = "";
-        listMeta.textContent = `${payload.total} articles`;
+        state.tags = payload.items || [];
+        renderTags();
+      }}
 
-        if (payload.items.length === 0) {
-          articleList.innerHTML = `<div class="article-card"><div class="article-title">${escapeHtml(frontendCopy.list_empty_title)}</div><div class="article-summary">${escapeHtml(frontendCopy.list_empty_description)}</div></div>`;
-          detailView.innerHTML = `<h3>${escapeHtml(frontendCopy.detail_no_selection_title)}</h3><p class="muted">${escapeHtml(frontendCopy.detail_no_selection_description)}</p>`;
-          setBanner(detailBanner, "No result matched the current query.");
-          state.selectedSlug = "";
-          return;
-        }
-
-        payload.items.forEach((article) => articleList.appendChild(renderArticleCard(article)));
-        const hasSelectedArticle = payload.items.some((article) => article.slug === state.selectedSlug);
-        if (!hasSelectedArticle) {
-          state.selectedSlug = payload.items[0].slug;
-        }
+      async function loadDocuments() {{
+        const params = new URLSearchParams();
+        if (state.query) params.set("query", state.query);
+        if (state.tag) params.set("tag", state.tag);
+        const response = await fetch(`${{projectSpec.routes.api.documents}}?${{params.toString()}}`);
+        state.documents = await response.json();
+        if (!state.documentId && state.documents.length) {{
+          state.documentId = state.documents[0].document_id;
+        }}
+        renderLibrary();
         syncRoute();
-        await loadDetail(state.selectedSlug);
-      }
+        if (state.documentId) {{
+          await loadDocument(state.documentId, state.sectionId || "summary");
+        }} else {{
+          state.currentDocument = null;
+          renderPreview();
+        }}
+      }}
 
-      async function loadDetail(slug) {
-        if (!slug) {
-          return;
-        }
-        setBanner(detailBanner, "Loading detail...");
-        const response = await fetch(`${apiBase}/articles/${slug}`);
-        if (!response.ok) {
-          setBanner(detailBanner, "Failed to load detail.", true);
-          return;
-        }
-        const article = await response.json();
-        detailView.innerHTML = `
-          <h3>${escapeHtml(article.title)}</h3>
-          <div class="meta-row">
-            ${article.tags.map((tag) => `<span class="meta-pill">${escapeHtml(tag)}</span>`).join("")}
-            <span class="meta-pill">${escapeHtml(article.status)}</span>
-            <span class="meta-pill">${escapeHtml(article.updated_at)}</span>
-          </div>
-          <p class="detail-body">${escapeHtml(article.body)}</p>
-          ${supportsEdit ? `<div class="action-row"><button type="button" class="ghost" data-edit-slug="${escapeHtml(article.slug)}">${escapeHtml(frontendCopy.edit_label)}</button></div>` : ""}
-          <div class="muted">Related: ${article.related_slugs.length ? article.related_slugs.map((item) => escapeHtml(item)).join(", ") : "none"}</div>
-        `;
-        state.selectedSlug = article.slug;
+      async function loadDocument(documentId, sectionId = "summary") {{
+        const response = await fetch(projectSpec.routes.api.document_detail.replace("{{document_id}}", documentId));
+        if (!response.ok) return;
+        state.currentDocument = await response.json();
+        state.documentId = documentId;
+        state.sectionId = sectionId;
+        renderLibrary();
+        renderPreview();
         syncRoute();
-        setBanner(detailBanner, `Reading "${article.title}"`);
-        const editButton = detailView.querySelector("[data-edit-slug]");
-        if (editButton instanceof HTMLButtonElement) {
-          editButton.addEventListener("click", () => setComposeMode(article));
-        }
-        if (supportsEdit && state.routeMode === "edit") {
-          setComposeMode(article);
-        }
-      }
+      }}
 
-      createForm.addEventListener("click", (event) => {
-        const target = event.target;
-        if (target instanceof HTMLButtonElement && target.dataset.status) {
-          state.submitStatus = target.dataset.status;
-        }
-      });
+      newChatButton.addEventListener("click", () => {{
+        resetConversation();
+      }});
 
-      createForm.addEventListener("submit", async (event) => {
+      openSourceModalButton.addEventListener("click", () => {{
+        openSourceModal();
+      }});
+
+      closeSourceModalButton.addEventListener("click", () => {{
+        closeSourceModal();
+      }});
+
+      sourceModal.addEventListener("click", (event) => {{
+        if (event.target === sourceModal) {{
+          closeSourceModal();
+        }}
+      }});
+
+      sourceForm.addEventListener("submit", async (event) => {{
         event.preventDefault();
-        const form = new FormData(createForm);
-        const payload = {
-          title: String(form.get("title") || ""),
-          summary: String(form.get("summary") || ""),
-          body: String(form.get("body") || ""),
-          tags: String(form.get("tags") || "")
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean),
-          status: state.submitStatus,
-        };
-        const editingSlug = editingSlugInput.value.trim();
-        const isUpdate = editingSlug.length > 0;
-
-        setBanner(
-          actionBanner,
-          isUpdate
-            ? (state.submitStatus === "published" ? "Updating published article..." : "Updating draft...")
-            : (state.submitStatus === "published" ? "Publishing article..." : "Saving draft...")
-        );
-        const response = await fetch(
-          isUpdate ? `${apiBase}/articles/${editingSlug}` : `${apiBase}/articles`,
-          {
-            method: isUpdate ? "PUT" : "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          }
-        );
-        const body = await response.json();
-        if (!response.ok) {
-          setBanner(actionBanner, body.detail || "Save failed.", true);
+        const payload = {{
+          title: sourceTitle.value.trim(),
+          summary: sourceSummaryInput.value.trim(),
+          tags: sourceTags.value.split(",").map((item) => item.trim()).filter(Boolean),
+          body_markdown: sourceBody.value.trim()
+        }};
+        const response = await fetch(projectSpec.routes.api.create_document, {{
+          method: "POST",
+          headers: {{ "Content-Type": "application/json" }},
+          body: JSON.stringify(payload)
+        }});
+        const data = await response.json();
+        if (!response.ok) {{
+          window.alert(data.detail || "Failed to create source.");
           return;
-        }
-        setComposeMode();
-        state.selectedSlug = body.slug;
-        state.routeMode = "";
-        setBanner(actionBanner, `${isUpdate ? "Updated" : "Saved"} "${body.title}" as ${body.status}.`);
+        }}
+        closeSourceModal();
         await loadTags();
-        await loadArticles();
-      });
+        await loadDocuments();
+        state.documentId = data.document_id;
+        state.sectionId = "summary";
+        await loadDocument(data.document_id, "summary");
+      }});
 
-      document.getElementById("search-form").addEventListener("submit", (event) => {
+      queryInput.addEventListener("change", () => {{
+        state.query = queryInput.value.trim();
+        loadDocuments();
+      }});
+
+      chatForm.addEventListener("submit", async (event) => {{
         event.preventDefault();
-        state.keyword = keywordInput.value.trim();
-        loadArticles();
-      });
+        const message = chatInput.value.trim();
+        if (!message) return;
+        state.messages.push({{ role: "user", answer: message, citations: [] }});
+        renderMessages();
+        chatInput.value = "";
+        const response = await fetch(projectSpec.routes.api.chat_turns, {{
+          method: "POST",
+          headers: {{ "Content-Type": "application/json" }},
+          body: JSON.stringify({{
+            message,
+            document_id: state.documentId || null,
+            section_id: state.sectionId || null
+          }})
+        }});
+        const payload = await response.json();
+        state.messages.push({{ role: "assistant", answer: payload.answer, citations: payload.citations }});
+        renderMessages();
+      }});
 
-      resetButton.addEventListener("click", () => {
-        keywordInput.value = "";
-        state.keyword = "";
-        state.tag = "";
-        state.status = "";
-        state.selectedSlug = "";
-        state.routeMode = "";
-        setComposeMode();
-        renderStatusChips();
-        loadTags();
-        loadArticles();
-      });
+      function restoreRouteState() {{
+        const params = new URLSearchParams(window.location.search);
+        state.query = params.get("query") || "";
+        state.tag = params.get("tag") || "";
+        state.documentId = params.get("document") || "";
+        state.sectionId = params.get("section") || "summary";
+        queryInput.value = state.query;
+      }}
 
-      clearComposeButton.addEventListener("click", () => {
-        setComposeMode();
-      });
+      async function boot() {{
+        restoreRouteState();
+        renderMessages();
+        await loadTags();
+        await loadDocuments();
+      }}
 
-      state.keyword = initialParams.get("keyword")?.trim() || "";
-      state.tag = initialParams.get("tag") || "";
-      state.selectedSlug = initialParams.get("slug") || "";
-      const initialStatus = initialParams.get("status");
-      if (initialStatus && configuredStatuses.includes(initialStatus)) {
-        state.status = initialStatus;
-      }
-      if (initialParams.get("mode") === "create" || (supportsEdit && initialParams.get("mode") === "edit")) {
-        state.routeMode = initialParams.get("mode");
-      }
-      keywordInput.value = state.keyword;
-      if (state.routeMode === "create") {
-        setComposeMode();
-      }
-
-      renderStatusChips();
-      loadTags().then(loadArticles).catch((error) => {
-        console.error(error);
-        setBanner(detailBanner, "Failed to bootstrap the workbench.", true);
-      });
+      boot();
     </script>
   </body>
 </html>
 """
-    replacements = {
-        "__API_BASE_JSON__": json.dumps(resolved_api_base, ensure_ascii=False),
-        "__FRONTEND_COPY_JSON__": json.dumps(frontend_copy.to_dict(), ensure_ascii=False),
-        "__STATUS_OPTIONS__": json.dumps(list(config.backend_constraint_profile.allowed_statuses), ensure_ascii=False),
-        "__SUPPORTS_EDIT__": "true" if config.composition_profile.supports_edit else "false",
-        "__SUPPORTS_DRAFT__": "true" if supports_draft else "false",
-        "__ACTION_IDLE_BANNER__": escape(
-            "Draft state is idle." if supports_draft else "Compose state is idle.",
-            quote=True,
-        ),
-        "__SAVE_DRAFT_BUTTON__": (
-            f'<button type="submit" data-status="draft">{escape(frontend_copy.save_draft_label, quote=True)}</button>'
-            if supports_draft
-            else ""
-        ),
-        "__SCENES__": scenario_markup,
-        "__PAGE_TITLE__": escape(frontend_copy.page_title, quote=True),
-        "__HERO_KICKER__": escape(frontend_copy.hero_kicker, quote=True),
-        "__HERO_TITLE__": escape(frontend_copy.hero_title, quote=True),
-        "__HERO_COPY__": escape(frontend_copy.hero_copy, quote=True),
-        "__CONTRACT_TITLE__": escape(frontend_copy.contract_title, quote=True),
-        "__CONTRACT_VALUE__": escape(frontend_copy.contract_value, quote=True),
-        "__CONTRACT_META__": escape(frontend_copy.contract_meta, quote=True),
-        "__BOUNDARY_TITLE__": escape(frontend_copy.boundary_title, quote=True),
-        "__BOUNDARY_META__": escape(frontend_copy.boundary_meta, quote=True),
-        "__SEARCH_TITLE__": escape(frontend_copy.search_title, quote=True),
-        "__READ_TITLE__": escape(frontend_copy.read_title, quote=True),
-        "__COMPOSE_TITLE__": escape(frontend_copy.compose_title, quote=True),
-        "__KEYWORD_PLACEHOLDER__": escape(frontend_copy.keyword_placeholder, quote=True),
-        "__QUERY_BUTTON_LABEL__": escape(frontend_copy.query_button_label, quote=True),
-        "__RESET_BUTTON_LABEL__": escape(frontend_copy.reset_button_label, quote=True),
-        "__DETAIL_EMPTY_TITLE__": escape(frontend_copy.detail_empty_title, quote=True),
-        "__DETAIL_EMPTY_DESCRIPTION__": escape(frontend_copy.detail_empty_description, quote=True),
-        "__TITLE_PLACEHOLDER__": escape(frontend_copy.title_placeholder, quote=True),
-        "__SUMMARY_PLACEHOLDER__": escape(frontend_copy.summary_placeholder, quote=True),
-        "__BODY_PLACEHOLDER__": escape(frontend_copy.body_placeholder, quote=True),
-        "__TAGS_PLACEHOLDER__": escape(frontend_copy.tags_placeholder, quote=True),
-        "__PUBLISH_LABEL__": escape(frontend_copy.publish_label, quote=True),
-        "__CLEAR_LABEL__": escape(frontend_copy.clear_label, quote=True),
-        "__TITLE_MIN__": str(config.backend_constraint_profile.min_title_length),
-        "__TITLE_MAX__": str(config.backend_constraint_profile.max_title_length),
-        "__SUMMARY_MIN__": str(config.backend_constraint_profile.min_summary_length),
-        "__SUMMARY_MAX__": str(config.backend_constraint_profile.max_summary_length),
-        "__BODY_MIN__": str(config.backend_constraint_profile.min_body_length),
-        "__BODY_MAX__": str(config.backend_constraint_profile.max_body_length),
-    }
-    rendered = html
-    for token, value in replacements.items():
-        rendered = rendered.replace(token, value)
-    return rendered
-
-
-def verify_knowledge_base_frontend(
-    project_config: KnowledgeBaseProjectConfig | None = None,
-) -> VerificationResult:
-    config = _resolve_project_config(project_config)
-    boundary_valid, boundary_errors = KNOWLEDGE_BASE_FRONTEND_BOUNDARY.validate()
-    base_result = verify(
-        VerificationInput(
-            subject="knowledge base frontend",
-            pass_criteria=[
-                "page exposes search, list, detail, and compose regions",
-                "detail and create-or-edit write flows share stable feedback states",
-                "frontend consumes backend contract without storage assumptions",
-            ],
-            evidence={
-                "project": config.public_summary(),
-                "capabilities": [item.to_dict() for item in KNOWLEDGE_BASE_FRONTEND_CAPABILITIES],
-                "boundary": KNOWLEDGE_BASE_FRONTEND_BOUNDARY.to_dict(),
-                "bases": [item.to_dict() for item in KNOWLEDGE_BASE_FRONTEND_BASES],
-                "workspace_scenes": [item.to_dict() for item in compose_workspace_flow(config)],
-            },
-        )
-    )
-    reasons = [*boundary_errors, *base_result.reasons]
-    return VerificationResult(
-        passed=boundary_valid and base_result.passed,
-        reasons=reasons,
-        evidence=base_result.evidence,
-    )
