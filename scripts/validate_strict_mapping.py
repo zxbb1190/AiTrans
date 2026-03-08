@@ -593,11 +593,85 @@ def discover_framework_layer_docs() -> set[str]:
     return {path.relative_to(REPO_ROOT).as_posix() for _, _, path in iter_framework_layer_markdown()}
 
 
+def make_framework_module_key(module_name: str, level_num: int, module_num: int) -> str:
+    return f"{module_name}:L{level_num}.M{module_num}"
+
+
+def format_framework_module_key(module_key: str) -> str:
+    framework_name, _, local_ref = module_key.partition(":")
+    if not framework_name or not local_ref:
+        return module_key
+    return f"{framework_name}.{local_ref}"
+
+
+def validate_framework_reference_graph(
+    module_ref_edges: list[dict[str, Any]],
+    module_files_by_key: dict[str, str],
+) -> list[Issue]:
+    issues: list[Issue] = []
+    graph: dict[str, list[str]] = {module_key: [] for module_key in module_files_by_key}
+    closing_edges: dict[tuple[str, str], dict[str, Any]] = {}
+
+    for edge in module_ref_edges:
+        source = str(edge["source"])
+        target = str(edge["target"])
+        graph.setdefault(source, []).append(target)
+        graph.setdefault(target, [])
+        closing_edges.setdefault((source, target), edge)
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+    stack: list[str] = []
+    reported_edges: set[tuple[str, str]] = set()
+
+    def dfs(module_key: str) -> None:
+        visiting.add(module_key)
+        stack.append(module_key)
+
+        for target_key in graph.get(module_key, []):
+            if target_key in visiting:
+                edge_key = (module_key, target_key)
+                if edge_key not in reported_edges:
+                    reported_edges.add(edge_key)
+                    edge = closing_edges.get(edge_key, {})
+                    try:
+                        target_index = stack.index(target_key)
+                    except ValueError:
+                        target_index = 0
+                    cycle_keys = stack[target_index:] + [target_key]
+                    cycle_text = " -> ".join(format_framework_module_key(item) for item in cycle_keys)
+                    issues.append(
+                        make_issue(
+                            f"framework inline refs must be acyclic; detected cycle: {cycle_text}",
+                            str(edge.get("file") or module_files_by_key.get(module_key) or ""),
+                            int(edge.get("line") or 1),
+                            code="FW029",
+                        )
+                    )
+                continue
+            if target_key in visited:
+                continue
+            dfs(target_key)
+
+        stack.pop()
+        visiting.remove(module_key)
+        visited.add(module_key)
+
+    for module_key in sorted(graph):
+        if module_key in visited:
+            continue
+        dfs(module_key)
+
+    return issues
+
+
 def validate_framework_layers() -> tuple[list[Issue], set[str]]:
     issues: list[Issue] = []
     layer_files: set[str] = set()
     module_levels: dict[str, set[int]] = {}
     module_level_module_ids: dict[str, dict[int, set[int]]] = {}
+    module_files_by_key: dict[str, str] = {}
+    module_ref_edges: list[dict[str, Any]] = []
 
     if not FRAMEWORK_DIR.exists():
         issues.append(
@@ -647,11 +721,26 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
             continue
         module_num = int(layer_match.group(2))
         module_level_module_ids.setdefault(module_name, {}).setdefault(level_num, set()).add(module_num)
+        module_files_by_key[make_framework_module_key(module_name, level_num, module_num)] = (
+            markdown_file.relative_to(REPO_ROOT).as_posix()
+        )
+
+    module_min_levels = {
+        module_name: min(level_map)
+        for module_name, level_map in module_level_module_ids.items()
+        if level_map
+    }
 
     for module_name, level_num, markdown_file in framework_docs:
         rel_file = markdown_file.relative_to(REPO_ROOT).as_posix()
         layer_files.add(rel_file)
         module_levels.setdefault(module_name, set()).add(level_num)
+        layer_match = FRAMEWORK_FILE_LEVEL_PREFIX_PATTERN.fullmatch(markdown_file.name)
+        if layer_match is None:
+            continue
+        module_num = int(layer_match.group(2))
+        source_module_key = make_framework_module_key(module_name, level_num, module_num)
+        root_level_num = module_min_levels.get(module_name, 0)
         file_text = read_text(markdown_file)
 
         framework_directive_match = FRAMEWORK_DIRECTIVE_LINE_PATTERN.search(file_text)
@@ -818,12 +907,12 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                         )
                     )
 
-            if level_num == 0 and local_inline_refs:
+            if level_num == root_level_num and local_inline_refs:
                 issues.append(
                     make_issue(
                         (
-                            f"{base_id} in L0 cannot reference local upstream modules; "
-                            "L0 bases must be self-contained inside current framework"
+                            f"{base_id} in current framework root layer L{root_level_num} cannot reference "
+                            "local upstream modules; root bases must stay self-contained inside current framework"
                         ),
                         rel_file,
                         base_line_num,
@@ -833,26 +922,12 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
 
             if external_inline_refs:
                 for ext_framework, ref_level, ref_module_num, _ in external_inline_refs:
-                    if ref_level not in {0, 1}:
-                        issues.append(
-                            make_issue(
-                                (
-                                    f"{base_id} external foundation ref must target another framework "
-                                    f"L0 or L1 module: {ext_framework}.L{ref_level}.M{ref_module_num}"
-                                ),
-                                rel_file,
-                                base_line_num,
-                                code="FW027",
-                            )
-                        )
-                        continue
-
                     available_external_ids = module_level_module_ids.get(ext_framework, {}).get(ref_level, set())
                     if ref_module_num not in available_external_ids:
                         issues.append(
                             make_issue(
                                 (
-                                    f"{base_id} external foundation ref points to missing framework module: "
+                                    f"{base_id} external inline ref points to missing framework module: "
                                     f"{ext_framework}.L{ref_level}.M{ref_module_num}"
                                 ),
                                 rel_file,
@@ -860,13 +935,24 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                                 code="FW028",
                             )
                         )
+                        continue
 
-            if level_num > 0:
+                    module_ref_edges.append(
+                        {
+                            "source": source_module_key,
+                            "target": make_framework_module_key(ext_framework, ref_level, ref_module_num),
+                            "file": rel_file,
+                            "line": base_line_num,
+                            "base_id": base_id,
+                        }
+                    )
+
+            if level_num > root_level_num:
                 if not inline_expr:
                     issues.append(
                         make_issue(
                             (
-                                f"{base_id} must inline adjacent lower-layer module refs before source "
+                                f"{base_id} must inline local upstream module refs before source "
                                 "expression, e.g. L0.M0[R1] + L0.M1[R2]"
                             ),
                             rel_file,
@@ -891,8 +977,8 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                         issues.append(
                             make_issue(
                                 (
-                                    f"{base_id} must include at least one adjacent lower-layer local ref "
-                                    "inside current framework before using external foundation refs"
+                                    f"{base_id} must include at least one local upstream ref "
+                                    "inside current framework before relying on external refs"
                                 ),
                                 rel_file,
                                 base_line_num,
@@ -900,12 +986,25 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                             )
                         )
                     for ref_level, ref_module_num, _ in local_inline_refs:
-                        if ref_level != level_num - 1:
+                        if ref_level >= level_num:
                             issues.append(
                                 make_issue(
                                     (
-                                        f"{base_id} inline upstream ref must target adjacent lower layer "
-                                        f"L{level_num - 1}: L{ref_level}.M{ref_module_num}"
+                                        f"{base_id} inline upstream ref must target a lower local layer "
+                                        f"than L{level_num}: L{ref_level}.M{ref_module_num}"
+                                    ),
+                                    rel_file,
+                                    base_line_num,
+                                    code="FW025",
+                                )
+                            )
+                            continue
+                        if ref_level < root_level_num:
+                            issues.append(
+                                make_issue(
+                                    (
+                                        f"{base_id} inline upstream ref points below current framework root "
+                                        f"L{root_level_num}: L{ref_level}.M{ref_module_num}"
                                     ),
                                     rel_file,
                                     base_line_num,
@@ -926,6 +1025,17 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                                     code="FW025",
                                 )
                             )
+                            continue
+
+                        module_ref_edges.append(
+                            {
+                                "source": source_module_key,
+                                "target": make_framework_module_key(module_name, ref_level, ref_module_num),
+                                "file": rel_file,
+                                "line": base_line_num,
+                                "base_id": base_id,
+                            }
+                        )
             source_match = FRAMEWORK_SOURCE_EXPR_PATTERN.search(base_line)
             if source_match is None:
                 issues.append(
@@ -1216,6 +1326,8 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                     code="FRAMEWORK_LAYER_ZERO_MISSING",
                 )
             )
+
+    issues.extend(validate_framework_reference_graph(module_ref_edges, module_files_by_key))
 
     return issues, layer_files
 

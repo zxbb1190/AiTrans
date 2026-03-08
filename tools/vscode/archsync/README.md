@@ -6,10 +6,10 @@
 - Opens framework tree structure HTML in Webview (`docs/hierarchy/shelf_framework_tree.html`).
 - Refreshes framework tree artifacts by running the generator script.
 - Supports node-to-source jump: click a node, then use `打开源文件` in detail panel to jump to the mapped markdown line.
-- Supports `Go to Definition` / `Ctrl/Cmd+Click` inside framework markdown for `B/C/R/V`, boundary ids, `Lx.My`, `framework.Lx.My`, and bracketed module-rule refs like `frontend.L1.M4[R1,R3]`.
+- Supports `Go to Definition` / `Ctrl/Cmd+Click` inside framework markdown for `B/C/R/V`, boundary ids, `Lx.My`, `framework.Lx.My`, and bracketed module-rule refs like `frontend.L1.M2[R1,R2]`.
 - Boundary navigation is not limited to explicitly exposed top-level sections. Direct boundaries such as `CHAT` / `SURFACE` and derived boundaries such as `CITATION` / `TURN` / `SCOPE` can jump to the owning or related `projects/*/instance.toml` section, so every effective boundary stays traceable into project configuration.
-- Module refs such as `frontend.L1.M4` are treated as one hover/click target, jump straight to the target module's first `B*`, and show capability/base/rule summaries on hover.
-- Hover also works for bracketed module rules such as `frontend.L1.M4[R1,R3]` and local `B/C/R/V` plus boundary symbols, showing the resolved definition content directly in place; boundary hovers also show the mapped config file, primary owning section, related sections, and inferred ownership note when applicable.
+- Module refs such as `frontend.L1.M2` are treated as one hover/click target, jump straight to the target module's first `B*`, and show capability/base/rule summaries on hover.
+- Hover also works for bracketed module rules such as `frontend.L1.M2[R1,R2]` and local `B/C/R/V` plus boundary symbols, showing the resolved definition content directly in place; boundary hovers also show the mapped config file, primary owning section, related sections, and inferred ownership note when applicable.
 - `Find All References` / `Shift+F12` is implemented for navigable framework symbols, so boundary tokens can return the current usage, framework definition, and mapped config target in one place.
 - Runs strict mapping validation automatically on startup.
 - Runs strict mapping validation on save/create/rename/delete for relevant files.
@@ -72,11 +72,11 @@
 - `FW021`: `B*` source expression must be parseable and references must exist.
 - `FW022`: `B*` source must include at least one `C*` and one parameter id.
 - `FW023`: `B*` must inline upstream module refs (`Lx.My[...]` or `framework.Lx.My[...]`) before source expression; `上游模块：...` is forbidden.
-- `FW024`: non-`L0` `B*` must inline adjacent lower-layer module refs in the main clause.
-- `FW025`: local inline module refs must point to real adjacent lower-layer module files in the same framework directory.
-- `FW026`: `L0` `B*` cannot reference local upstream modules inside the same framework.
-- `FW027`: external foundation refs may only target another framework's `L0/L1` base modules.
-- `FW028`: external foundation refs must point to real framework modules.
+- `FW024`: non-root `B*` must inline at least one local upstream module ref in the main clause.
+- `FW025`: local inline module refs must point to real lower local layers in the same framework; adjacency is no longer the hard rule.
+- `FW026`: the current framework root layer cannot reference local upstream modules inside the same framework.
+- `FW028`: external inline module refs must point to real framework modules.
+- `FW029`: framework inline module refs must remain acyclic.
 - `FW030`: every boundary parameter item (for example `N/P/S/O/A/T/SF`) must include source.
 - `FW031`: boundary source must reference at least one `C*`, and all references must exist.
 - `FW040`: `R*` / `R*.*` numbering must be valid.
@@ -103,12 +103,14 @@ Tree generation behavior:
 - Source defaults to framework files: `framework/<module>/Lx-Mn-*.md`.
 - Legacy `Lx-*.md` (without `-Mn`) files are ignored.
 - Preferred derivation: file-level module mode (`Lx-Mn-*.md` -> node `Lx.Mn`).
+- Framework-source trees use `framework columns` layout: each framework directory is rendered as its own group, and each group keeps its own local `L0/L1/L2...` bands.
 - In file-level mode, growth edges are parsed from base lines that directly reference upstream modules, for example:
   - ``- `B3` ...：L0.M0[R2,R3] + L0.M1[R2,R3]。来源：`...`。``
-- Domain `L0` modules may also declare explicit external foundation refs, for example:
+- Framework root modules may also declare explicit external refs, for example:
   - ``- `B1` ...：frontend.L1.M0[R1,R2]。来源：`...`。``
-- Growth edges only allow adjacent layers (`Lx-1 -> Lx`).
-- External foundation edges are limited to another framework's `L0/L1` modules and are intended only for structure carry-over, not for skipping the current framework's own layer growth.
-- Strict validator rejects missing or invalid inline upstream refs for non-`L0` modules; standalone tree generation now aborts on warnings instead of silently skipping invalid growth edges.
+- Growth edges follow explicit module refs. Local refs must point to lower local layers, but can skip intermediate labels when the dependency graph and framework plan justify it.
+- Framework groups are ordered by stable topological sort of cross-framework refs, so a dependency like `frontend -> knowledge_base` renders `frontend` before `knowledge_base`.
+- Cross-framework edges are rendered from the explicit refs as written. The target module's `Lx` label is treated as planning context rather than the primary legality test.
+- Strict validator treats the reference graph as the hard constraint: refs must exist, local refs must point downward inside the current framework, and the overall inline-ref graph must stay acyclic.
 - Module nodes jump to the module header; growth edges keep their source `B*` line for precise trace-back.
 - Each node and growth edge carries `source_file` and `source_line` metadata for line-level jump.

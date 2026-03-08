@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import heapq
 import json
 import re
 import subprocess
@@ -253,6 +254,50 @@ def parse_upstream_expr(expr: str) -> list[tuple[str, str]]:
     return refs
 
 
+def compute_framework_group_order(
+    framework_names: list[str],
+    nodes: list[dict[str, Any]],
+    edges: list[dict[str, Any]],
+) -> list[str]:
+    adjacency: dict[str, set[str]] = {name: set() for name in framework_names}
+    indegree: dict[str, int] = {name: 0 for name in framework_names}
+    node_framework_by_id = {
+        str(node["id"]): str(node.get("module_name") or "")
+        for node in nodes
+        if isinstance(node.get("module_name"), str)
+    }
+
+    for edge in edges:
+        if edge.get("relation") != "framework_module_growth":
+            continue
+        source_framework = node_framework_by_id.get(str(edge.get("from") or ""), "")
+        target_framework = node_framework_by_id.get(str(edge.get("to") or ""), "")
+        if not source_framework or not target_framework or source_framework == target_framework:
+            continue
+        if target_framework in adjacency[source_framework]:
+            continue
+        adjacency[source_framework].add(target_framework)
+        indegree[target_framework] += 1
+
+    ready = sorted(name for name in framework_names if indegree[name] == 0)
+    heapq.heapify(ready)
+    ordered: list[str] = []
+
+    while ready:
+        current = heapq.heappop(ready)
+        ordered.append(current)
+        for target in sorted(adjacency[current]):
+            indegree[target] -= 1
+            if indegree[target] == 0:
+                heapq.heappush(ready, target)
+
+    if len(ordered) < len(framework_names):
+        remaining = sorted(name for name in framework_names if name not in ordered)
+        ordered.extend(remaining)
+
+    return ordered
+
+
 def build_payload_from_framework(framework_dir: Path) -> tuple[dict[str, Any], list[str]]:
     docs = iter_framework_docs(framework_dir)
     if not docs:
@@ -368,14 +413,6 @@ def build_payload_from_framework(framework_dir: Path) -> tuple[dict[str, Any], l
             add_warning(
                 f"module '{module_name}' has no L0 base (lowest existing level: L{levels[0]})."
             )
-        for current_level, next_level in zip(levels, levels[1:]):
-            if next_level - current_level > 1:
-                add_warning(
-                    (
-                        f"module '{module_name}' has level gap L{current_level} -> L{next_level}; "
-                        "only adjacent edges are generated."
-                    )
-                )
 
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
@@ -482,19 +519,11 @@ def build_payload_from_framework(framework_dir: Path) -> tuple[dict[str, Any], l
                 source_ref_local = f"L{source_level}.{source_module}"
                 qualified_lookup = f"{source_framework}:{source_ref_local}"
 
-                if source_framework == module_name and source_level + 1 != level_num:
+                if source_framework == module_name and source_level >= level_num:
                     add_warning(
                         (
-                            f"{source_file}:{source_line}: cross-level local upstream ref ignored "
-                            f"({source_ref} -> {target_ref}); expected L{level_num - 1}.*"
-                        )
-                    )
-                    continue
-                if source_framework != module_name and source_level not in {0, 1}:
-                    add_warning(
-                        (
-                            f"{source_file}:{source_line}: external foundation ref ignored "
-                            f"({source_ref} -> {target_ref}); expected another framework L0/L1 module"
+                            f"{source_file}:{source_line}: local upstream ref ignored "
+                            f"({source_ref} -> {target_ref}); local refs must point to a lower layer than L{level_num}"
                         )
                     )
                     continue
@@ -565,12 +594,36 @@ def build_payload_from_framework(framework_dir: Path) -> tuple[dict[str, Any], l
 
     levels = sorted({node["level"] for node in nodes})
     level_labels = {str(level): f"L{level} 标准层" for level in levels}
+    framework_names = sorted({str(record["module_name"]) for record in module_node_records})
+    framework_order = compute_framework_group_order(framework_names, nodes, edges)
+    framework_level_counts: dict[str, dict[int, int]] = {name: {} for name in framework_names}
+    for node in nodes:
+        framework_name = str(node.get("module_name") or "")
+        if not framework_name:
+            continue
+        level_num = int(node["level"])
+        framework_level_counts.setdefault(framework_name, {})
+        framework_level_counts[framework_name][level_num] = (
+            framework_level_counts[framework_name].get(level_num, 0) + 1
+        )
+    framework_groups = [
+        {
+            "name": framework_name,
+            "order": order,
+            "local_levels": sorted(framework_level_counts.get(framework_name, {})),
+            "level_node_counts": {
+                str(level): count
+                for level, count in sorted(framework_level_counts.get(framework_name, {}).items())
+            },
+        }
+        for order, framework_name in enumerate(framework_order)
+    ]
 
     description = (
         "从 framework/<module>/Lx-Mn-*.md 自动生成；"
         "模块级节点为文件级 M 编号（Lx.Mn），边来自基中显式上游模块引用；"
-        "本框架内部仅允许相邻层级连接（Lx-1 -> Lx），"
-        "领域 L0 允许显式引用其它框架的 L0/L1 基础结构。"
+        "按 framework 文件夹分组展示，组间位置由跨框架引用决定；"
+        "Lx 只表示各 framework 自己的本地层。"
     )
     if warnings:
         description = f"{description} 警告数量={len(warnings)}。"
@@ -579,6 +632,8 @@ def build_payload_from_framework(framework_dir: Path) -> tuple[dict[str, Any], l
         "title": "框架标准树结构图",
         "description": description,
         "level_labels": level_labels,
+        "layout_mode": "framework_columns",
+        "framework_groups": framework_groups,
         "nodes": nodes,
         "edges": edges,
     }

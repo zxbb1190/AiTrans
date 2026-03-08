@@ -26,12 +26,29 @@ class HierarchyEdge:
 
 
 @dataclass(frozen=True)
+class HierarchyFrameworkGroup:
+    name: str
+    order: int
+    local_levels: list[int]
+    level_node_counts: dict[int, int]
+
+
+@dataclass(frozen=True)
 class HierarchyGraph:
     title: str
     description: str
     level_labels: dict[int, str]
     nodes: list[HierarchyNode]
     edges: list[HierarchyEdge]
+    layout_mode: str = "global_levels"
+    framework_groups: list[HierarchyFrameworkGroup] | None = None
+
+
+@dataclass(frozen=True)
+class LayoutResult:
+    positions: dict[str, tuple[float, float]]
+    width: int
+    height: int
 
 
 def _expect_dict(value: Any, field_name: str) -> dict[str, Any]:
@@ -57,6 +74,14 @@ def _expect_optional_int(value: Any, field_name: str) -> int | None:
         return None
     if not isinstance(value, int):
         raise ValueError(f"{field_name} must be an integer")
+    return value
+
+
+def _expect_optional_str(value: Any, field_name: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError(f"{field_name} must be a string")
     return value
 
 
@@ -128,6 +153,56 @@ def load_hierarchy(path: Path) -> HierarchyGraph:
             )
         )
 
+    raw_layout_mode = _expect_optional_str(root.get("layout_mode"), "layout_mode")
+    layout_mode = raw_layout_mode or "global_levels"
+
+    raw_framework_groups = root.get("framework_groups")
+    framework_groups: list[HierarchyFrameworkGroup] | None = None
+    if raw_framework_groups is not None:
+        if not isinstance(raw_framework_groups, list):
+            raise ValueError("framework_groups must be a list")
+        framework_groups = []
+        for idx, raw_group in enumerate(raw_framework_groups):
+            group_obj = _expect_dict(raw_group, f"framework_groups[{idx}]")
+            name = _expect_str(group_obj.get("name"), f"framework_groups[{idx}].name")
+            order = _expect_int(group_obj.get("order"), f"framework_groups[{idx}].order")
+
+            raw_local_levels = group_obj.get("local_levels")
+            if not isinstance(raw_local_levels, list):
+                raise ValueError(f"framework_groups[{idx}].local_levels must be a list")
+            local_levels: list[int] = []
+            for level_idx, raw_level in enumerate(raw_local_levels):
+                if not isinstance(raw_level, int):
+                    raise ValueError(
+                        f"framework_groups[{idx}].local_levels[{level_idx}] must be an integer"
+                    )
+                local_levels.append(raw_level)
+
+            raw_level_node_counts = _expect_dict(
+                group_obj.get("level_node_counts"),
+                f"framework_groups[{idx}].level_node_counts",
+            )
+            level_node_counts: dict[int, int] = {}
+            for raw_key, raw_count in raw_level_node_counts.items():
+                if not isinstance(raw_key, str) or not raw_key.isdigit():
+                    raise ValueError(
+                        f"framework_groups[{idx}].level_node_counts keys must be digit strings"
+                    )
+                if not isinstance(raw_count, int):
+                    raise ValueError(
+                        f"framework_groups[{idx}].level_node_counts[{raw_key}] must be an integer"
+                    )
+                level_node_counts[int(raw_key)] = raw_count
+
+            framework_groups.append(
+                HierarchyFrameworkGroup(
+                    name=name,
+                    order=order,
+                    local_levels=local_levels,
+                    level_node_counts=level_node_counts,
+                )
+            )
+
     _validate_acyclic(nodes, edges)
 
     return HierarchyGraph(
@@ -136,6 +211,8 @@ def load_hierarchy(path: Path) -> HierarchyGraph:
         level_labels=level_labels,
         nodes=nodes,
         edges=edges,
+        layout_mode=layout_mode,
+        framework_groups=framework_groups,
     )
 
 
@@ -219,14 +296,18 @@ def _node_sort_key(
     return (1, barycenter, node_id)
 
 
-def compute_layout(graph: HierarchyGraph, width: int = 1520, height: int = 980) -> dict[str, tuple[float, float]]:
+def _compute_global_level_layout(
+    graph: HierarchyGraph,
+    width: int,
+    height: int,
+) -> LayoutResult:
     level_to_nodes: dict[int, list[HierarchyNode]] = {}
     for node in graph.nodes:
         level_to_nodes.setdefault(node.level, []).append(node)
 
     levels = sorted(level_to_nodes)
     if not levels:
-        return {}
+        return LayoutResult(positions={}, width=width, height=height)
 
     level_orders: dict[int, list[str]] = {}
     for level in levels:
@@ -278,14 +359,132 @@ def compute_layout(graph: HierarchyGraph, width: int = 1520, height: int = 980) 
         for node_id, x in zip(row_ids, xs):
             positions[node_id] = (x, y)
 
-    return positions
+    return LayoutResult(positions=positions, width=width, height=height)
+
+
+def _compute_framework_columns_layout(
+    graph: HierarchyGraph,
+    width: int,
+    height: int,
+) -> LayoutResult:
+    if not graph.nodes:
+        return LayoutResult(positions={}, width=width, height=height)
+
+    framework_groups = sorted(
+        graph.framework_groups or [],
+        key=lambda item: (item.order, item.name),
+    )
+    if not framework_groups:
+        return _compute_global_level_layout(graph, width=width, height=height)
+
+    node_by_id = {node.node_id: node for node in graph.nodes}
+    node_ids_by_framework: dict[str, list[str]] = {}
+    for node in graph.nodes:
+        framework_name = str((node.metadata or {}).get("module_name") or "")
+        if not framework_name:
+            continue
+        node_ids_by_framework.setdefault(framework_name, []).append(node.node_id)
+
+    incoming: dict[str, list[str]] = {node.node_id: [] for node in graph.nodes}
+    outgoing: dict[str, list[str]] = {node.node_id: [] for node in graph.nodes}
+    for edge in graph.edges:
+        incoming[edge.target].append(edge.source)
+        outgoing[edge.source].append(edge.target)
+
+    group_min_width = 260.0
+    group_gap = 72.0
+    group_padding_left = 68.0
+    group_padding_right = 56.0
+    left_margin = 56.0
+    right_margin = 44.0
+    top_margin = 152.0
+    bottom_margin = 108.0
+
+    positions: dict[str, tuple[float, float]] = {}
+    max_required_height = float(height)
+    cursor_x = left_margin
+
+    for group in framework_groups:
+        group_node_ids = node_ids_by_framework.get(group.name, [])
+        if not group_node_ids:
+            cursor_x += group_min_width + group_gap
+            continue
+
+        level_orders: dict[int, list[str]] = {}
+        for local_level in sorted(group.local_levels):
+            row_ids = [
+                node_id
+                for node_id in group_node_ids
+                if node_by_id[node_id].level == local_level
+            ]
+            if not row_ids:
+                continue
+            ordered_row = sorted(
+                row_ids,
+                key=lambda item: (
+                    node_by_id[item].order is None,
+                    node_by_id[item].order if node_by_id[item].order is not None else 0,
+                    item,
+                ),
+            )
+            level_orders[local_level] = ordered_row
+
+        local_levels = sorted(level_orders)
+        if not local_levels:
+            continue
+
+        _refine_level_orders(
+            levels=local_levels,
+            level_orders=level_orders,
+            node_by_id=node_by_id,
+            incoming=incoming,
+            outgoing=outgoing,
+        )
+
+        max_row_count = max(len(level_orders[level]) for level in local_levels)
+        usable_width = max(group_min_width - group_padding_left - group_padding_right, 1.0)
+        if max_row_count > 1:
+            min_cell = 112.0
+            usable_width = max(usable_width, float(max_row_count + 1) * min_cell)
+        group_width = max(group_min_width, usable_width + group_padding_left + group_padding_right)
+
+        vertical_span = max(1.0, float(height) - top_margin - bottom_margin)
+        y_step = vertical_span / max(1, len(local_levels) - 1)
+        max_required_height = max(
+            max_required_height,
+            top_margin + bottom_margin + (len(local_levels) - 1) * y_step,
+        )
+
+        for level_idx, local_level in enumerate(local_levels):
+            row_ids = level_orders[local_level]
+            count = len(row_ids)
+            row_usable_width = max(1.0, group_width - group_padding_left - group_padding_right)
+            if count == 1:
+                xs = [cursor_x + group_width / 2.0]
+            else:
+                cell = row_usable_width / float(count + 1)
+                xs = [cursor_x + group_padding_left + cell * float(i + 1) for i in range(count)]
+
+            y = top_margin + level_idx * y_step
+            for node_id, x in zip(row_ids, xs):
+                positions[node_id] = (x, y)
+
+        cursor_x += group_width + group_gap
+
+    layout_width = int(max(width, round(cursor_x - group_gap + right_margin)))
+    layout_height = int(max(height, round(max_required_height)))
+    return LayoutResult(positions=positions, width=layout_width, height=layout_height)
+
+
+def compute_layout(graph: HierarchyGraph, width: int = 1520, height: int = 980) -> LayoutResult:
+    if graph.layout_mode == "framework_columns":
+        return _compute_framework_columns_layout(graph, width=width, height=height)
+    return _compute_global_level_layout(graph, width=width, height=height)
 
 
 def _build_payload(
     graph: HierarchyGraph,
-    positions: dict[str, tuple[float, float]],
-    width: int,
-    height: int,
+    layout: LayoutResult,
 ) -> dict[str, Any]:
     level_values = sorted({node.level for node in graph.nodes})
 
@@ -299,7 +498,7 @@ def _build_payload(
 
     nodes_payload: list[dict[str, Any]] = []
     for node in graph.nodes:
-        x, y = positions[node.node_id]
+        x, y = layout.positions[node.node_id]
         item: dict[str, Any] = {
             "id": node.node_id,
             "label": node.label,
@@ -325,8 +524,8 @@ def _build_payload(
     return {
         "title": graph.title,
         "description": graph.description,
-        "width": width,
-        "height": height,
+        "width": layout.width,
+        "height": layout.height,
         "nodes": nodes_payload,
         "edges": edges_payload,
         "level_labels": {
@@ -334,12 +533,24 @@ def _build_payload(
         },
         "level_node_counts": {str(level): level_to_node_count.get(level, 0) for level in level_values},
         "relation_counts": relation_counts,
+        "layout_mode": graph.layout_mode,
+        "framework_groups": [
+            {
+                "name": group.name,
+                "order": group.order,
+                "local_levels": group.local_levels,
+                "level_node_counts": {
+                    str(level): count for level, count in sorted(group.level_node_counts.items())
+                },
+            }
+            for group in sorted(graph.framework_groups or [], key=lambda item: (item.order, item.name))
+        ],
     }
 
 
 def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, height: int = 980) -> None:
-    positions = compute_layout(graph, width=width, height=height)
-    payload = _build_payload(graph, positions, width=width, height=height)
+    layout = compute_layout(graph, width=width, height=height)
+    payload = _build_payload(graph, layout)
     payload_json = json.dumps(payload, ensure_ascii=False)
 
     html = """<!doctype html>
@@ -815,6 +1026,32 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       letter-spacing: 0.04em;
     }
 
+    .framework-panel {
+      fill: rgba(255, 255, 255, 0.018);
+      stroke: var(--border);
+      stroke-width: 1;
+    }
+
+    .framework-panel.alt {
+      fill: rgba(255, 255, 255, 0.028);
+    }
+
+    .framework-title {
+      font-size: 12px;
+      fill: var(--text);
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .framework-kicker {
+      font-size: 10px;
+      fill: var(--sub);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
     .edge {
       fill: none;
       stroke: var(--graph-edge);
@@ -861,12 +1098,20 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       stroke: var(--canvas);
       stroke-width: 2.4;
       pointer-events: none;
-      transition: transform 140ms ease, opacity 140ms ease, filter 140ms ease;
+      transition:
+        transform 140ms ease,
+        opacity 140ms ease,
+        filter 140ms ease,
+        stroke 140ms ease,
+        stroke-width 140ms ease;
       transform-origin: center;
     }
 
     .node-group.hovered .node-circle {
-      transform: scale(1.02);
+      transform: scale(1.05);
+      stroke: rgba(198, 223, 255, 0.82);
+      stroke-width: 2.9;
+      filter: brightness(1.12) saturate(1.05) drop-shadow(0 0 10px rgba(55, 148, 255, 0.22));
     }
 
     .node-circle.faded {
@@ -887,7 +1132,11 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       dominant-baseline: hanging;
       pointer-events: none;
       letter-spacing: 0.2px;
-      transition: opacity 120ms ease;
+      transition: opacity 120ms ease, fill 120ms ease;
+    }
+
+    .node-group.hovered .node-label {
+      fill: var(--fg);
     }
 
     .node-label.faded {
@@ -903,7 +1152,12 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       stroke: var(--graph-label-border);
       stroke-width: 1;
       pointer-events: none;
-      transition: opacity 120ms ease;
+      transition: opacity 120ms ease, fill 120ms ease, stroke 120ms ease;
+    }
+
+    .node-group.hovered .node-label-box {
+      fill: rgba(50, 83, 126, 0.84);
+      stroke: rgba(136, 188, 255, 0.38);
     }
 
     .node-label-box.faded {
@@ -1091,12 +1345,12 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
           </div>
         </div>
       </div>
-      <p class=\"foot\">图中只展示 M 结构层级与组合关系，不包含代码规范与框架规范条目。</p>
+      <p class=\"foot\" id=\"graphFoot\">图中只展示 M 结构层级与组合关系，不包含代码规范与框架规范条目。</p>
     </section>
 
     <aside class=\"side\">
       <section class=\"card info-card\">
-        <h2 class=\"info-title\">层级统计</h2>
+        <h2 class=\"info-title\" id=\"levelStatsTitle\">层级统计</h2>
         <div id=\"levelStats\"></div>
       </section>
 
@@ -1138,6 +1392,20 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     const detailBoxEl = document.getElementById("detailBox");
     const hoverCardEl = document.getElementById("nodeHover");
     const zoomButtons = Array.from(document.querySelectorAll("[data-zoom]"));
+    const levelStatsTitleEl = document.getElementById("levelStatsTitle");
+    const graphFootEl = document.getElementById("graphFoot");
+
+    const layoutMode = graphData.layout_mode || "global_levels";
+    const isFrameworkColumns = layoutMode === "framework_columns";
+    const frameworkGroups = Array.isArray(graphData.framework_groups)
+      ? [...graphData.framework_groups].sort((a, b) => {
+          const orderDelta = Number(a?.order ?? 0) - Number(b?.order ?? 0);
+          if (orderDelta !== 0) {
+            return orderDelta;
+          }
+          return String(a?.name || "").localeCompare(String(b?.name || ""));
+        })
+      : [];
 
     const BASE_WIDTH = graphData.width;
     const BASE_HEIGHT = graphData.height;
@@ -1226,6 +1494,12 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     descriptionEl.textContent = graphData.description;
     summaryNodesEl.textContent = `节点数: ${graphData.nodes.length}`;
     summaryEdgesEl.textContent = `关系边: ${graphData.edges.length}`;
+    if (levelStatsTitleEl) {
+      levelStatsTitleEl.textContent = isFrameworkColumns ? "框架层级统计" : "层级统计";
+    }
+    if (graphFootEl && isFrameworkColumns) {
+      graphFootEl.textContent = "图中按 framework 分组展示 M 模块关系；每个分组内部保留自己的本地 Lx 层。";
+    }
 
     svg.setAttribute("viewBox", `0 0 ${graphData.width} ${graphData.height}`);
     svg.setAttribute("width", String(graphData.width));
@@ -1410,18 +1684,104 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       .map(([rawLevel, name]) => [Number(rawLevel), String(name)])
       .sort((a, b) => a[0] - b[0]);
 
-    const levelCenters = new Map();
-    for (const [level] of levelEntries) {
-      const nodesInLevel = graphData.nodes.filter((node) => node.level === level);
-      const avgY =
-        nodesInLevel.reduce((sum, node) => sum + node.y, 0) / Math.max(1, nodesInLevel.length);
-      levelCenters.set(level, avgY);
+    const fallbackFrameworkGroups = Array.from(
+      new Set(
+        graphData.nodes
+          .map((node) => (typeof node.module_name === "string" ? node.module_name : ""))
+          .filter(Boolean)
+      )
+    )
+      .sort((a, b) => a.localeCompare(b))
+      .map((name, order) => {
+        const nodesInGroup = graphData.nodes.filter((node) => node.module_name === name);
+        const localLevels = Array.from(new Set(nodesInGroup.map((node) => Number(node.level)))).sort(
+          (a, b) => a - b
+        );
+        const levelNodeCounts = {};
+        for (const level of localLevels) {
+          levelNodeCounts[String(level)] = nodesInGroup.filter((node) => node.level === level).length;
+        }
+        return { name, order, local_levels: localLevels, level_node_counts: levelNodeCounts };
+      });
 
-      appendStatRow(
-        levelStatsEl,
-        graphData.level_labels[String(level)] ?? `层级 ${level}`,
-        `${graphData.level_node_counts[String(level)] ?? 0} 个节点`
-      );
+    const activeFrameworkGroups = frameworkGroups.length ? frameworkGroups : fallbackFrameworkGroups;
+
+    function formatFrameworkLevelSummary(group) {
+      const localLevels = Array.isArray(group?.local_levels)
+        ? group.local_levels.map((value) => Number(value)).filter((value) => Number.isFinite(value))
+        : [];
+      if (!localLevels.length) {
+        return "无节点";
+      }
+      const counts = group?.level_node_counts ?? {};
+      return localLevels
+        .sort((a, b) => a - b)
+        .map((level) => `L${level} ${counts[String(level)] ?? 0}`)
+        .join(" | ");
+    }
+
+    const frameworkDescriptors = activeFrameworkGroups
+      .map((group) => {
+        const nodesInGroup = graphData.nodes.filter((node) => node.module_name === group.name);
+        if (!nodesInGroup.length) {
+          return null;
+        }
+        const localLevels = Array.isArray(group?.local_levels)
+          ? group.local_levels.map((value) => Number(value)).filter((value) => Number.isFinite(value))
+          : Array.from(new Set(nodesInGroup.map((node) => Number(node.level))));
+        const sortedLevels = localLevels.sort((a, b) => a - b);
+        const levelCenters = new Map();
+        for (const level of sortedLevels) {
+          const nodesInLevel = nodesInGroup.filter((node) => Number(node.level) === level);
+          if (!nodesInLevel.length) {
+            continue;
+          }
+          const avgY =
+            nodesInLevel.reduce((sum, node) => sum + Number(node.y), 0) / Math.max(1, nodesInLevel.length);
+          levelCenters.set(level, avgY);
+        }
+        const xs = nodesInGroup.map((node) => Number(node.x));
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        return {
+          name: String(group.name),
+          order: Number(group.order ?? 0),
+          levelNodeCounts: group.level_node_counts ?? {},
+          localLevels: sortedLevels,
+          levelCenters,
+          nodes: nodesInGroup,
+          minX,
+          maxX,
+          centerX: (minX + maxX) / 2
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const orderDelta = Number(a.order) - Number(b.order);
+        if (orderDelta !== 0) {
+          return orderDelta;
+        }
+        return String(a.name).localeCompare(String(b.name));
+      });
+
+    if (isFrameworkColumns) {
+      for (const group of frameworkDescriptors) {
+        appendStatRow(levelStatsEl, String(group.name), formatFrameworkLevelSummary(group));
+      }
+    } else {
+      const levelCenters = new Map();
+      for (const [level] of levelEntries) {
+        const nodesInLevel = graphData.nodes.filter((node) => node.level === level);
+        const avgY =
+          nodesInLevel.reduce((sum, node) => sum + node.y, 0) / Math.max(1, nodesInLevel.length);
+        levelCenters.set(level, avgY);
+
+        appendStatRow(
+          levelStatsEl,
+          graphData.level_labels[String(level)] ?? `层级 ${level}`,
+          `${graphData.level_node_counts[String(level)] ?? 0} 个节点`
+        );
+      }
     }
 
     for (const [relation, count] of Object.entries(graphData.relation_counts ?? {})) {
@@ -1443,43 +1803,134 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     `;
     svg.appendChild(defs);
 
-    for (let index = 0; index < levelEntries.length; index += 1) {
-      const [level, levelName] = levelEntries[index];
-      const centerY = levelCenters.get(level) ?? 0;
-      const prevCenter = index > 0 ? levelCenters.get(levelEntries[index - 1][0]) ?? centerY : centerY;
-      const nextCenter =
-        index < levelEntries.length - 1
-          ? levelCenters.get(levelEntries[index + 1][0]) ?? centerY
-          : centerY;
+    if (isFrameworkColumns) {
+      const panelTop = 22;
+      const panelBottom = graphData.height - 24;
+      const bandTopFloor = panelTop + 58;
+      const bandBottomCeil = panelBottom - 18;
 
-      const top = index === 0 ? 26 : (prevCenter + centerY) / 2;
-      const bottom =
-        index === levelEntries.length - 1 ? graphData.height - 26 : (centerY + nextCenter) / 2;
+      for (let index = 0; index < frameworkDescriptors.length; index += 1) {
+        const group = frameworkDescriptors[index];
+        const prevGroup = index > 0 ? frameworkDescriptors[index - 1] : null;
+        const nextGroup = index < frameworkDescriptors.length - 1 ? frameworkDescriptors[index + 1] : null;
+        const panelLeft = prevGroup ? (prevGroup.maxX + group.minX) / 2 : Math.max(20, group.minX - 74);
+        const panelRight = nextGroup
+          ? (group.maxX + nextGroup.minX) / 2
+          : Math.min(graphData.width - 20, group.maxX + 74);
 
-      const band = document.createElementNS(SVG_NS, "rect");
-      band.setAttribute("x", "58");
-      band.setAttribute("y", String(top));
-      band.setAttribute("width", String(Math.max(1, graphData.width - 86)));
-      band.setAttribute("height", String(Math.max(1, bottom - top)));
-      band.setAttribute("rx", "12");
-      band.setAttribute("ry", "12");
-      band.setAttribute("class", `level-band${index % 2 === 1 ? " alt" : ""}`);
-      svg.appendChild(band);
+        const panel = document.createElementNS(SVG_NS, "rect");
+        panel.setAttribute("x", String(panelLeft));
+        panel.setAttribute("y", String(panelTop));
+        panel.setAttribute("width", String(Math.max(1, panelRight - panelLeft)));
+        panel.setAttribute("height", String(Math.max(1, panelBottom - panelTop)));
+        panel.setAttribute("rx", "16");
+        panel.setAttribute("ry", "16");
+        panel.setAttribute("class", `framework-panel${index % 2 === 1 ? " alt" : ""}`);
+        svg.appendChild(panel);
 
-      const guide = document.createElementNS(SVG_NS, "line");
-      guide.setAttribute("x1", "74");
-      guide.setAttribute("x2", String(graphData.width - 26));
-      guide.setAttribute("y1", String(centerY));
-      guide.setAttribute("y2", String(centerY));
-      guide.setAttribute("class", "level-guide");
-      svg.appendChild(guide);
+        const kicker = document.createElementNS(SVG_NS, "text");
+        kicker.setAttribute("x", String(panelLeft + 18));
+        kicker.setAttribute("y", String(panelTop + 18));
+        kicker.setAttribute("class", "framework-kicker");
+        kicker.textContent = "framework";
+        svg.appendChild(kicker);
 
-      const label = document.createElementNS(SVG_NS, "text");
-      label.setAttribute("x", "76");
-      label.setAttribute("y", String(top + 24));
-      label.setAttribute("class", "level-label");
-      label.textContent = levelName;
-      svg.appendChild(label);
+        const title = document.createElementNS(SVG_NS, "text");
+        title.setAttribute("x", String(panelLeft + 18));
+        title.setAttribute("y", String(panelTop + 38));
+        title.setAttribute("class", "framework-title");
+        title.textContent = String(group.name);
+        svg.appendChild(title);
+
+        const localLevels = group.localLevels;
+        for (let levelIndex = 0; levelIndex < localLevels.length; levelIndex += 1) {
+          const level = localLevels[levelIndex];
+          const centerY = group.levelCenters.get(level) ?? bandTopFloor;
+          const prevCenter =
+            levelIndex > 0 ? group.levelCenters.get(localLevels[levelIndex - 1]) ?? centerY : centerY;
+          const nextCenter =
+            levelIndex < localLevels.length - 1
+              ? group.levelCenters.get(localLevels[levelIndex + 1]) ?? centerY
+              : centerY;
+
+          const top = levelIndex === 0 ? bandTopFloor : (prevCenter + centerY) / 2;
+          const bottom =
+            levelIndex === localLevels.length - 1 ? bandBottomCeil : (centerY + nextCenter) / 2;
+
+          const band = document.createElementNS(SVG_NS, "rect");
+          band.setAttribute("x", String(panelLeft + 12));
+          band.setAttribute("y", String(top));
+          band.setAttribute("width", String(Math.max(1, panelRight - panelLeft - 24)));
+          band.setAttribute("height", String(Math.max(1, bottom - top)));
+          band.setAttribute("rx", "12");
+          band.setAttribute("ry", "12");
+          band.setAttribute("class", `level-band${levelIndex % 2 === 1 ? " alt" : ""}`);
+          svg.appendChild(band);
+
+          const guide = document.createElementNS(SVG_NS, "line");
+          guide.setAttribute("x1", String(panelLeft + 18));
+          guide.setAttribute("x2", String(panelRight - 18));
+          guide.setAttribute("y1", String(centerY));
+          guide.setAttribute("y2", String(centerY));
+          guide.setAttribute("class", "level-guide");
+          svg.appendChild(guide);
+
+          const label = document.createElementNS(SVG_NS, "text");
+          label.setAttribute("x", String(panelLeft + 20));
+          label.setAttribute("y", String(top + 24));
+          label.setAttribute("class", "level-label");
+          label.textContent = graphData.level_labels[String(level)] ?? `L${level}`;
+          svg.appendChild(label);
+        }
+      }
+    } else {
+      const levelCenters = new Map();
+      for (const [level] of levelEntries) {
+        const nodesInLevel = graphData.nodes.filter((node) => node.level === level);
+        const avgY =
+          nodesInLevel.reduce((sum, node) => sum + node.y, 0) / Math.max(1, nodesInLevel.length);
+        levelCenters.set(level, avgY);
+      }
+
+      for (let index = 0; index < levelEntries.length; index += 1) {
+        const [level, levelName] = levelEntries[index];
+        const centerY = levelCenters.get(level) ?? 0;
+        const prevCenter =
+          index > 0 ? levelCenters.get(levelEntries[index - 1][0]) ?? centerY : centerY;
+        const nextCenter =
+          index < levelEntries.length - 1
+            ? levelCenters.get(levelEntries[index + 1][0]) ?? centerY
+            : centerY;
+
+        const top = index === 0 ? 26 : (prevCenter + centerY) / 2;
+        const bottom =
+          index === levelEntries.length - 1 ? graphData.height - 26 : (centerY + nextCenter) / 2;
+
+        const band = document.createElementNS(SVG_NS, "rect");
+        band.setAttribute("x", "58");
+        band.setAttribute("y", String(top));
+        band.setAttribute("width", String(Math.max(1, graphData.width - 86)));
+        band.setAttribute("height", String(Math.max(1, bottom - top)));
+        band.setAttribute("rx", "12");
+        band.setAttribute("ry", "12");
+        band.setAttribute("class", `level-band${index % 2 === 1 ? " alt" : ""}`);
+        svg.appendChild(band);
+
+        const guide = document.createElementNS(SVG_NS, "line");
+        guide.setAttribute("x1", "74");
+        guide.setAttribute("x2", String(graphData.width - 26));
+        guide.setAttribute("y1", String(centerY));
+        guide.setAttribute("y2", String(centerY));
+        guide.setAttribute("class", "level-guide");
+        svg.appendChild(guide);
+
+        const label = document.createElementNS(SVG_NS, "text");
+        label.setAttribute("x", "76");
+        label.setAttribute("y", String(top + 24));
+        label.setAttribute("class", "level-label");
+        label.textContent = levelName;
+        svg.appendChild(label);
+      }
     }
 
     function edgePath(fromNode, toNode) {
@@ -1834,7 +2285,11 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       const node = byId.get(nodeId);
       if (!node) return;
 
-      const levelName = graphData.level_labels[String(node.level)] ?? `层级 ${node.level}`;
+      const levelBaseName = graphData.level_labels[String(node.level)] ?? `层级 ${node.level}`;
+      const levelName =
+        isFrameworkColumns && node.module_name
+          ? `${String(node.module_name)} · ${levelBaseName}`
+          : levelBaseName;
       const upItems = upEdges.map((edge) => formatEdgeItem(edge, "up"));
       const downItems = downEdges.map((edge) => formatEdgeItem(edge, "down"));
       const sourceFile = typeof node.source_file === "string" ? node.source_file : "";
@@ -1931,7 +2386,9 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
         edgeEl.classList.remove("active", "faded");
       }
       detailBoxEl.innerHTML =
-        '<p class="meta detail-empty">点击左侧节点查看详情；可通过“显示全部标签”控制整体标签密度。</p>';
+        isFrameworkColumns
+          ? '<p class="meta detail-empty">点击左侧节点查看详情；当前图按 framework 分组展示，每个分组保留自己的本地 Lx。</p>'
+          : '<p class="meta detail-empty">点击左侧节点查看详情；可通过“显示全部标签”控制整体标签密度。</p>';
       updateLabelVisibility();
     }
 

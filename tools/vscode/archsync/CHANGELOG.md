@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.0.30 - 2026-03-08
+- Reworked the framework-tree layout for framework sources from one global `L0/L1/L2` swimlane into per-framework grouped columns. Each `framework/<module>/` now renders as its own column group, and group ordering follows the cross-framework reference graph.
+- Shifted strict framework validation to a references-first model: local inline refs must point downward within the same framework, external refs must resolve to real modules, and the full inline-ref graph is now checked for cycles via `FW029`.
+- Compressed and rebuilt the frontend framework stack to reduce over-splitting, then regenerated the framework tree and mapping registry against the new structure plan.
+
 ## 0.0.29 - 2026-03-08
 - Fixed framework-tree interaction regressions in the generated graph page: node hover no longer flickers around the hit zone, node click selection works again, and `Ctrl/⌘ + click` jump-to-document is restored.
 - Fixed the framework-tree right sidebar toggle so the statistics / detail panel can actually be hidden and shown again, instead of leaving the layout visually stuck open.

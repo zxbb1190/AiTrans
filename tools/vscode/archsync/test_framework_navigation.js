@@ -95,47 +95,47 @@ function main() {
   assert(targetLineText(moduleResult).includes("`B1`"));
 
   const knowledgeBaseL0 = loadFrameworkFile("framework/knowledge_base/L0-M0-文件库与摄取原子模块.md");
-  const externalRuleRef = locate(knowledgeBaseL0.text, "frontend.L1.M4[R1,R3]");
+  const externalRuleRef = locate(knowledgeBaseL0.text, "frontend.L1.M3[R1,R2]");
   const externalRuleResult = resolveDefinitionTarget({
     repoRoot,
     filePath: knowledgeBaseL0.filePath,
     text: knowledgeBaseL0.text,
     line: externalRuleRef.line,
-    character: externalRuleRef.character + "frontend.L1.M4[".length + 3,
+    character: externalRuleRef.character + "frontend.L1.M3[".length + 3,
   });
   assert(externalRuleResult, "external rule ref should resolve");
-  assert(externalRuleResult.filePath.endsWith("framework/frontend/L1-M4-文本块原子模块.md"));
-  assert(targetLineText(externalRuleResult).includes("`R3`"));
+  assert(externalRuleResult.filePath.endsWith("framework/frontend/L1-M3-集合与导航原子模块.md"));
+  assert(targetLineText(externalRuleResult).includes("`R2`"));
 
   const knowledgeBaseL2 = loadFrameworkFile("framework/knowledge_base/L0-M2-对话与引用原子模块.md");
-  const moduleHoverRef = locate(knowledgeBaseL2.text, "frontend.L1.M4[R1,R3]");
+  const moduleHoverRef = locate(knowledgeBaseL2.text, "frontend.L1.M2[R1,R2]");
   const hoverResult = resolveHoverTarget({
     repoRoot,
     filePath: knowledgeBaseL2.filePath,
     text: knowledgeBaseL2.text,
     line: moduleHoverRef.line,
-    character: moduleHoverRef.character + "frontend.L1.M4".length - 1,
+    character: moduleHoverRef.character + "frontend.L1.M2".length - 1,
   });
   assert(hoverResult, "module hover should resolve");
-  assert.strictEqual(hoverResult.end - hoverResult.start, "frontend.L1.M4".length);
-  assert(hoverResult.markdown.includes("**frontend.L1.M4**"));
+  assert.strictEqual(hoverResult.end - hoverResult.start, "frontend.L1.M2".length);
+  assert(hoverResult.markdown.includes("**frontend.L1.M2**"));
   assert(hoverResult.markdown.includes("能力声明"));
-  assert(hoverResult.markdown.includes("- `C1` 文本内容承载能力"));
+  assert(hoverResult.markdown.includes("- `C1` 文本展示能力"));
   assert(hoverResult.markdown.includes("最小可行基"));
-  assert(hoverResult.markdown.includes("- `B1` 文本内容结构基"));
+  assert(hoverResult.markdown.includes("- `B1` 文本展示结构基"));
   assert(hoverResult.markdown.includes("基组合原则"));
   assert(hoverResult.markdown.includes("参与基：`B1`"));
-  assert(hoverResult.markdown.includes("组合方式：先固定文本内容槽位与说明关系"));
+  assert(hoverResult.markdown.includes("组合方式：先固定标题、正文、说明与元信息的阅读顺序"));
 
   const moduleRuleHoverResult = resolveHoverTarget({
     repoRoot,
     filePath: knowledgeBaseL2.filePath,
     text: knowledgeBaseL2.text,
     line: moduleHoverRef.line,
-    character: moduleHoverRef.character + "frontend.L1.M4[".length + 1,
+    character: moduleHoverRef.character + "frontend.L1.M2[".length + 1,
   });
   assert(moduleRuleHoverResult, "module rule hover should resolve");
-  assert(moduleRuleHoverResult.markdown.includes("**frontend.L1.M4 · `R1`**"));
+  assert(moduleRuleHoverResult.markdown.includes("**frontend.L1.M2 · `R1`**"));
   assert(moduleRuleHoverResult.markdown.includes("参与基：`B1`"));
   assert(moduleRuleHoverResult.markdown.includes("输出能力：`C1`"));
 
@@ -283,8 +283,8 @@ function main() {
   assert(a11yConfigResult.filePath.endsWith("projects/knowledge_base_basic/instance.toml"));
   assert.strictEqual(targetLineText(a11yConfigResult).trim(), "[a11y]");
 
-  const frontendTokenL0 = loadFrameworkFile("framework/frontend/L0-M3-设计令牌与主题模块.md");
-  const tokenConfigRef = locate(frontendTokenL0.text, "TOKEN + STATE");
+  const frontendTokenL0 = loadFrameworkFile("framework/frontend/L0-M2-视觉语义原子模块.md");
+  const tokenConfigRef = locate(frontendTokenL0.text, "TOKEN + DENSITY");
   const tokenConfigResult = resolveDefinitionTarget({
     repoRoot,
     filePath: frontendTokenL0.filePath,
@@ -296,18 +296,18 @@ function main() {
   assert(tokenConfigResult.filePath.endsWith("projects/knowledge_base_basic/instance.toml"));
   assert.strictEqual(targetLineText(tokenConfigResult).trim(), "[visual]");
 
-  const frontendButtonL1 = loadFrameworkFile("framework/frontend/L1-M0-按钮原子模块.md");
-  const buttonA11yRef = locate(frontendButtonL1.text, "BTNBIND + BTNA11Y");
-  const buttonA11yResult = resolveDefinitionTarget({
+  const frontendEntryL1 = loadFrameworkFile("framework/frontend/L1-M0-触发与选择原子模块.md");
+  const entryA11yRef = locate(frontendEntryL1.text, "PICK + OPTION + ACTION + A11Y");
+  const entryA11yResult = resolveDefinitionTarget({
     repoRoot,
-    filePath: frontendButtonL1.filePath,
-    text: frontendButtonL1.text,
-    line: buttonA11yRef.line,
-    character: buttonA11yRef.character + "BTNBIND + ".length,
+    filePath: frontendEntryL1.filePath,
+    text: frontendEntryL1.text,
+    line: entryA11yRef.line,
+    character: entryA11yRef.character + "PICK + OPTION + ACTION + ".length,
   });
-  assert(buttonA11yResult, "frontend BTNA11Y boundary ref should resolve");
-  assert(buttonA11yResult.filePath.endsWith("projects/knowledge_base_basic/instance.toml"));
-  assert.strictEqual(targetLineText(buttonA11yResult).trim(), "[a11y]");
+  assert(entryA11yResult, "frontend A11Y boundary ref should resolve");
+  assert(entryA11yResult.filePath.endsWith("projects/knowledge_base_basic/instance.toml"));
+  assert.strictEqual(targetLineText(entryA11yResult).trim(), "[a11y]");
 
   const backendL2 = loadFrameworkFile("framework/backend/L2-M0-知识库接口框架标准模块.md");
   const backendResultRef = locate(backendL2.text, "CHAT + RESULT + TRACE");
