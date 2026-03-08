@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+
+## 0.0.25 - 2026-03-08
 - Added boundary-to-instance navigation for instance-exposed framework boundaries such as `SURFACE`, `LIBRARY`, `CHAT`, and `RETURN`, jumping directly to the owning `instance.toml` section.
 - Boundary hover cards now show the mapped project config file and primary related section when that boundary is instantiated as configuration.
 
