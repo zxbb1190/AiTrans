@@ -7,9 +7,10 @@
 - Refreshes framework tree artifacts by running the generator script.
 - Supports node-to-source jump: click a node, then use `打开源文件` in detail panel to jump to the mapped markdown line.
 - Supports `Go to Definition` / `Ctrl/Cmd+Click` inside framework markdown for `B/C/R/V`, boundary ids, `Lx.My`, `framework.Lx.My`, and bracketed module-rule refs like `frontend.L1.M4[R1,R3]`.
-- For instance-exposed boundaries, boundary refs such as `CHAT` / `SURFACE` can jump straight to the owning `projects/*/instance.toml` section line, so framework boundaries and config sections stay directly traceable.
+- Boundary navigation is not limited to explicitly exposed top-level sections. Direct boundaries such as `CHAT` / `SURFACE` and derived boundaries such as `CITATION` / `TURN` / `SCOPE` can jump to the owning or related `projects/*/instance.toml` section, so every effective boundary stays traceable into project configuration.
 - Module refs such as `frontend.L1.M4` are treated as one hover/click target, jump straight to the target module's first `B*`, and show capability/base/rule summaries on hover.
-- Hover also works for bracketed module rules such as `frontend.L1.M4[R1,R3]` and local `B/C/R/V` plus boundary symbols, showing the resolved definition content directly in place; instance-exposed boundary hovers also show the mapped config file and owning section.
+- Hover also works for bracketed module rules such as `frontend.L1.M4[R1,R3]` and local `B/C/R/V` plus boundary symbols, showing the resolved definition content directly in place; boundary hovers also show the mapped config file, primary owning section, related sections, and inferred ownership note when applicable.
+- `Find All References` / `Shift+F12` is implemented for navigable framework symbols, so boundary tokens can return the current usage, framework definition, and mapped config target in one place.
 - Runs strict mapping validation automatically on startup.
 - Runs strict mapping validation on save/create/rename/delete for relevant files.
 - Runs strict mapping validation when watched files change outside VSCode and when window regains focus.

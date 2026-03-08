@@ -488,6 +488,13 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       flex-wrap: wrap;
     }
 
+    .toolbar-tail {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .zoom-controls {
       display: inline-flex;
       align-items: center;
@@ -532,12 +539,18 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       border: 1px solid var(--border);
       border-radius: 12px;
       background: var(--graph-stage);
+      cursor: grab;
+    }
+
+    .graph-scroll.dragging {
+      cursor: grabbing;
     }
 
     .graph-stage {
       width: max-content;
       min-width: 100%;
       padding: 14px;
+      user-select: none;
     }
 
     .pill {
@@ -591,6 +604,14 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       align-content: start;
       position: sticky;
       top: 12px;
+    }
+
+    .layout.side-collapsed {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .layout.side-collapsed .side {
+      display: none;
     }
 
     .info-card,
@@ -883,6 +904,98 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       opacity: 0;
     }
 
+    .node-hover {
+      position: fixed;
+      z-index: 50;
+      max-width: 360px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--card) 92%, var(--bg) 8%);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 90ms ease, transform 90ms ease;
+    }
+
+    .node-hover.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hover-kicker {
+      margin: 0 0 6px;
+      font-size: 10px;
+      line-height: 1.45;
+      letter-spacing: 0.08em;
+      color: var(--sub);
+      text-transform: uppercase;
+    }
+
+    .hover-title {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .hover-subtitle {
+      margin: 4px 0 0;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--sub);
+      overflow-wrap: anywhere;
+    }
+
+    .hover-grid {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .hover-section {
+      display: grid;
+      gap: 6px;
+    }
+
+    .hover-section-title {
+      margin: 0;
+      font-size: 10px;
+      line-height: 1.45;
+      letter-spacing: 0.07em;
+      color: var(--sub);
+      text-transform: uppercase;
+    }
+
+    .hover-list {
+      margin: 0;
+      padding-left: 16px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .hover-item {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--text);
+      overflow-wrap: anywhere;
+    }
+
+    .hover-footer {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      line-height: 1.45;
+      color: var(--sub);
+      overflow-wrap: anywhere;
+    }
+
     @media (max-width: 1220px) {
       .layout {
         grid-template-columns: 1fr;
@@ -957,7 +1070,10 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
             <button type=\"button\" class=\"zoom-btn\" data-zoom=\"in\" aria-label=\"放大\">+</button>
             <span class=\"zoom-indicator\" id=\"zoomIndicator\">100%</span>
           </div>
-          <span class=\"graph-hint\">Ctrl/⌘ + 滚轮缩放</span>
+          <div class=\"toolbar-tail\">
+            <button type=\"button\" class=\"zoom-btn\" id=\"sideToggleButton\" aria-expanded=\"true\">隐藏侧栏</button>
+            <span class=\"graph-hint\">Ctrl/⌘ + 滚轮缩放，拖拽平移，Ctrl/⌘ + 点击打开文档</span>
+          </div>
         </div>
         <div class=\"graph-scroll\">
           <div class=\"graph-stage\">
@@ -986,11 +1102,15 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     </aside>
   </div>
 
+  <div id=\"nodeHover\" class=\"node-hover\" aria-hidden=\"true\"></div>
+
   <script>
     const graphData = __PAYLOAD_JSON__;
     const SVG_NS = "http://www.w3.org/2000/svg";
     const vscodeApi = typeof acquireVsCodeApi === "function" ? acquireVsCodeApi() : null;
+    const SIDE_VISIBILITY_KEY = "archsync.frameworkTree.sideVisible";
 
+    const layoutEl = document.querySelector(".layout");
     const svg = document.getElementById("graphSvg");
     const graphScrollEl = document.querySelector(".graph-scroll");
     const titleEl = document.getElementById("title");
@@ -1000,9 +1120,11 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     const summaryFanEl = document.getElementById("summaryFan");
     const toggleLabelsEl = document.getElementById("toggleLabels");
     const zoomIndicatorEl = document.getElementById("zoomIndicator");
+    const sideToggleButtonEl = document.getElementById("sideToggleButton");
     const levelStatsEl = document.getElementById("levelStats");
     const relationStatsEl = document.getElementById("relationStats");
     const detailBoxEl = document.getElementById("detailBox");
+    const hoverCardEl = document.getElementById("nodeHover");
     const zoomButtons = Array.from(document.querySelectorAll("[data-zoom]"));
 
     const BASE_WIDTH = graphData.width;
@@ -1010,7 +1132,55 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     const MIN_ZOOM = 0.45;
     const MAX_ZOOM = 2.4;
     const ZOOM_STEP = 1.15;
+    const DRAG_THRESHOLD = 4;
     let zoomLevel = 1;
+    let sideVisible = true;
+    const panState = {
+      active: false,
+      pointerId: null,
+      startClientX: 0,
+      startClientY: 0,
+      startScrollLeft: 0,
+      startScrollTop: 0,
+      moved: false,
+      suppressClick: false
+    };
+
+    function readStoredBool(key, fallbackValue) {
+      try {
+        const raw = window.localStorage.getItem(key);
+        if (raw === null) {
+          return fallbackValue;
+        }
+        return raw === "1";
+      } catch {
+        return fallbackValue;
+      }
+    }
+
+    function writeStoredBool(key, value) {
+      try {
+        window.localStorage.setItem(key, value ? "1" : "0");
+      } catch {}
+    }
+
+    function renderSideVisibility() {
+      if (layoutEl) {
+        layoutEl.classList.toggle("side-collapsed", !sideVisible);
+      }
+      if (sideToggleButtonEl) {
+        sideToggleButtonEl.textContent = sideVisible ? "隐藏侧栏" : "显示侧栏";
+        sideToggleButtonEl.setAttribute("aria-expanded", String(sideVisible));
+      }
+    }
+
+    function hideNodeHover() {
+      if (!hoverCardEl) {
+        return;
+      }
+      hoverCardEl.classList.remove("visible");
+      hoverCardEl.setAttribute("aria-hidden", "true");
+    }
 
     function appendStatRow(container, label, value) {
       const row = document.createElement("div");
@@ -1127,6 +1297,67 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
         graphScrollEl.scrollLeft = 0;
         graphScrollEl.scrollTop = 0;
       }
+    }
+
+    function beginPan(event) {
+      if (!graphScrollEl || event.button !== 0) {
+        return;
+      }
+      if (event.target.closest("button, input, label, a")) {
+        return;
+      }
+      panState.active = true;
+      panState.pointerId = event.pointerId;
+      panState.startClientX = event.clientX;
+      panState.startClientY = event.clientY;
+      panState.startScrollLeft = graphScrollEl.scrollLeft;
+      panState.startScrollTop = graphScrollEl.scrollTop;
+      panState.moved = false;
+      hideNodeHover();
+      graphScrollEl.classList.add("dragging");
+      if (typeof graphScrollEl.setPointerCapture === "function") {
+        graphScrollEl.setPointerCapture(event.pointerId);
+      }
+    }
+
+    function updatePan(event) {
+      if (!graphScrollEl || !panState.active || event.pointerId !== panState.pointerId) {
+        return;
+      }
+      const dx = event.clientX - panState.startClientX;
+      const dy = event.clientY - panState.startClientY;
+      if (!panState.moved && Math.hypot(dx, dy) >= DRAG_THRESHOLD) {
+        panState.moved = true;
+        panState.suppressClick = true;
+      }
+      if (!panState.moved) {
+        return;
+      }
+      graphScrollEl.scrollLeft = panState.startScrollLeft - dx;
+      graphScrollEl.scrollTop = panState.startScrollTop - dy;
+    }
+
+    function endPan(event) {
+      if (!graphScrollEl || !panState.active) {
+        return;
+      }
+      if (event && event.pointerId !== undefined && event.pointerId !== panState.pointerId) {
+        return;
+      }
+      if (
+        typeof graphScrollEl.releasePointerCapture === "function" &&
+        panState.pointerId !== null &&
+        typeof graphScrollEl.hasPointerCapture === "function" &&
+        graphScrollEl.hasPointerCapture(panState.pointerId)
+      ) {
+        graphScrollEl.releasePointerCapture(panState.pointerId);
+      }
+      panState.active = false;
+      panState.pointerId = null;
+      graphScrollEl.classList.remove("dragging");
+      window.setTimeout(() => {
+        panState.suppressClick = false;
+      }, 0);
     }
 
     const byId = new Map(graphData.nodes.map((node) => [node.id, node]));
@@ -1330,8 +1561,40 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       group.appendChild(label);
 
       group.addEventListener("click", (event) => {
+        if (panState.suppressClick) {
+          event.stopPropagation();
+          return;
+        }
         event.stopPropagation();
+        const docLine =
+          Number.isFinite(Number(node.doc_line)) && Number(node.doc_line) > 0
+            ? Number(node.doc_line)
+            : Number.isFinite(Number(node.source_line)) && Number(node.source_line) > 0
+              ? Number(node.source_line)
+              : 1;
+        if ((event.ctrlKey || event.metaKey) && typeof node.source_file === "string" && node.source_file) {
+          hideNodeHover();
+          openSourceFile(node.source_file, docLine);
+          return;
+        }
+        hideNodeHover();
         selectNode(node.id);
+      });
+
+      group.addEventListener("mouseenter", (event) => {
+        showNodeHover(node, event.clientX, event.clientY);
+      });
+
+      group.addEventListener("mousemove", (event) => {
+        if (!hoverCardEl?.classList.contains("visible")) {
+          showNodeHover(node, event.clientX, event.clientY);
+          return;
+        }
+        positionHoverCard(event.clientX, event.clientY);
+      });
+
+      group.addEventListener("mouseleave", () => {
+        hideNodeHover();
       });
 
       svg.appendChild(group);
@@ -1371,6 +1634,85 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
         return '<li class="detail-item">无</li>';
       }
       return items.map((item) => `<li class="detail-item">${escapeHtml(item)}</li>`).join("");
+    }
+
+    function formatHoverItems(items, emptyText, maxItems = 3) {
+      if (!Array.isArray(items) || items.length === 0) {
+        return `<li class="hover-item">${escapeHtml(emptyText)}</li>`;
+      }
+      const visibleItems = items.slice(0, maxItems);
+      const rows = visibleItems.map((item) => {
+        const token = escapeHtml(item?.token || "");
+        const text = escapeHtml(item?.text || "");
+        return `<li class="hover-item">${token ? `<b>${token}</b> ` : ""}${text}</li>`;
+      });
+      if (items.length > maxItems) {
+        rows.push(`<li class="hover-item">还有 ${items.length - maxItems} 项</li>`);
+      }
+      return rows.join("");
+    }
+
+    function renderHoverContent(node) {
+      const title = escapeHtml(node.module_title || node.label || node.id);
+      const refParts = [];
+      if (node.module_name) {
+        refParts.push(String(node.module_name));
+      }
+      if (node.module_ref) {
+        refParts.push(String(node.module_ref));
+      }
+      const fallbackSubtitle = node.label || node.id;
+      const subtitle = escapeHtml(refParts.join(" · ") || fallbackSubtitle);
+      const capabilities = formatHoverItems(node.capability_items, "无能力声明");
+      const bases = formatHoverItems(node.base_items, "无最小可行基");
+      const sourceFile = escapeHtml(node.source_file || "");
+      const footerText = sourceFile
+        ? `${sourceFile} · Ctrl/⌘ + 点击跳转到文档`
+        : "Ctrl/⌘ + 点击跳转到文档";
+      return `
+        <p class="hover-kicker">Framework Module</p>
+        <h3 class="hover-title">${title}</h3>
+        <p class="hover-subtitle">${subtitle}</p>
+        <div class="hover-grid">
+          <section class="hover-section">
+            <h4 class="hover-section-title">能力声明</h4>
+            <ul class="hover-list">${capabilities}</ul>
+          </section>
+          <section class="hover-section">
+            <h4 class="hover-section-title">最小可行基</h4>
+            <ul class="hover-list">${bases}</ul>
+          </section>
+        </div>
+        <div class="hover-footer">${footerText}</div>
+      `;
+    }
+
+    function positionHoverCard(clientX, clientY) {
+      if (!hoverCardEl) {
+        return;
+      }
+      const margin = 18;
+      const rect = hoverCardEl.getBoundingClientRect();
+      let left = clientX + margin;
+      let top = clientY + margin;
+      if (left + rect.width > window.innerWidth - 12) {
+        left = clientX - rect.width - margin;
+      }
+      if (top + rect.height > window.innerHeight - 12) {
+        top = clientY - rect.height - margin;
+      }
+      hoverCardEl.style.left = `${Math.max(12, left)}px`;
+      hoverCardEl.style.top = `${Math.max(12, top)}px`;
+    }
+
+    function showNodeHover(node, clientX, clientY) {
+      if (!hoverCardEl || panState.active) {
+        return;
+      }
+      hoverCardEl.innerHTML = renderHoverContent(node);
+      hoverCardEl.classList.add("visible");
+      hoverCardEl.setAttribute("aria-hidden", "false");
+      positionHoverCard(clientX, clientY);
     }
 
     function formatEdgeItem(edge, mode) {
@@ -1443,12 +1785,16 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       const upItems = upEdges.map((edge) => formatEdgeItem(edge, "up"));
       const downItems = downEdges.map((edge) => formatEdgeItem(edge, "down"));
       const sourceFile = typeof node.source_file === "string" ? node.source_file : "";
+      const docLine =
+        Number.isFinite(Number(node.doc_line)) && Number(node.doc_line) > 0
+          ? Number(node.doc_line)
+          : 1;
       const sourceLine =
         Number.isFinite(Number(node.source_line)) && Number(node.source_line) > 0
           ? Number(node.source_line)
           : 1;
       const sourceAction = sourceFile
-        ? `<button type="button" class="detail-action" data-open-source="1" data-file="${escapeHtml(sourceFile)}" data-line="${sourceLine}">打开源文件</button>`
+        ? `<button type="button" class="detail-action" data-open-source="1" data-file="${escapeHtml(sourceFile)}" data-line="${docLine}">打开文档</button>`
         : "无";
 
       detailBoxEl.innerHTML = `
@@ -1474,7 +1820,11 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
         <section class=\"detail-group\">
           <h3 class=\"detail-section-title\">来源与跳转</h3>
           <div class=\"detail-kv\">
-            <span class=\"detail-key\">源文件</span>
+            <span class=\"detail-key\">文档位置</span>
+            <span class=\"detail-value mono\">${sourceFile ? `${escapeHtml(sourceFile)}:${docLine}` : "无"}</span>
+          </div>
+          <div class=\"detail-kv\">
+            <span class=\"detail-key\">结构来源</span>
             <span class=\"detail-value mono\">${sourceFile ? `${escapeHtml(sourceFile)}:${sourceLine}` : "无"}</span>
           </div>
           <div class=\"action-row\">${sourceAction}</div>
@@ -1511,6 +1861,7 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     }
 
     function resetSelection() {
+      hideNodeHover();
       for (const circle of nodeCircleMap.values()) {
         circle.classList.remove("active", "faded");
       }
@@ -1552,7 +1903,27 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       });
     }
 
+    if (sideToggleButtonEl) {
+      sideToggleButtonEl.addEventListener("click", () => {
+        sideVisible = !sideVisible;
+        renderSideVisibility();
+        writeStoredBool(SIDE_VISIBILITY_KEY, sideVisible);
+      });
+    }
+
     if (graphScrollEl) {
+      graphScrollEl.addEventListener("pointerdown", beginPan);
+      graphScrollEl.addEventListener("pointermove", updatePan);
+      graphScrollEl.addEventListener("pointerup", endPan);
+      graphScrollEl.addEventListener("pointercancel", endPan);
+      graphScrollEl.addEventListener("pointerleave", (event) => {
+        if (panState.active) {
+          endPan(event);
+        }
+      });
+      graphScrollEl.addEventListener("scroll", () => {
+        hideNodeHover();
+      });
       graphScrollEl.addEventListener(
         "wheel",
         (event) => {
@@ -1567,13 +1938,21 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       );
     }
 
+    sideVisible = readStoredBool(SIDE_VISIBILITY_KEY, true);
+    renderSideVisibility();
     window.addEventListener("resize", () => {
       if (Math.abs(zoomLevel - computeFitZoom()) < 0.02) {
         zoomTo(computeFitZoom(), { preserveCenter: false });
       }
     });
 
-    svg.addEventListener("click", resetSelection);
+    svg.addEventListener("click", (event) => {
+      if (panState.suppressClick) {
+        event.stopPropagation();
+        return;
+      }
+      resetSelection();
+    });
     if (toggleLabelsEl) {
       toggleLabelsEl.addEventListener("change", () => {
         updateLabelVisibility();

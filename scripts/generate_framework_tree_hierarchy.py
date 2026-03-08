@@ -15,6 +15,7 @@ DEFAULT_OUTPUT_JSON = REPO_ROOT / "docs/hierarchy/shelf_framework_tree.json"
 DEFAULT_OUTPUT_HTML = REPO_ROOT / "docs/hierarchy/shelf_framework_tree.html"
 LEVEL_PATTERN = re.compile(r"^L(\d+)$")
 FRAMEWORK_FILE_LEVEL_MODULE_PATTERN = re.compile(r"^L(\d+)-M(\d+)-[^/]+\.md$")
+FRAMEWORK_CAPABILITY_ITEM_LINE_PATTERN = re.compile(r"^\s*[-*]\s*`(C(\d+))`\s*(.*)$")
 FRAMEWORK_BASE_ITEM_LINE_PATTERN = re.compile(r"^\s*[-*]\s*`(B(\d+))`\s*(.*)$")
 FRAMEWORK_UPSTREAM_TERM_PATTERN = re.compile(
     r"^(?:(?P<framework>[A-Za-z][A-Za-z0-9_-]*)\.)?(?P<ref>L\d+\.M\d+)(?:\[(?P<rules>.*?)\])?$"
@@ -56,6 +57,14 @@ def find_first_h1_line(file_path: Path) -> int:
         if line.lstrip().startswith("# "):
             return idx
     return 1
+
+
+def find_first_h1_text(file_text: str, fallback: str) -> str:
+    for line in file_text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("# "):
+            return stripped[2:].strip() or fallback
+    return fallback
 
 
 def build_payload_from_registry(registry_path: Path) -> dict[str, Any]:
@@ -199,6 +208,15 @@ def normalize_base_title(raw_text: str, fallback: str) -> str:
     return text or fallback
 
 
+def normalize_hover_text(raw_text: str) -> str:
+    text = str(raw_text or "").strip()
+    if "来源：" in text:
+        text = text.split("来源：", 1)[0].strip()
+    if "来源:" in text:
+        text = text.split("来源:", 1)[0].strip()
+    return text.strip().rstrip("。.;；")
+
+
 def parse_upstream_refs(raw_text: str) -> list[tuple[str, str]]:
     refs: list[tuple[str, str]] = []
 
@@ -258,6 +276,23 @@ def build_payload_from_framework(framework_dir: Path) -> tuple[dict[str, Any], l
         module_level_files.setdefault(module_name, {}).setdefault(level_num, []).append(rel)
         file_text = markdown_file.read_text(encoding="utf-8")
         file_module_id = f"M{module_num}"
+        heading_title = find_first_h1_text(file_text, Path(markdown_file.name).stem)
+        heading_line = find_first_h1_line(markdown_file)
+
+        capability_entries: list[dict[str, str]] = []
+        for capability_line_num, capability_line in iter_section_bullet_lines(file_text, "## 1."):
+            capability_match = FRAMEWORK_CAPABILITY_ITEM_LINE_PATTERN.match(capability_line)
+            if capability_match is None:
+                continue
+            capability_token = capability_match.group(1)
+            capability_text = normalize_hover_text(capability_match.group(3))
+            capability_entries.append(
+                {
+                    "token": capability_token,
+                    "text": capability_text or capability_token,
+                    "line": str(capability_line_num),
+                }
+            )
 
         base_entries: list[dict[str, Any]] = []
         for base_line_num, base_line in iter_section_bullet_lines(file_text, "## 3."):
@@ -272,9 +307,11 @@ def build_payload_from_framework(framework_dir: Path) -> tuple[dict[str, Any], l
             )
             base_entries.append(
                 {
+                    "token": str(base_match.group(1)),
                     "base_index": base_index,
                     "base_line_num": base_line_num,
                     "base_title": base_title,
+                    "base_hover_text": normalize_hover_text(base_text) or base_title,
                     "upstream_refs": parse_upstream_refs(base_text),
                 }
             )
@@ -296,7 +333,18 @@ def build_payload_from_framework(framework_dir: Path) -> tuple[dict[str, Any], l
                     "logical_module": file_module_id,
                     "source_file": rel,
                     "source_line": first_base_line,
+                    "doc_line": heading_line,
                     "module_title": Path(markdown_file.name).stem,
+                    "heading_title": heading_title,
+                    "capability_items": capability_entries,
+                    "base_items": [
+                        {
+                            "token": str(entry["token"]),
+                            "text": str(entry["base_hover_text"]),
+                            "line": str(entry["base_line_num"]),
+                        }
+                        for entry in base_entries
+                    ],
                 }
             )
             module_growth_specs.append(
@@ -391,6 +439,12 @@ def build_payload_from_framework(framework_dir: Path) -> tuple[dict[str, Any], l
                     "description": " | ".join(description_parts),
                     "source_file": source_file,
                     "source_line": int(record["source_line"]),
+                    "doc_line": int(record.get("doc_line", record["source_line"])),
+                    "module_name": module_name,
+                    "module_ref": logical_id,
+                    "module_title": str(record.get("heading_title") or module_title),
+                    "capability_items": record.get("capability_items", []),
+                    "base_items": record.get("base_items", []),
                 }
             )
             continue

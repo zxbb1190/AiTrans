@@ -4,6 +4,7 @@ const path = require("path");
 
 const {
   resolveDefinitionTarget,
+  resolveReferenceTargets,
   resolveHoverTarget,
 } = require("./framework_navigation");
 
@@ -233,6 +234,93 @@ function main() {
   assert(boundaryConfigHoverResult.markdown.includes("实例配置"));
   assert(boundaryConfigHoverResult.markdown.includes("projects/knowledge_base_basic/instance.toml"));
   assert(boundaryConfigHoverResult.markdown.includes("`[chat]`"));
+
+  const citationConfigRef = locate(knowledgeBaseL2.text, "CITATION + SCOPE");
+  const citationConfigResult = resolveDefinitionTarget({
+    repoRoot,
+    filePath: knowledgeBaseL2.filePath,
+    text: knowledgeBaseL2.text,
+    line: citationConfigRef.line,
+    character: citationConfigRef.character,
+  });
+  assert(citationConfigResult, "derived citation boundary ref should resolve");
+  assert(citationConfigResult.filePath.endsWith("projects/knowledge_base_basic/instance.toml"));
+  assert.strictEqual(targetLineText(citationConfigResult).trim(), "[chat]");
+
+  const citationConfigHoverResult = resolveHoverTarget({
+    repoRoot,
+    filePath: knowledgeBaseL2.filePath,
+    text: knowledgeBaseL2.text,
+    line: citationConfigRef.line,
+    character: citationConfigRef.character,
+  });
+  assert(citationConfigHoverResult, "derived citation boundary hover should resolve");
+  assert(citationConfigHoverResult.markdown.includes("`[chat]`"));
+  assert(citationConfigHoverResult.markdown.includes("`[context]`"));
+  assert(citationConfigHoverResult.markdown.includes("`[return]`"));
+  assert(citationConfigHoverResult.markdown.includes("归属说明"));
+
+  const citationReferences = resolveReferenceTargets({
+    repoRoot,
+    filePath: knowledgeBaseL2.filePath,
+    text: knowledgeBaseL2.text,
+    line: citationConfigRef.line,
+    character: citationConfigRef.character,
+  });
+  assert(citationReferences.length >= 3, "citation references should include usage, definition, and config");
+  assert(citationReferences.some((item) => item.filePath.endsWith("framework/knowledge_base/L0-M2-对话与引用原子模块.md")));
+  assert(citationReferences.some((item) => item.filePath.endsWith("projects/knowledge_base_basic/instance.toml")));
+
+  const a11yConfigRef = locate(knowledgeBaseL2.text, "STATUS + A11Y");
+  const a11yConfigResult = resolveDefinitionTarget({
+    repoRoot,
+    filePath: knowledgeBaseL2.filePath,
+    text: knowledgeBaseL2.text,
+    line: a11yConfigRef.line,
+    character: a11yConfigRef.character + "STATUS + ".length,
+  });
+  assert(a11yConfigResult, "knowledge base A11Y boundary ref should resolve");
+  assert(a11yConfigResult.filePath.endsWith("projects/knowledge_base_basic/instance.toml"));
+  assert.strictEqual(targetLineText(a11yConfigResult).trim(), "[a11y]");
+
+  const frontendTokenL0 = loadFrameworkFile("framework/frontend/L0-M3-设计令牌与主题模块.md");
+  const tokenConfigRef = locate(frontendTokenL0.text, "TOKEN + STATE");
+  const tokenConfigResult = resolveDefinitionTarget({
+    repoRoot,
+    filePath: frontendTokenL0.filePath,
+    text: frontendTokenL0.text,
+    line: tokenConfigRef.line,
+    character: tokenConfigRef.character,
+  });
+  assert(tokenConfigResult, "frontend TOKEN boundary ref should resolve");
+  assert(tokenConfigResult.filePath.endsWith("projects/knowledge_base_basic/instance.toml"));
+  assert.strictEqual(targetLineText(tokenConfigResult).trim(), "[visual]");
+
+  const frontendButtonL1 = loadFrameworkFile("framework/frontend/L1-M0-按钮原子模块.md");
+  const buttonA11yRef = locate(frontendButtonL1.text, "BTNBIND + BTNA11Y");
+  const buttonA11yResult = resolveDefinitionTarget({
+    repoRoot,
+    filePath: frontendButtonL1.filePath,
+    text: frontendButtonL1.text,
+    line: buttonA11yRef.line,
+    character: buttonA11yRef.character + "BTNBIND + ".length,
+  });
+  assert(buttonA11yResult, "frontend BTNA11Y boundary ref should resolve");
+  assert(buttonA11yResult.filePath.endsWith("projects/knowledge_base_basic/instance.toml"));
+  assert.strictEqual(targetLineText(buttonA11yResult).trim(), "[a11y]");
+
+  const backendL2 = loadFrameworkFile("framework/backend/L2-M0-知识库接口框架标准模块.md");
+  const backendResultRef = locate(backendL2.text, "CHAT + RESULT + TRACE");
+  const backendResult = resolveDefinitionTarget({
+    repoRoot,
+    filePath: backendL2.filePath,
+    text: backendL2.text,
+    line: backendResultRef.line,
+    character: backendResultRef.character + "CHAT + ".length,
+  });
+  assert(backendResult, "backend RESULT boundary ref should resolve");
+  assert(backendResult.filePath.endsWith("projects/knowledge_base_basic/instance.toml"));
+  assert.strictEqual(targetLineText(backendResult).trim(), "[return]");
 }
 
 main();

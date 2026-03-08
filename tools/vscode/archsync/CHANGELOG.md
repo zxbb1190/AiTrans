@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.0.28 - 2026-03-08
+- Expanded boundary-to-instance navigation from explicit top-level sections to full boundary traceability across framework markdown. Derived boundaries such as `CITATION`, `TURN`, `INPUT`, `SCOPE`, and `STATUS` now jump to their owning or related `instance.toml` sections instead of stopping at local definitions only.
+- Boundary hover cards now distinguish primary owning sections from additional related sections and include an ownership note when the mapping is inferred rather than directly declared.
+- Added framework-markdown reference results for navigable symbols, so `Find All References` / `Shift+F12` can return the current usage, framework definition, and mapped instance configuration target for boundary tokens.
+
 ## 0.0.27 - 2026-03-08
 - Refined the ArchSync sidebar into a denser dark VS Code-style home view with clearer overview, actions, workspace signals, and issue preview sections.
 - Reworked the framework tree page into a more GitLens / Git Graph-like layout with a scrollable full-size graph surface, stronger right-side inspect panels, and improved node detail grouping.

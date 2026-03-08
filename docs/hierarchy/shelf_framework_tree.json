@@ -19,7 +19,50 @@
         "order": 1,
         "description": "module=backend | level=L0 | node=L0.M0 | file=framework/backend/L0-M0-文件资源与对话契约原子模块.md | title=L0-M0-文件资源与对话契约原子模块",
         "source_file": "framework/backend/L0-M0-文件资源与对话契约原子模块.md",
-        "source_line": 23
+        "source_line": 23,
+        "doc_line": 1,
+        "module_name": "backend",
+        "module_ref": "L0.M0",
+        "module_title": "知识库文件资源与对话契约原子模块:KnowledgeFileResourceConversationContracts",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "文件资源抽象能力：把知识库文件、文档预览与元信息抽象为稳定资源结构",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "对话引用契约能力：把对话输入、回答输出与引用条目抽象为稳定契约结构",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "约束外化能力：把字段校验、数量限制与错误表达外化为稳定边界",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责前端页面编排、向量索引策略与模型推理实现",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "文件资源结构基：由文件标识、文件元信息与目录字段构成的资源结构",
+            "line": "23"
+          },
+          {
+            "token": "B2",
+            "text": "文档预览契约基：由正文、目录、摘要与章节锚点字段构成的预览结构",
+            "line": "24"
+          },
+          {
+            "token": "B3",
+            "text": "对话引用契约基：由对话输入、回答输出与引用条目字段构成的契约结构",
+            "line": "25"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0002",
@@ -28,7 +71,50 @@
         "order": 2,
         "description": "module=curtain | level=L0 | node=L0.M0 | file=framework/curtain/L0-M0-窗帘抽象结构模块.md | title=L0-M0-窗帘抽象结构模块",
         "source_file": "framework/curtain/L0-M0-窗帘抽象结构模块.md",
-        "source_line": 24
+        "source_line": 24,
+        "doc_line": 1,
+        "module_name": "curtain",
+        "module_ref": "L0.M0",
+        "module_title": "窗帘抽象结构模块:CurtainAbstractStructure",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "结构抽象能力：定义窗帘系统最小稳定结构单元与组合接口",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "运动承载能力：定义遮挡体在导向结构中的可控运动能力",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "约束治理能力：定义安全、噪声和环境适配的约束边界",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责具体布料花色、装饰样式和场景陈设",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "承载导向基：由承载路径、导向轨迹和连接节点构成的结构骨架",
+            "line": "24"
+          },
+          {
+            "token": "B2",
+            "text": "运动传递基：由驱动链、行程限位和端点缓冲单元构成的运动结构",
+            "line": "25"
+          },
+          {
+            "token": "B3",
+            "text": "安全约束基：由失效保护单元、环境适配层和风险隔离节点构成的治理结构",
+            "line": "26"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0003",
@@ -37,7 +123,50 @@
         "order": 3,
         "description": "module=frontend | level=L0 | node=L0.M0 | file=framework/frontend/L0-M0-槽位与壳体原子模块.md | title=L0-M0-槽位与壳体原子模块",
         "source_file": "framework/frontend/L0-M0-槽位与壳体原子模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L0.M0",
+        "module_title": "前端槽位与壳体原子模块:FrontendSlotShellAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "槽位承载能力：沉淀主内容槽位、辅助槽位与前后缀槽位的稳定组织结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "壳体限定能力：沉淀边框、盒模型、分区轮廓与区域边界的稳定结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "分区空态承载能力：沉淀局部分区、空态占位与槽位顺序关系的稳定结构",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责领域语义、具体主题值与宿主框架接口",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "槽位集结构基：由主槽位、辅助槽位与前后缀槽位构成的槽位集结构",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "壳体轮廓结构基：由边框轮廓、盒模型与分区边界构成的壳体结构",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "分区空态结构基：由区域顺序、空态占位与阅读提示构成的分区结构",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0004",
@@ -46,7 +175,50 @@
         "order": 4,
         "description": "module=frontend | level=L0 | node=L0.M1 | file=framework/frontend/L0-M1-状态与通道原子模块.md | title=L0-M1-状态与通道原子模块",
         "source_file": "framework/frontend/L0-M1-状态与通道原子模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L0.M1",
+        "module_title": "前端状态与通道原子模块:FrontendStateChannelAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "值通道承载能力：沉淀默认值、当前值、派生值与清空回路的稳定结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "动作通道承载能力：沉淀提交、重置、展开、关闭与切换动作的稳定结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "状态相位承载能力：沉淀默认、激活、加载、禁用、错误与恢复状态的稳定结构",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责具体组件外形、宿主标签与实例主题值",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "值流结构基：由默认值、当前值与流入流出顺序构成的值通道结构",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "动作流结构基：由动作类型、触发出口与复位出口构成的动作通道结构",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "状态相位结构基：由状态集合、切换顺序与向外暴露位构成的相位结构",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0005",
@@ -55,7 +227,50 @@
         "order": 5,
         "description": "module=frontend | level=L0 | node=L0.M2 | file=framework/frontend/L0-M2-宿主绑定与可达原子模块.md | title=L0-M2-宿主绑定与可达原子模块",
         "source_file": "framework/frontend/L0-M2-宿主绑定与可达原子模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L0.M2",
+        "module_title": "前端宿主绑定与可达原子模块:FrontendHostBindingA11yAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "宿主承载能力：沉淀组件与宿主标签、宿主元素和宿主角色之间的稳定映射结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "接口绑定能力：沉淀属性接口、事件接口、引用句柄与 slot/children 绑定结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "可达回路能力：沉淀焦点顺序、语义提示与阅读可达关系的稳定结构",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责具体组件外形、主题实例值与领域业务动作",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "宿主角色结构基：由宿主元素、语义角色与宿主替换位构成的宿主结构",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "接口事件结构基：由属性入口、事件出口与引用句柄构成的绑定结构",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "焦点可达结构基：由焦点顺序、阅读提示与状态播报位构成的可达结构",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0006",
@@ -64,7 +279,50 @@
         "order": 6,
         "description": "module=frontend | level=L0 | node=L0.M3 | file=framework/frontend/L0-M3-设计令牌与主题模块.md | title=L0-M3-设计令牌与主题模块",
         "source_file": "framework/frontend/L0-M3-设计令牌与主题模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L0.M3",
+        "module_title": "前端设计令牌与主题模块:FrontendTokenThemeFoundation",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "语义令牌沉淀能力：把排版、色彩、间距、层级与状态抽象为稳定令牌结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "主题映射能力：把同一组语义令牌映射到多主题、多密度与多状态输出",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "覆盖继承能力：为局部覆盖、默认回退与可访问性治理提供稳定结构",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责领域文案、业务状态流与页面路由定义",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "语义令牌表结构基：由排版、色彩、间距与层级语义键构成的令牌结构",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "主题映射矩阵基：由主题集、密度集与状态映射表构成的输出结构",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "覆盖继承结构基：由局部覆盖表、默认回退链与可访问约束构成的治理结构",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0007",
@@ -73,7 +331,50 @@
         "order": 7,
         "description": "module=frontend | level=L0 | node=L0.M4 | file=framework/frontend/L0-M4-工程与运行底座模块.md | title=L0-M4-工程与运行底座模块",
         "source_file": "framework/frontend/L0-M4-工程与运行底座模块.md",
-        "source_line": 26
+        "source_line": 26,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L0.M4",
+        "module_title": "前端工程与运行底座模块:FrontendRuntimeFoundation",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "运行承载能力：为前端应用提供稳定启动、挂载与静态资源承载结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "交付收敛能力：为构建、发布、缓存与回滚提供稳定交付结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "治理守护能力：为安全、兼容与观测提供稳定外化结构",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责领域页面语义、业务字段定义与接口契约细节",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "应用壳结构基：由根容器、挂载入口与布局槽位构成的运行结构",
+            "line": "26"
+          },
+          {
+            "token": "B2",
+            "text": "资源交付结构基：由构建产物索引、静态资源清单与发布回滚通道构成的交付结构",
+            "line": "27"
+          },
+          {
+            "token": "B3",
+            "text": "治理守护结构基：由安全策略、兼容开关与观测钩子构成的治理结构",
+            "line": "28"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0008",
@@ -82,7 +383,50 @@
         "order": 8,
         "description": "module=knowledge_base | level=L0 | node=L0.M0 | file=framework/knowledge_base/L0-M0-文件库与摄取原子模块.md | title=L0-M0-文件库与摄取原子模块",
         "source_file": "framework/knowledge_base/L0-M0-文件库与摄取原子模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "knowledge_base",
+        "module_ref": "L0.M0",
+        "module_title": "知识库文件库与摄取原子模块:KnowledgeFileLibraryIngestAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "文件集合承载能力：把知识库中的文件集合、当前焦点与分组关系抽象为稳定结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "文件摄取承接能力：把上传、导入与移除入口抽象为稳定摄取结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "目录约束外化能力：把数量、类型、排序与可见性约束外化为稳定边界",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责文档正文展示、对话引用与后端存储实现",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "文件目录结构基：frontend.L1.M4[R1,R3] + frontend.L1.M5[R1,R3] + frontend.L1.M6[R1,R3]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "文件摄取结构基：frontend.L1.M0[R2,R3] + frontend.L1.M3[R1,R3] + frontend.L1.M7[R1,R3]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "目录约束结构基：frontend.L1.M4[R1,R2] + frontend.L1.M6[R2,R3] + frontend.L1.M7[R1,R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0009",
@@ -91,7 +435,50 @@
         "order": 9,
         "description": "module=knowledge_base | level=L0 | node=L0.M1 | file=framework/knowledge_base/L0-M1-文档与目录原子模块.md | title=L0-M1-文档与目录原子模块",
         "source_file": "framework/knowledge_base/L0-M1-文档与目录原子模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "knowledge_base",
+        "module_ref": "L0.M1",
+        "module_title": "知识库文档与目录原子模块:KnowledgeDocumentTocAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "文档承载能力：把当前选中文件的正文、元信息与阅读焦点抽象为稳定文档结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "TOC 层级承载能力：把当前文档中的章节树抽象为稳定目录结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "阅读路径约束能力：把文档、目录与焦点的对应关系外化为稳定边界",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责文件摄取、对话回合与后端解析实现",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "文档视口结构基：frontend.L1.M4[R1,R3] + frontend.L1.M5[R1,R3]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "TOC 树结构基：frontend.L1.M4[R1] + frontend.L1.M6[R2,R3]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "阅读锚点结构基：frontend.L1.M5[R2,R3] + frontend.L1.M7[R2,R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0010",
@@ -100,7 +487,50 @@
         "order": 10,
         "description": "module=knowledge_base | level=L0 | node=L0.M2 | file=framework/knowledge_base/L0-M2-对话与引用原子模块.md | title=L0-M2-对话与引用原子模块",
         "source_file": "framework/knowledge_base/L0-M2-对话与引用原子模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "knowledge_base",
+        "module_ref": "L0.M2",
+        "module_title": "知识库对话与引用原子模块:KnowledgeConversationCitationAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "对话舞台承载能力：把用户回合、助手回合、系统提示与回合顺序抽象为稳定结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "行内引用附着承载能力：把回合与知识文件片段、章节锚点、行内引用编号、来源抽屉和返回动作之间的关系抽象为稳定结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "知识域约束能力：把当前选中文件、全库引用范围与回合上下文外化为稳定边界",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责文件摄取、文档解析与模型推理实现",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "对话舞台结构基：frontend.L1.M4[R1,R3] + frontend.L1.M5[R1,R2] + frontend.L1.M7[R2,R3]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "提问提交结构基：frontend.L1.M0[R2,R3] + frontend.L1.M1[R1,R3] + frontend.L1.M2[R1,R3]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "行内引用结构基：frontend.L1.M4[R1,R2] + frontend.L1.M7[R1,R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0011",
@@ -109,7 +539,50 @@
         "order": 11,
         "description": "module=runtime_env | level=L0 | node=L0.M0 | file=framework/runtime_env/L0-M0-运行环境识别模块.md | title=L0-M0-运行环境识别模块",
         "source_file": "framework/runtime_env/L0-M0-运行环境识别模块.md",
-        "source_line": 24
+        "source_line": 24,
+        "doc_line": 1,
+        "module_name": "runtime_env",
+        "module_ref": "L0.M0",
+        "module_title": "运行环境识别模块:RuntimeEnvDetection",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "环境感知能力：识别平台、执行容器和关键运行特征",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "策略决策能力：基于环境特征选择运行模式和能力开关",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "回退隔离能力：在不满足条件时执行降级与隔离保护",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责具体业务功能实现与页面交互设计",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "环境采样基：由特征探针、标准化层和可信度标注构成的采样结构",
+            "line": "24"
+          },
+          {
+            "token": "B2",
+            "text": "策略映射基：由环境特征图、策略映射表和开关矩阵构成的决策结构",
+            "line": "25"
+          },
+          {
+            "token": "B3",
+            "text": "回退隔离基：由降级路径图、隔离层级和恢复触发点构成的回退结构",
+            "line": "26"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0012",
@@ -118,7 +591,50 @@
         "order": 12,
         "description": "module=shelf | level=L0 | node=L0.M0 | file=framework/shelf/L0-M0-置物架抽象结构模块.md | title=L0-M0-置物架抽象结构模块",
         "source_file": "framework/shelf/L0-M0-置物架抽象结构模块.md",
-        "source_line": 23
+        "source_line": 23,
+        "doc_line": 1,
+        "module_name": "shelf",
+        "module_ref": "L0.M0",
+        "module_title": "置物架抽象结构模块:ShelfAbstractStructureModule",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "承载结构抽象能力：定义置物架主承载路径、连接节点与稳定约束",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "空间单元抽象能力：定义分层、分格和访问通道的基础结构",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "约束治理能力：定义安全、公差与场景适配边界",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责具体材质纹理、颜色方案与业务摆放策略",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "承载路径基：由主承载构件、受力通路和稳定节点构成",
+            "line": "23"
+          },
+          {
+            "token": "B2",
+            "text": "连接节点基：由接口节点、约束锁定点和公差控制单元构成",
+            "line": "24"
+          },
+          {
+            "token": "B3",
+            "text": "分格单元基：由放置平面、访问通道和分格边界构成",
+            "line": "25"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0013",
@@ -127,7 +643,50 @@
         "order": 1,
         "description": "module=backend | level=L1 | node=L1.M0 | file=framework/backend/L1-M0-目录预览对话编排模块.md | title=L1-M0-目录预览对话编排模块",
         "source_file": "framework/backend/L1-M0-目录预览对话编排模块.md",
-        "source_line": 23
+        "source_line": 23,
+        "doc_line": 1,
+        "module_name": "backend",
+        "module_ref": "L1.M0",
+        "module_title": "知识库目录预览对话编排模块:KnowledgeLibraryPreviewConversationOrchestration",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "文件库接口编排能力：把文件列表、上传、移除与引用域选择编排为稳定接口集合",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "预览接口编排能力：把文档预览、目录读取与章节锚点读取编排为稳定接口集合",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "对话引用接口编排能力：把对话请求、回答输出与引用返回编排为稳定接口集合",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责前端布局、索引实现与模型推理过程本身",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "文件库接口编排基：L0.M0[R1,R3]",
+            "line": "23"
+          },
+          {
+            "token": "B2",
+            "text": "预览接口编排基：L0.M0[R1,R2]",
+            "line": "24"
+          },
+          {
+            "token": "B3",
+            "text": "对话引用接口编排基：L0.M0[R2,R3]",
+            "line": "25"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0014",
@@ -136,7 +695,50 @@
         "order": 2,
         "description": "module=curtain | level=L1 | node=L1.M0 | file=framework/curtain/L1-M0-安装与控制编排模块.md | title=L1-M0-安装与控制编排模块",
         "source_file": "framework/curtain/L1-M0-安装与控制编排模块.md",
-        "source_line": 24
+        "source_line": 24,
+        "doc_line": 1,
+        "module_name": "curtain",
+        "module_ref": "L1.M0",
+        "module_title": "安装控制编排模块:InstallControlOrchestration",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "安装编排能力：将抽象结构落地为可执行安装步骤与验收条件",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "控制编排能力：将控制输入转换为稳定可预测的开合行为",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "运维恢复能力：支持校准、故障诊断与回退恢复流程",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责具体装饰风格和业务展示交互",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "安装定位基：L0.M0[R1]",
+            "line": "24"
+          },
+          {
+            "token": "B2",
+            "text": "控制执行基：L0.M0[R2]",
+            "line": "25"
+          },
+          {
+            "token": "B3",
+            "text": "校准恢复基：L0.M0[R3]",
+            "line": "26"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0015",
@@ -145,7 +747,50 @@
         "order": 3,
         "description": "module=frontend | level=L1 | node=L1.M0 | file=framework/frontend/L1-M0-按钮原子模块.md | title=L1-M0-按钮原子模块",
         "source_file": "framework/frontend/L1-M0-按钮原子模块.md",
-        "source_line": 26
+        "source_line": 26,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L1.M0",
+        "module_title": "前端按钮原子模块:FrontendButtonAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "按钮外形承载能力：沉淀按钮的内容槽位、边框轮廓与盒模型外形",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "按钮触发承载能力：沉淀按钮的动作语义、事件出口与状态切换结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "按钮绑定承载能力：沉淀按钮与前端框架宿主元素、属性接口和可访问标记之间的稳定绑定结构",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责领域动作语义、具体颜色值与运行时业务逻辑",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "按钮外壳结构基：L0.M0[R2,R3] + L0.M3[R1,R2]",
+            "line": "26"
+          },
+          {
+            "token": "B2",
+            "text": "按钮状态语义基：L0.M1[R1,R3] + L0.M3[R2,R3]",
+            "line": "27"
+          },
+          {
+            "token": "B3",
+            "text": "按钮绑定结构基：L0.M2[R1,R3]",
+            "line": "28"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0016",
@@ -154,7 +799,50 @@
         "order": 4,
         "description": "module=frontend | level=L1 | node=L1.M1 | file=framework/frontend/L1-M1-输入框原子模块.md | title=L1-M1-输入框原子模块",
         "source_file": "framework/frontend/L1-M1-输入框原子模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L1.M1",
+        "module_title": "前端输入框原子模块:FrontendInputFieldAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "输入框外形承载能力：沉淀输入框的文本槽位、边框轮廓与前后缀承载结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "值状态承载能力：沉淀输入值、占位内容、清空规则与错误状态结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "绑定承载能力：沉淀输入框与前端框架值绑定、事件回调和可访问标记之间的稳定结构",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责领域字段语义、校验逻辑实现与具体主题值",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "输入框外壳结构基：L0.M0[R2,R3] + L0.M3[R1,R2]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "输入值状态基：L0.M1[R1,R3]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "输入绑定结构基：L0.M2[R1,R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0017",
@@ -163,7 +851,50 @@
         "order": 5,
         "description": "module=frontend | level=L1 | node=L1.M2 | file=framework/frontend/L1-M2-文本域原子模块.md | title=L1-M2-文本域原子模块",
         "source_file": "framework/frontend/L1-M2-文本域原子模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L1.M2",
+        "module_title": "前端文本域原子模块:FrontendTextareaAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "文本域外形承载能力：沉淀多行输入区域、内边距、边框轮廓与计数信息承载结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "多行状态承载能力：沉淀滚动、扩展高度、占位内容与多行提交状态结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "绑定承载能力：沉淀文本域与前端框架值绑定、输入回调和可访问标记之间的稳定结构",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责领域文本语义、富文本编辑器能力与具体主题值",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "文本域外壳结构基：L0.M0[R2,R3] + L0.M3[R1,R2]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "文本域滚动状态基：L0.M1[R2,R3]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "文本域绑定结构基：L0.M2[R1,R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0018",
@@ -172,7 +903,50 @@
         "order": 6,
         "description": "module=frontend | level=L1 | node=L1.M3 | file=framework/frontend/L1-M3-文件选择原子模块.md | title=L1-M3-文件选择原子模块",
         "source_file": "framework/frontend/L1-M3-文件选择原子模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L1.M3",
+        "module_title": "前端文件选择原子模块:FrontendFilePickerAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "文件入口承载能力：沉淀文件选择触发面、选择结果承载位与替换取消出口结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "文件集合状态承载能力：沉淀单文件、多文件、空选择与错误提示状态结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "绑定承载能力：沉淀文件选择与前端框架宿主元素、accept/multiple、change 回调之间的稳定结构",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责上传后存储实现、解析算法与具体主题值",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "文件入口结构基：L0.M0[R2,R3] + L0.M1[R1,R2]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "文件集合状态基：L0.M1[R2,R3] + L0.M3[R1,R2]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "文件绑定结构基：L0.M2[R1,R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0019",
@@ -181,7 +955,50 @@
         "order": 7,
         "description": "module=frontend | level=L1 | node=L1.M4 | file=framework/frontend/L1-M4-文本块原子模块.md | title=L1-M4-文本块原子模块",
         "source_file": "framework/frontend/L1-M4-文本块原子模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L1.M4",
+        "module_title": "前端文本块原子模块:FrontendTextBlockAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "文本内容承载能力：沉淀标题、正文、摘要与辅助文案的稳定文本结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "文本语义层级能力：沉淀文本层级、强调关系与截断规则的稳定结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "绑定承载能力：沉淀文本块与前端框架 children/slot、语义标签和可访问标记之间的稳定结构",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责领域文案本身、富文本解析与具体主题值",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "文本内容结构基：L0.M0[R1,R3]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "文本排版语义基：L0.M1[R3] + L0.M3[R1,R3]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "文本绑定结构基：L0.M2[R1,R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0020",
@@ -190,7 +1007,50 @@
         "order": 8,
         "description": "module=frontend | level=L1 | node=L1.M5 | file=framework/frontend/L1-M5-面板与视口原子模块.md | title=L1-M5-面板与视口原子模块",
         "source_file": "framework/frontend/L1-M5-面板与视口原子模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L1.M5",
+        "module_title": "前端面板与视口原子模块:FrontendPanelViewportAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "面板外壳承载能力：沉淀面板的头部、主体、尾部与边框外形结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "视口滚动承载能力：沉淀滚动区、分节槽位与空态承载结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "绑定承载能力：沉淀面板与视口和前端框架宿主元素、slot/children、滚动接口之间的稳定结构",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责领域布局语义、动画实现与具体主题值",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "面板外壳结构基：L0.M0[R2,R3] + L0.M3[R1,R2]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "视口分节结构基：L0.M0[R3] + L0.M1[R2,R3]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "面板绑定结构基：L0.M2[R1,R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0021",
@@ -199,7 +1059,50 @@
         "order": 9,
         "description": "module=frontend | level=L1 | node=L1.M6 | file=framework/frontend/L1-M6-列表与层级原子模块.md | title=L1-M6-列表与层级原子模块",
         "source_file": "framework/frontend/L1-M6-列表与层级原子模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L1.M6",
+        "module_title": "前端列表与层级原子模块:FrontendListHierarchyAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "顺序列表承载能力：沉淀顺序项集合与浏览路径的稳定结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "层级树承载能力：沉淀父子节点、展开关系与目录层次的稳定结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "选择焦点保持能力：沉淀当前选中项、展开项与空态的稳定结构",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责领域节点语义、后端分页策略与样式实例值",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "列表结构基：L0.M0[R3] + L0.M1[R2,R3]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "树结构基：L0.M0[R2,R3] + L0.M1[R1,R3]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "节点项结构基：L0.M0[R1,R2] + L0.M2[R1,R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0022",
@@ -208,7 +1111,50 @@
         "order": 10,
         "description": "module=frontend | level=L1 | node=L1.M7 | file=framework/frontend/L1-M7-标记与反馈原子模块.md | title=L1-M7-标记与反馈原子模块",
         "source_file": "framework/frontend/L1-M7-标记与反馈原子模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L1.M7",
+        "module_title": "前端标记与反馈原子模块:FrontendMarkerFeedbackAtoms",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "标签标记承载能力：沉淀标签、徽记与小型状态标记的稳定结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "回合气泡承载能力：沉淀消息气泡、引用气泡与提示气泡的稳定结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "状态反馈承载能力：沉淀提示条、占位态与结果反馈的稳定结构",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责领域解释文本、后端告警机制与主题实例值",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "标签结构基：L0.M0[R1,R2] + L0.M3[R1,R3]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "气泡结构基：L0.M0[R2,R3] + L0.M1[R2,R3]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "提示占位结构基：L0.M1[R3] + L0.M2[R2,R3] + L0.M3[R2,R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0023",
@@ -217,7 +1163,50 @@
         "order": 11,
         "description": "module=frontend | level=L1 | node=L1.M8 | file=framework/frontend/L1-M8-通用组件装配模块.md | title=L1-M8-通用组件装配模块",
         "source_file": "framework/frontend/L1-M8-通用组件装配模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L1.M8",
+        "module_title": "前端通用组件装配模块:FrontendGenericComponentAssembly",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "通用装配面能力：把槽位壳体、状态通道和宿主绑定收敛成稳定装配骨架",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "主题支撑能力：把装配骨架与令牌、主题和覆盖回退结构绑定到同一组件面",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "运行承接能力：把装配骨架与挂载、交付和治理底座对齐，形成稳定通用组件支撑面",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责领域对象语义与项目实例值",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "装配骨架结构基：L0.M0[R2,R3] + L0.M1[R1,R3] + L0.M2[R1,R3]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "主题映射支撑基：L0.M0[R1,R2] + L0.M3[R1,R3]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "运行治理支撑基：L0.M2[R2,R3] + L0.M4[R1,R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0024",
@@ -226,7 +1215,50 @@
         "order": 12,
         "description": "module=knowledge_base | level=L1 | node=L1.M0 | file=framework/knowledge_base/L1-M0-知识库界面骨架模块.md | title=L1-M0-知识库界面骨架模块",
         "source_file": "framework/knowledge_base/L1-M0-知识库界面骨架模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "knowledge_base",
+        "module_ref": "L1.M0",
+        "module_title": "知识库界面骨架模块:KnowledgeBaseWorkbenchSkeleton",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "chat-first 骨架装配能力：把会话侧栏、对话主舞台、来源抽屉与辅助详情页装配为稳定知识库界面骨架",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "多区焦点联动能力：把文件焦点、章节焦点、引用焦点与对话焦点组织为稳定联动结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "响应式骨架复用能力：让桌面多区与移动分区共享同一骨架约束",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责项目级路由策略、后端接口实现与模型推理细节",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "会话骨架结构基：L0.M0[R1,R2] + L0.M1[R1,R2]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "来源抽屉结构基：L0.M1[R2,R3] + L0.M2[R1,R2]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "chat-first 客户端骨架基：L0.M0[R3] + L0.M1[R3] + L0.M2[R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0025",
@@ -235,7 +1267,50 @@
         "order": 13,
         "description": "module=knowledge_base | level=L1 | node=L1.M1 | file=framework/knowledge_base/L1-M1-知识引用上下文编排模块.md | title=L1-M1-知识引用上下文编排模块",
         "source_file": "framework/knowledge_base/L1-M1-知识引用上下文编排模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "knowledge_base",
+        "module_ref": "L1.M1",
+        "module_title": "知识引用上下文编排模块:KnowledgeCitationContextOrchestration",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "知识域编排能力：把当前允许引用的文件集、当前聚焦文件与回合上下文收敛为稳定结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "来源锚点衔接能力：把文件焦点、章节锚点、引用抽屉与文档详情衔接为稳定关系结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "回合回溯能力：把行内引用附着、回合输出与返回文档路径收敛为稳定回路",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责文件摄取入口、项目路由策略与模型推理实现",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "知识域装配基：L0.M0[R3] + L0.M2[R2,R3]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "来源抽屉衔接基：L0.M1[R1,R3] + L0.M2[R2,R3]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "引用上下文回路基：L0.M0[R1,R3] + L0.M1[R2,R3] + L0.M2[R1,R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0026",
@@ -244,7 +1319,50 @@
         "order": 14,
         "description": "module=shelf | level=L1 | node=L1.M0 | file=framework/shelf/L1-M0-置物架装配编排模块.md | title=L1-M0-置物架装配编排模块",
         "source_file": "framework/shelf/L1-M0-置物架装配编排模块.md",
-        "source_line": 23
+        "source_line": 23,
+        "doc_line": 1,
+        "module_name": "shelf",
+        "module_ref": "L1.M0",
+        "module_title": "置物架装配编排模块:ShelfAssemblyOrchestrationModule",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "装配流程编排能力：将抽象结构转化为可执行装配步骤与检查点",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "空间单元编排能力：将分格单元组织为可落地层板与访问通道结构",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "运维治理能力：支持复核、回退与场景重配",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责具体摆放策略、业务规则和视觉装饰配置",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "装配骨架编排基：L0.M0[R1]",
+            "line": "23"
+          },
+          {
+            "token": "B2",
+            "text": "空间单元编排基：L0.M0[R2]",
+            "line": "24"
+          },
+          {
+            "token": "B3",
+            "text": "回退治理编排基：L0.M0[R3]",
+            "line": "25"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0027",
@@ -253,7 +1371,50 @@
         "order": 1,
         "description": "module=backend | level=L2 | node=L2.M0 | file=framework/backend/L2-M0-知识库接口框架标准模块.md | title=L2-M0-知识库接口框架标准模块",
         "source_file": "framework/backend/L2-M0-知识库接口框架标准模块.md",
-        "source_line": 23
+        "source_line": 23,
+        "doc_line": 1,
+        "module_name": "backend",
+        "module_ref": "L2.M0",
+        "module_title": "知识库接口框架标准模块:KnowledgeBaseApiFramework",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "文件管理接口提供能力：稳定提供文件列表、上传、移除与文件聚焦相关接口",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "文档预览接口提供能力：稳定提供正文、目录与章节锚点相关接口",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "对话引用接口提供能力：稳定提供基于知识库的对话请求、回答输出与引用返回接口",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责前端布局、检索算法优化与模型回答质量定义",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "文件预览接口基：L1.M0[R1,R3]",
+            "line": "23"
+          },
+          {
+            "token": "B2",
+            "text": "对话引用接口基：L1.M0[R2,R3]",
+            "line": "24"
+          },
+          {
+            "token": "B3",
+            "text": "接口治理基：L1.M0[R1,R2,R3]",
+            "line": "25"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0028",
@@ -262,7 +1423,50 @@
         "order": 2,
         "description": "module=curtain | level=L2 | node=L2.M0 | file=framework/curtain/L2-M0-窗帘框架标准模块.md | title=L2-M0-窗帘框架标准模块",
         "source_file": "framework/curtain/L2-M0-窗帘框架标准模块.md",
-        "source_line": 24
+        "source_line": 24,
+        "doc_line": 1,
+        "module_name": "curtain",
+        "module_ref": "L2.M0",
+        "module_title": "窗帘系统框架模块:CurtainSystemFramework",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "窗帘结构集成能力：集成承载、导向与连接结构形成稳定系统",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "开合控制能力：实现可控开合、状态反馈和模式切换能力",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "场景适配能力：在不同安装场景下保持安全、静音与可维护性",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责布料图案、空间软装风格和装饰偏好",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "轨道承载基：L1.M0[R1]",
+            "line": "24"
+          },
+          {
+            "token": "B2",
+            "text": "驱动传递基：L1.M0[R2]",
+            "line": "25"
+          },
+          {
+            "token": "B3",
+            "text": "场景治理基：L1.M0[R3]",
+            "line": "26"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0029",
@@ -271,7 +1475,50 @@
         "order": 3,
         "description": "module=frontend | level=L2 | node=L2.M0 | file=framework/frontend/L2-M0-前端框架标准模块.md | title=L2-M0-前端框架标准模块",
         "source_file": "framework/frontend/L2-M0-前端框架标准模块.md",
-        "source_line": 26
+        "source_line": 26,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L2.M0",
+        "module_title": "前端框架标准模块:FrontendFrameworkStandard",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "通用界面装配能力：把输入、展示、导航与反馈原子装配为稳定前端界面结构",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "跨场景交互承接能力：以统一结构承接聊天、来源验证、知识库浏览与详情页跳转等不同场景交互",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "领域框架承接能力：为更高层的领域通用框架输出稳定 UI 承接面，而不泄漏底层实现细节",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责具体领域对象定义、后端存储模型与项目实例值",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "界面装配基：L1.M0[R1,R3] + L1.M1[R1,R3] + L1.M2[R1,R3] + L1.M3[R1,R3] + L1.M8[R1,R2]",
+            "line": "26"
+          },
+          {
+            "token": "B2",
+            "text": "交互契约基：L1.M4[R1,R3] + L1.M5[R1,R3] + L1.M6[R1,R3] + L1.M7[R1,R3] + L1.M8[R2,R3]",
+            "line": "27"
+          },
+          {
+            "token": "B3",
+            "text": "领域承接基：L1.M0[R2,R3] + L1.M5[R2,R3] + L1.M8[R3]",
+            "line": "28"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0030",
@@ -280,7 +1527,50 @@
         "order": 4,
         "description": "module=knowledge_base | level=L2 | node=L2.M0 | file=framework/knowledge_base/L2-M0-知识库工作台场景模块.md | title=L2-M0-知识库工作台场景模块",
         "source_file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "knowledge_base",
+        "module_ref": "L2.M0",
+        "module_title": "知识库工作台场景模块:KnowledgeBaseWorkbenchScenarios",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "chat-first 工作台建模能力：将会话侧栏、知识库入口、对话主舞台与引用来源收敛为统一工作台场景",
+            "line": "9"
+          },
+          {
+            "token": "C2",
+            "text": "上下文衔接能力：统一当前文件、当前章节、引用域与回合上下文在场景间的传递结构",
+            "line": "10"
+          },
+          {
+            "token": "C3",
+            "text": "引用对话闭环能力：支持上传文件、选择引用域、基于知识库对话并回看引用来源",
+            "line": "11"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责前端底座实现、后端索引算法与模型本身推理质量",
+            "line": "12"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "会话与知识入口场景基：L1.M0[R1,R2]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "对话引用场景基：L1.M0[R1,R3] + L1.M1[R1,R2]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "chat-first 客户端闭环场景基：L1.M0[R3] + L1.M1[R2,R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0031",
@@ -289,7 +1579,50 @@
         "order": 5,
         "description": "module=shelf | level=L2 | node=L2.M0 | file=framework/shelf/L2-M0-置物架框架标准模块.md | title=L2-M0-置物架框架标准模块",
         "source_file": "framework/shelf/L2-M0-置物架框架标准模块.md",
-        "source_line": 25
+        "source_line": 25,
+        "doc_line": 1,
+        "module_name": "shelf",
+        "module_ref": "L2.M0",
+        "module_title": "置物系统框架模块:ShelfSystemFramework",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "承载结构能力：构建稳定承载路径并保证结构完整性",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "空间组织能力：生成可复用的存放单元与访问通道",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "场景适配能力：在不同空间约束下保持可扩展与可维护",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责具体材质花纹、色彩风格和装饰偏好",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "承载骨架基：L1.M0[R1]",
+            "line": "25"
+          },
+          {
+            "token": "B2",
+            "text": "连接扩展基：L1.M0[R2]",
+            "line": "26"
+          },
+          {
+            "token": "B3",
+            "text": "承载面组织基：L1.M0[R3]",
+            "line": "27"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0032",
@@ -298,7 +1631,50 @@
         "order": 1,
         "description": "module=frontend | level=L3 | node=L3.M0 | file=framework/frontend/L3-M0-状态与数据编排模块.md | title=L3-M0-状态与数据编排模块",
         "source_file": "framework/frontend/L3-M0-状态与数据编排模块.md",
-        "source_line": 23
+        "source_line": 23,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L3.M0",
+        "module_title": "前端状态与数据编排模块:FrontendStateDataOrchestration",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "状态域编排能力：把视图状态、交互状态与远端状态收敛为稳定状态域结构",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "数据载荷编排能力：把查询载荷、详情载荷与提交载荷收敛为稳定数据结构",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "同步回路编排能力：为刷新、失效、回退与重试提供稳定同步回路结构",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责具体领域字段定义与接口存储实现",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "状态域结构基：L2.M0[R1,R2]",
+            "line": "23"
+          },
+          {
+            "token": "B2",
+            "text": "数据载荷结构基：L2.M0[R1,R3]",
+            "line": "24"
+          },
+          {
+            "token": "B3",
+            "text": "同步回路结构基：L2.M0[R2,R3]",
+            "line": "25"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0033",
@@ -307,7 +1683,50 @@
         "order": 1,
         "description": "module=frontend | level=L4 | node=L4.M0 | file=framework/frontend/L4-M0-页面与路由编排模块.md | title=L4-M0-页面与路由编排模块",
         "source_file": "framework/frontend/L4-M0-页面与路由编排模块.md",
-        "source_line": 23
+        "source_line": 23,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L4.M0",
+        "module_title": "前端页面与路由编排模块:FrontendPageRouteOrchestration",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "页面骨架编排能力：把聊天首页、聊天会话页、知识库列表页、知识库详情页与文档详情页等页面骨架编排为稳定页面集",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "路由治理能力：把入口、深链、返回与守卫收敛为稳定路由结构",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "模板复用能力：让同类页面在统一骨架和状态编排下复用",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责领域字段语义与后端权限判定细节",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "页面骨架结构基：L3.M0[R1,R3]",
+            "line": "23"
+          },
+          {
+            "token": "B2",
+            "text": "路由入口结构基：L3.M0[R1,R2]",
+            "line": "24"
+          },
+          {
+            "token": "B3",
+            "text": "导航复用结构基：L3.M0[R2,R3]",
+            "line": "25"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0034",
@@ -316,7 +1735,50 @@
         "order": 1,
         "description": "module=frontend | level=L5 | node=L5.M0 | file=framework/frontend/L5-M0-场景与流程编排模块.md | title=L5-M0-场景与流程编排模块",
         "source_file": "framework/frontend/L5-M0-场景与流程编排模块.md",
-        "source_line": 23
+        "source_line": 23,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L5.M0",
+        "module_title": "前端场景与流程编排模块:FrontendSceneFlowOrchestration",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "场景链路编排能力：把浏览、创建、编辑、上传、对话等场景收敛为稳定流程结构",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "上下文保持能力：让筛选条件、当前焦点、草稿内容与返回路径在流程中稳定传递",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "回退恢复能力：为失败、取消与重新进入提供稳定回退结构",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责具体领域规则本身与后端事务策略",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "主链流程结构基：L4.M0[R1,R3]",
+            "line": "23"
+          },
+          {
+            "token": "B2",
+            "text": "上下文传递结构基：L4.M0[R2,R3]",
+            "line": "24"
+          },
+          {
+            "token": "B3",
+            "text": "回退恢复结构基：L4.M0[R1,R2]",
+            "line": "25"
+          }
+        ]
       },
       {
         "id": "NODE-FW-0035",
@@ -325,7 +1787,50 @@
         "order": 1,
         "description": "module=frontend | level=L6 | node=L6.M0 | file=framework/frontend/L6-M0-体验验证模块.md | title=L6-M0-体验验证模块",
         "source_file": "framework/frontend/L6-M0-体验验证模块.md",
-        "source_line": 23
+        "source_line": 23,
+        "doc_line": 1,
+        "module_name": "frontend",
+        "module_ref": "L6.M0",
+        "module_title": "前端体验验证模块:FrontendExperienceVerification",
+        "capability_items": [
+          {
+            "token": "C1",
+            "text": "体验指标建模能力：把性能、可读性、一致性与稳定性收敛为可验证指标结构",
+            "line": "7"
+          },
+          {
+            "token": "C2",
+            "text": "多维验证能力：联合验证流程时延、阅读顺序、交互一致性与错误恢复质量",
+            "line": "8"
+          },
+          {
+            "token": "C3",
+            "text": "回归治理能力：基于指标异常识别回归并形成持续治理闭环",
+            "line": "9"
+          },
+          {
+            "token": "C4",
+            "text": "非能力项：不负责具体领域 KPI 设定与后端算法优化",
+            "line": "10"
+          }
+        ],
+        "base_items": [
+          {
+            "token": "B1",
+            "text": "指标模型结构基：L5.M0[R1,R3]",
+            "line": "23"
+          },
+          {
+            "token": "B2",
+            "text": "验证样本结构基：L5.M0[R1,R2]",
+            "line": "24"
+          },
+          {
+            "token": "B3",
+            "text": "告警回归结构基：L5.M0[R2,R3]",
+            "line": "25"
+          }
+        ]
       }
     ],
     "edges": [

@@ -684,6 +684,37 @@ function activate(context) {
     }
   );
 
+  const frameworkReferenceDisposable = vscode.languages.registerReferenceProvider(
+    { language: "markdown", scheme: "file" },
+    {
+      provideReferences(document, position) {
+        const folder = vscode.workspace.getWorkspaceFolder(document.uri);
+        if (!folder) {
+          return [];
+        }
+
+        const repoRoot = folder.uri.fsPath;
+        if (!frameworkNavigation.isFrameworkMarkdownFile(document.uri.fsPath, repoRoot)) {
+          return [];
+        }
+
+        const targets = frameworkNavigation.resolveReferenceTargets({
+          repoRoot,
+          filePath: document.uri.fsPath,
+          text: document.getText(),
+          line: position.line,
+          character: position.character,
+        });
+        return targets.map((target) => {
+          const targetUri = vscode.Uri.file(target.filePath);
+          const start = new vscode.Position(target.line, target.character);
+          const end = new vscode.Position(target.line, target.character + Math.max(1, target.length || 1));
+          return new vscode.Location(targetUri, new vscode.Range(start, end));
+        });
+      }
+    }
+  );
+
   const validateNowDisposable = vscode.commands.registerCommand("archSync.validateNow", async () => {
     scheduleValidation({ mode: "full", triggerUri: null, notifyOnFail: true, source: "manual" });
   });
@@ -856,6 +887,7 @@ function activate(context) {
     sidebarViewDisposable,
     frameworkDefinitionDisposable,
     frameworkHoverDisposable,
+    frameworkReferenceDisposable,
     validateNowDisposable,
     showIssuesDisposable,
     openFrameworkTreeDisposable,

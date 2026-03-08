@@ -21,50 +21,167 @@ const SECTION_PREFIXES = [
   ["## 5. 验证", "verification"],
 ];
 
+function uniqueSections(sections) {
+  const ordered = [];
+  const seen = new Set();
+  for (const section of sections) {
+    if (!section || seen.has(section)) {
+      continue;
+    }
+    seen.add(section);
+    ordered.push(section);
+  }
+  return ordered;
+}
+
+function createBoundaryConfigMapping(primarySection, relatedSections = [primarySection], options = {}) {
+  return {
+    primarySection,
+    relatedSections: uniqueSections([primarySection, ...relatedSections]),
+    mappingMode: options.mappingMode || "direct",
+    note: options.note || "",
+  };
+}
+
+function directConfigMapping(primarySection, relatedSections = [primarySection]) {
+  return createBoundaryConfigMapping(primarySection, relatedSections, { mappingMode: "direct" });
+}
+
+function derivedConfigMapping(primarySection, relatedSections = [primarySection], note = "") {
+  return createBoundaryConfigMapping(primarySection, relatedSections, {
+    mappingMode: "derived",
+    note,
+  });
+}
+
 const FRAMEWORK_BOUNDARY_SECTION_MAP = {
   frontend: {
-    SURFACE: {
-      primarySection: "surface",
-      relatedSections: ["surface", "surface.copy"],
-    },
-    VISUAL: {
-      primarySection: "visual",
-      relatedSections: ["visual"],
-    },
-    ROUTE: {
-      primarySection: "route",
-      relatedSections: ["route"],
-    },
-    A11Y: {
-      primarySection: "a11y",
-      relatedSections: ["a11y"],
-    },
+    SURFACE: directConfigMapping("surface", ["surface.copy"]),
+    VISUAL: directConfigMapping("visual"),
+    ROUTE: directConfigMapping("route"),
+    A11Y: directConfigMapping("a11y"),
   },
   knowledge_base: {
-    SURFACE: {
-      primarySection: "surface",
-      relatedSections: ["surface", "surface.copy"],
-    },
-    LIBRARY: {
-      primarySection: "library",
-      relatedSections: ["library", "library.copy"],
-    },
-    PREVIEW: {
-      primarySection: "preview",
-      relatedSections: ["preview"],
-    },
-    CHAT: {
-      primarySection: "chat",
-      relatedSections: ["chat", "chat.copy"],
-    },
-    CONTEXT: {
-      primarySection: "context",
-      relatedSections: ["context"],
-    },
-    RETURN: {
-      primarySection: "return",
-      relatedSections: ["return"],
-    },
+    SURFACE: directConfigMapping("surface", ["surface.copy"]),
+    LIBRARY: directConfigMapping("library", ["library.copy"]),
+    PREVIEW: directConfigMapping("preview"),
+    CHAT: directConfigMapping("chat", ["chat.copy"]),
+    CONTEXT: directConfigMapping("context"),
+    RETURN: directConfigMapping("return"),
+    A11Y: derivedConfigMapping("a11y", ["a11y"], "该边界由工作台实例的可访问配置承接。"),
+    FILESET: derivedConfigMapping("library", ["library", "library.copy"], "该边界由知识库实例 section 承接。"),
+    INGEST: derivedConfigMapping("library", ["library", "library.copy"], "该边界由知识库实例 section 承接。"),
+    CLASSIFY: derivedConfigMapping("library", ["library"], "该边界由知识库实例 section 承接。"),
+    LIMIT: derivedConfigMapping("library", ["library"], "该边界由知识库实例 section 承接。"),
+    VISIBILITY: derivedConfigMapping(
+      "library",
+      ["library", "preview"],
+      "该边界由知识库入口与来源预览配置共同承接。"
+    ),
+    ENTRY: derivedConfigMapping(
+      "library",
+      ["library", "route"],
+      "该边界由知识库入口配置与工作台路由共同承接。"
+    ),
+    DOCVIEW: derivedConfigMapping("preview", ["preview"], "该边界由来源预览配置承接。"),
+    TOC: derivedConfigMapping("preview", ["preview"], "该边界由来源预览配置承接。"),
+    META: derivedConfigMapping("preview", ["preview"], "该边界由来源预览配置承接。"),
+    FOCUS: derivedConfigMapping(
+      "preview",
+      ["preview", "a11y"],
+      "该边界由来源预览与可访问配置共同承接。"
+    ),
+    ANCHOR: derivedConfigMapping(
+      "preview",
+      ["preview", "return"],
+      "该边界由来源锚点与返回路径配置共同承接。"
+    ),
+    TURN: derivedConfigMapping("chat", ["chat", "chat.copy"], "该边界由对话实例配置承接。"),
+    INPUT: derivedConfigMapping("chat", ["chat", "chat.copy"], "该边界由对话实例配置承接。"),
+    STATUS: derivedConfigMapping(
+      "chat",
+      ["chat", "chat.copy", "preview"],
+      "该边界由对话输出与来源状态配置共同承接。"
+    ),
+    CITATION: derivedConfigMapping(
+      "chat",
+      ["chat", "chat.copy", "context", "return", "preview"],
+      "该边界由对话、上下文、返回与来源预览配置共同承接。"
+    ),
+    SCOPE: derivedConfigMapping(
+      "context",
+      ["context", "preview"],
+      "该边界由上下文选择与来源预览配置共同承接。"
+    ),
+    TURNLINK: derivedConfigMapping(
+      "return",
+      ["return", "chat", "context"],
+      "该边界由回合返回链路与上下文配置共同承接。"
+    ),
+    TRACE: derivedConfigMapping(
+      "context",
+      ["context", "preview", "return"],
+      "该边界由上下文、来源追踪与返回链路配置共同承接。"
+    ),
+    EMPTY: derivedConfigMapping(
+      "chat",
+      ["chat", "chat.copy", "preview", "library"],
+      "该边界由聊天、预览与知识库空态配置共同承接。"
+    ),
+    REGION: derivedConfigMapping(
+      "surface",
+      ["surface", "surface.copy"],
+      "该边界由工作台界面承载配置承接。"
+    ),
+    RESPONSIVE: derivedConfigMapping(
+      "surface",
+      ["surface", "visual"],
+      "该边界由界面承载与视觉配置共同承接。"
+    ),
+  },
+  backend: {
+    LIBRARY: derivedConfigMapping("library", ["library", "library.copy"], "该边界由知识库实例 section 承接。"),
+    LIBAPI: derivedConfigMapping("library", ["library", "library.copy"], "该边界由知识库实例 section 承接。"),
+    FILE: derivedConfigMapping("library", ["library", "library.copy"], "该边界由知识库实例 section 承接。"),
+    PREVIEW: derivedConfigMapping("preview", ["preview"], "该边界由来源预览配置承接。"),
+    PREVIEWAPI: derivedConfigMapping("preview", ["preview"], "该边界由来源预览配置承接。"),
+    CHAT: derivedConfigMapping("chat", ["chat", "chat.copy"], "该边界由对话实例配置承接。"),
+    CHATAPI: derivedConfigMapping("chat", ["chat", "chat.copy"], "该边界由对话实例配置承接。"),
+    CITATION: derivedConfigMapping(
+      "chat",
+      ["chat", "chat.copy", "context", "return", "preview"],
+      "该边界由对话、返回与来源预览配置共同承接。"
+    ),
+    TRACE: derivedConfigMapping(
+      "context",
+      ["context", "return"],
+      "该边界由上下文与返回链路配置共同承接。"
+    ),
+    RESULT: derivedConfigMapping(
+      "return",
+      ["return", "chat", "library", "preview"],
+      "该边界由返回链路与统一结果结构配置共同承接。"
+    ),
+    AUTH: derivedConfigMapping(
+      "return",
+      ["return", "chat"],
+      "该边界由接口返回治理与对话入口配置共同承接。"
+    ),
+    ERROR: derivedConfigMapping(
+      "return",
+      ["return", "chat", "preview"],
+      "该边界由错误返回链路与界面反馈配置共同承接。"
+    ),
+    VALID: derivedConfigMapping(
+      "return",
+      ["return", "chat"],
+      "该边界由返回链路与交互约束配置共同承接。"
+    ),
+    CONSIST: derivedConfigMapping(
+      "return",
+      ["return", "chat", "library", "preview"],
+      "该边界由统一返回与多接口一致性配置共同承接。"
+    ),
   },
 };
 
@@ -475,10 +592,165 @@ function buildTomlSectionIndex(text) {
 
 function getBoundaryConfigMapping(frameworkName, token) {
   const mapping = FRAMEWORK_BOUNDARY_SECTION_MAP[frameworkName];
-  if (!mapping) {
+  if (mapping && mapping[token]) {
+    return mapping[token];
+  }
+  return inferBoundaryConfigMapping(frameworkName, token);
+}
+
+function inferFrontendBoundaryConfigMapping(token) {
+  const upper = String(token || "").toUpperCase();
+  if (!upper) {
     return null;
   }
-  return mapping[token] || null;
+
+  if (
+    upper === "A11Y" ||
+    upper.endsWith("A11Y") ||
+    new Set(["READ", "ORDER", "FOCUS"]).has(upper)
+  ) {
+    return derivedConfigMapping("a11y", ["a11y"], "该边界按可访问与阅读路径归属到实例可访问配置。");
+  }
+
+  if (new Set(["ROUTE", "NAV", "ENTRY", "RETURN", "PAGESET", "SCENE", "STEP", "REF"]).has(upper)) {
+    return derivedConfigMapping("route", ["route"], "该边界按导航与返回路径归属到实例路由配置。");
+  }
+
+  if (
+    new Set([
+      "VISUAL",
+      "TOKEN",
+      "THEME",
+      "DENSITY",
+      "ALERT",
+      "TAG",
+      "BUBBLE",
+      "TEXTTONE",
+      "TEXTTYPO",
+      "BTNCHROME",
+      "PANELTONE",
+      "FEEDBACK",
+    ]).has(upper) ||
+    upper.includes("TONE") ||
+    upper.includes("TYPO") ||
+    upper.includes("CHROME")
+  ) {
+    return derivedConfigMapping("visual", ["visual"], "该边界按视觉与主题语义归属到实例视觉配置。");
+  }
+
+  return derivedConfigMapping(
+    "surface",
+    ["surface", "surface.copy"],
+    "该边界按界面承载与组件装配归属到实例界面配置。"
+  );
+}
+
+function inferKnowledgeBaseBoundaryConfigMapping(token) {
+  const upper = String(token || "").toUpperCase();
+  if (!upper) {
+    return null;
+  }
+
+  if (upper === "A11Y" || upper.endsWith("A11Y")) {
+    return derivedConfigMapping("a11y", ["a11y"], "该边界由工作台实例的可访问配置承接。");
+  }
+  if (new Set(["RETURN", "TURNLINK"]).has(upper)) {
+    return derivedConfigMapping(
+      "return",
+      ["return", "chat", "context"],
+      "该边界由回合返回链路与上下文配置共同承接。"
+    );
+  }
+  if (new Set(["CHAT", "TURN", "INPUT", "STATUS"]).has(upper)) {
+    return derivedConfigMapping("chat", ["chat", "chat.copy"], "该边界由对话实例配置承接。");
+  }
+  if (upper === "CITATION") {
+    return derivedConfigMapping(
+      "chat",
+      ["chat", "chat.copy", "context", "return", "preview"],
+      "该边界由对话、上下文、返回与来源预览配置共同承接。"
+    );
+  }
+  if (new Set(["CONTEXT", "SCOPE", "TRACE"]).has(upper)) {
+    return derivedConfigMapping(
+      "context",
+      ["context", "preview", "return"],
+      "该边界由上下文、来源追踪与返回链路配置共同承接。"
+    );
+  }
+  if (new Set(["PREVIEW", "DOCVIEW", "TOC", "ANCHOR", "META", "FOCUS", "EMPTY"]).has(upper)) {
+    return derivedConfigMapping(
+      "preview",
+      ["preview", "return"],
+      "该边界由来源预览与锚点返回配置共同承接。"
+    );
+  }
+  if (new Set(["LIBRARY", "ENTRY", "FILESET", "INGEST", "LIMIT", "CLASSIFY", "VISIBILITY"]).has(upper)) {
+    return derivedConfigMapping(
+      "library",
+      ["library", "library.copy", "preview"],
+      "该边界由知识库入口与来源预览配置共同承接。"
+    );
+  }
+  if (new Set(["SURFACE", "REGION", "RESPONSIVE"]).has(upper)) {
+    return derivedConfigMapping(
+      "surface",
+      ["surface", "surface.copy", "visual"],
+      "该边界由工作台界面承载与视觉配置共同承接。"
+    );
+  }
+
+  return null;
+}
+
+function inferBackendBoundaryConfigMapping(token) {
+  const upper = String(token || "").toUpperCase();
+  if (!upper) {
+    return null;
+  }
+
+  if (upper.startsWith("LIB") || upper === "FILE" || upper === "LIBRARY") {
+    return derivedConfigMapping("library", ["library", "library.copy"], "该边界由知识库实例 section 承接。");
+  }
+  if (upper.startsWith("PREVIEW") || upper === "PREVIEW") {
+    return derivedConfigMapping("preview", ["preview"], "该边界由来源预览配置承接。");
+  }
+  if (upper.startsWith("CHAT") || upper === "CITATION") {
+    return derivedConfigMapping(
+      "chat",
+      ["chat", "chat.copy", "context", "return", "preview"],
+      "该边界由对话、返回与来源预览配置共同承接。"
+    );
+  }
+  if (upper === "TRACE") {
+    return derivedConfigMapping(
+      "context",
+      ["context", "return"],
+      "该边界由上下文与返回链路配置共同承接。"
+    );
+  }
+  if (new Set(["RESULT", "AUTH", "ERROR", "VALID", "CONSIST"]).has(upper)) {
+    return derivedConfigMapping(
+      "return",
+      ["return", "chat", "library", "preview"],
+      "该边界由统一返回结构与跨接口约束配置共同承接。"
+    );
+  }
+
+  return null;
+}
+
+function inferBoundaryConfigMapping(frameworkName, token) {
+  if (frameworkName === "frontend") {
+    return inferFrontendBoundaryConfigMapping(token);
+  }
+  if (frameworkName === "knowledge_base") {
+    return inferKnowledgeBaseBoundaryConfigMapping(token);
+  }
+  if (frameworkName === "backend") {
+    return inferBackendBoundaryConfigMapping(token);
+  }
+  return null;
 }
 
 function discoverInstanceFiles(repoRoot) {
@@ -542,7 +814,18 @@ function resolveBoundaryConfigTarget(repoRoot, frameworkName, token) {
   }
   const instanceText = fs.readFileSync(instanceFilePath, "utf8");
   const sectionIndex = buildTomlSectionIndex(instanceText);
-  const sectionTarget = sectionIndex.get(mapping.primarySection);
+  let targetSectionName = mapping.primarySection;
+  let sectionTarget = sectionIndex.get(targetSectionName);
+  if (!sectionTarget) {
+    for (const relatedSection of mapping.relatedSections) {
+      const candidate = sectionIndex.get(relatedSection);
+      if (candidate) {
+        targetSectionName = relatedSection;
+        sectionTarget = candidate;
+        break;
+      }
+    }
+  }
   if (!sectionTarget) {
     return null;
   }
@@ -551,7 +834,11 @@ function resolveBoundaryConfigTarget(repoRoot, frameworkName, token) {
     line: sectionTarget.line,
     character: sectionTarget.character,
     length: sectionTarget.length,
+    primarySection: mapping.primarySection,
+    targetSection: targetSectionName,
     relatedSections: mapping.relatedSections,
+    mappingMode: mapping.mappingMode,
+    note: mapping.note,
   };
 }
 
@@ -678,11 +965,17 @@ function appendBoundaryConfigHover(parts, repoRoot, frameworkName, token) {
   const relFile = normalizePathSlashes(path.relative(repoRoot, boundaryTarget.filePath));
   parts.push("", "实例配置");
   parts.push(`- 文件：\`${relFile}\``);
-  parts.push(`- 主 section：\`[${boundaryTarget.relatedSections[0]}]\``);
+  parts.push(`- 主归属 section：\`[${boundaryTarget.primarySection}]\``);
+  if (boundaryTarget.targetSection && boundaryTarget.targetSection !== boundaryTarget.primarySection) {
+    parts.push(`- 当前跳转 section：\`[${boundaryTarget.targetSection}]\``);
+  }
   if (boundaryTarget.relatedSections.length > 1) {
     parts.push(
       `- 相关 section：${boundaryTarget.relatedSections.map((section) => `\`[${section}]\``).join("、")}`
     );
+  }
+  if (boundaryTarget.mappingMode === "derived" && boundaryTarget.note) {
+    parts.push(`- 归属说明：${boundaryTarget.note}`);
   }
 }
 
@@ -854,11 +1147,81 @@ function resolveHoverTarget({ repoRoot, filePath, text, line, character }) {
   };
 }
 
+function dedupeTargets(targets) {
+  const seen = new Set();
+  const deduped = [];
+  for (const target of targets) {
+    if (!target || !target.filePath) {
+      continue;
+    }
+    const key = `${target.filePath}:${target.line}:${target.character}:${target.length || 0}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(target);
+  }
+  return deduped;
+}
+
+function resolveReferenceTargets({ repoRoot, filePath, text, line, character }) {
+  const documentInfo = getFrameworkDocumentInfo(filePath, repoRoot);
+  if (!documentInfo) {
+    return [];
+  }
+
+  const lines = text.split(/\r?\n/);
+  const lineText = lines[line] || "";
+  const tokenContext = findTokenContext(lineText, character);
+  if (!tokenContext) {
+    return [];
+  }
+
+  const targets = [
+    {
+      filePath,
+      line,
+      character: tokenContext.start,
+      length: Math.max(1, tokenContext.end - tokenContext.start),
+    },
+  ];
+
+  if (tokenContext.kind === "moduleRef" || tokenContext.kind === "moduleRule") {
+    const definitionTarget = resolveDefinitionTarget({ repoRoot, filePath, text, line, character });
+    if (definitionTarget) {
+      targets.push(definitionTarget);
+    }
+    return dedupeTargets(targets);
+  }
+
+  const index = buildDefinitionIndex(text);
+  const resolvedLocal = resolveLocalSymbol(index, tokenContext.token);
+  if (resolvedLocal) {
+    targets.push({
+      filePath,
+      line: resolvedLocal.line,
+      character: resolvedLocal.character,
+      length: resolvedLocal.length,
+    });
+  }
+
+  const localItem = getItemForToken(index, tokenContext.token);
+  if (localItem && localItem.kind === "boundary" && documentInfo.frameworkName) {
+    const boundaryTarget = resolveBoundaryConfigTarget(repoRoot, documentInfo.frameworkName, tokenContext.token);
+    if (boundaryTarget) {
+      targets.push(boundaryTarget);
+    }
+  }
+
+  return dedupeTargets(targets);
+}
+
 module.exports = {
   buildDefinitionIndex,
   findTokenContext,
   getFrameworkDocumentInfo,
   isFrameworkMarkdownFile,
   resolveDefinitionTarget,
+  resolveReferenceTargets,
   resolveHoverTarget,
 };

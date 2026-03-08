@@ -1,191 +1,197 @@
 # Shelf
 
-本仓库采用“多级严格映射”规范。
+**AI coding framework for executable architecture, strict mapping, and project materialization.**
 
-## 规范入口
-- 规范总纲（树形）：`specs/规范总纲与树形结构.md`
-- 框架设计核心标准：`specs/框架设计核心标准.md`
-- 代码规范目录：`specs/code/`
-- 领域标准（置物架 L0-L2）：`framework/shelf/Lx-M0-*.md`
-- 领域标准（前端通用框架 L0-L6）：`framework/frontend/Lx-Mn-*.md`
-- 领域标准（知识库领域框架 L0-L2）：`framework/knowledge_base/Lx-Mn-*.md`
-- 领域标准（知识库接口 L0-L2）：`framework/backend/Lx-M0-*.md`
-- 项目实例层：`projects/<project_id>/instance.toml`
-- 工程执行规范：`AGENTS.md`
+Shelf 是一个面向 **AI 编程 / AI-assisted software engineering** 的框架仓库。它把框架文档、边界定义、项目配置、生成产物、严格校验、VSCode 导航放进同一条链路，让 AI 写代码时不是只靠 prompt，而是基于可执行规范、可追溯关系和可验证结果协作。
 
-## 映射与验证
-- 映射注册：`mapping/mapping_registry.json`
-- 验证命令：
+In short: **Shelf helps teams turn framework docs into a real engineering system**. You define the structure in Markdown, validate it with code, materialize project artifacts, and inspect the whole graph in VSCode.
+
+## Why Shelf
+
+很多 AI 编程项目都卡在同一个问题上：
+
+- 文档、配置、代码、生成产物彼此脱节
+- AI 能快速生成代码，但很难持续遵守边界和结构约束
+- 项目越大，越难回答“这个模块为什么存在、来源是什么、改动会影响哪里”
+
+Shelf 的目标不是做一个“会写代码的聊天界面”，而是提供一套 **AI-native engineering workflow**：
+
+- 用 `framework/*.md` 作为框架级事实来源
+- 用 `projects/<project_id>/instance.toml` 固化实例级边界
+- 用脚本把规范物化为项目产物
+- 用严格映射验证保证结构一致性
+- 用 VSCode 插件把模块树、跳转、问题定位接到日常开发里
+
+## Core Capabilities
+
+- **Executable framework specs**
+  - 在 `framework/<module>/Lx-Mn-*.md` 中定义能力、边界、基、规则与验证。
+- **Strict mapping validation**
+  - 通过 `scripts/validate_strict_mapping.py` 检查规范、代码、配置和产物是否一致。
+- **Project materialization**
+  - 通过 `scripts/materialize_project.py` 从框架和实例配置生成项目产物。
+- **AI-friendly traceability**
+  - 模块、规则、边界、实例 section、生成产物都能被追踪和跳转。
+- **ArchSync VSCode extension**
+  - 在 VSCode 里直接查看框架树、运行校验、定位问题、跳转文档。
+- **Runnable reference app**
+  - 仓库内置一个知识库 demo，可直接启动验证整条链路。
+
+## Who This Is For
+
+- 想做 **spec-driven AI coding** 的团队
+- 想把“AI 生成代码”升级成“AI 在结构约束下协作开发”的工程团队
+- 想做知识库、内部工作台、框架化前后端产品的人
+- 想把文档、配置、生成器、运行时放进一个可维护系统的人
+
+## Quick Start
+
+### 1. Install dependencies
+
 ```bash
-uv run python scripts/materialize_project.py
+uv sync
+```
+
+### 2. Enable the required git hook
+
+```bash
+bash scripts/install_git_hooks.sh
+```
+
+### 3. Run the core validations
+
+```bash
+uv run mypy
 uv run python scripts/validate_strict_mapping.py
 uv run python scripts/validate_strict_mapping.py --check-changes
 ```
 
-项目实例铁律：
-- 不直接修改 `projects/<project_id>/generated/*`
-- 项目行为变更先改 `framework/*.md` 或 `projects/<project_id>/instance.toml`
-- 生成器内核在 `src/project_runtime/` 与 `src/*_framework/`，项目实例代码以物化产物为准
+### 4. Materialize project artifacts
 
-## 推送守卫（Git Hook）
-- 安装命令：
 ```bash
-bash scripts/install_git_hooks.sh
+uv run python scripts/materialize_project.py
 ```
-- Hook：`.githooks/pre-push`
-- 作用：推送前强制执行严格映射验证；若失败则阻止 `git push`
 
-## 远端守卫（GitHub）
-- 工作流：`.github/workflows/strict-mapping-gate.yml`
-- 作用：远端 `push/pull_request` 到 `main` 时强制执行映射校验
-- 启用远端“禁止不通过校验推送”：
+### 5. Start the demo app
+
 ```bash
-export GITHUB_TOKEN=<repo_admin_token>
-bash scripts/configure_branch_protection.sh rdshr/shelf main
+uv run uvicorn --app-dir src project_runtime.app_factory:app --reload
 ```
-- 该分支保护会将 `Strict Mapping Gate / strict-mapping` 设为必需检查，并强制 PR 审核与线性历史
 
-## VSCode 插件（ArchSync）
-- 位置：`tools/vscode/archsync`
-- 入口：VSCode 侧边栏 `ArchSync` 莫比乌斯环图标
-- 主功能：打开框架树状结构网页（Webview）、刷新树图、运行严格映射校验、查看问题列表
-- 内置能力：保存文件后自动运行严格映射校验，并在 Problems 面板报警；树节点可跳转到源文档行
-- 本地安装：
+默认入口：
+
+- Page: `http://127.0.0.1:8000/knowledge-base`
+- Workbench spec: `http://127.0.0.1:8000/api/knowledge/workbench-spec`
+- API: `http://127.0.0.1:8000/api/knowledge/documents`
+
+## How The Workflow Fits Together
+
+1. **Define the framework**
+   - 在 `framework/` 里写模块标准，例如能力声明、边界定义、最小可行基、组合规则。
+2. **Configure a project instance**
+   - 在 `projects/<project_id>/instance.toml` 里填写实例边界和数据。
+3. **Materialize the project**
+   - 由框架和实例配置生成 `projects/<project_id>/generated/*`。
+4. **Validate changes**
+   - 校验规范、代码和配置是否仍然满足严格映射。
+5. **Inspect and navigate**
+   - 在 ArchSync 中查看模块结构图、节点关系和问题定位。
+
+## Repository Map
+
+- `specs/`
+  - 规范总纲、框架设计核心标准、代码规范目录
+- `framework/`
+  - 框架级模块定义，按领域拆分
+- `projects/`
+  - 项目实例配置与物化产物
+- `mapping/`
+  - 映射注册表与结构关系
+- `scripts/`
+  - 生成、物化、校验、发布辅助脚本
+- `src/`
+  - 运行时模板、生成器内核、参考实现
+- `tools/vscode/archsync/`
+  - VSCode 插件源码
+
+## Important Entry Points
+
+### Specs and standards
+
+- 规范总纲：`specs/规范总纲与树形结构.md`
+- 框架设计核心标准：`specs/框架设计核心标准.md`
+- 代码规范目录：`specs/code/`
+- 工程执行规范：`AGENTS.md`
+
+### Frameworks
+
+- 置物架领域：`framework/shelf/Lx-M0-*.md`
+- 前端通用框架：`framework/frontend/Lx-Mn-*.md`
+- 知识库领域框架：`framework/knowledge_base/Lx-Mn-*.md`
+- 知识库接口：`framework/backend/Lx-M0-*.md`
+
+### Project instances
+
+- 实例层说明：`projects/README.md`
+- 当前样板：`projects/knowledge_base_basic/instance.toml`
+
+## ArchSync VSCode Extension
+
+ArchSync 是这个仓库配套的 VSCode 插件，目标不是做一个泛用聊天助手，而是做一个 **framework-aware AI coding companion**。
+
+它提供：
+
+- 侧边栏主页：一键打开框架树、刷新树图、运行映射校验、查看问题列表
+- 结构图 Webview：模块树、层级关系、节点详情、缩放、拖拽、侧栏收起
+- 文档导航：从模块引用、边界引用、规则引用直接跳到对应 Markdown 或实例配置
+- 保存即校验：相关文件变更后自动运行严格映射验证，并同步到 Problems 面板
+
+本地安装：
+
 ```bash
 bash tools/vscode/archsync/install_local.sh
 ```
-- 主要命令：
-  - `ArchSync: Open Framework Tree`
-  - `ArchSync: Refresh Framework Tree`
-  - `ArchSync: Validate Mapping Now`
-  - `ArchSync: Show Mapping Issues`
-- 公开发布：
-  - `archsync-vX.Y.Z` tag 会触发 `.github/workflows/publish-archsync.yml`
-  - 自动产出 GitHub Release + `.vsix` 附件
-  - 若已配置 `OPEN_VSX_TOKEN` / `VS_MARKETPLACE_TOKEN`，会继续发布到 Open VSX / Visual Studio Marketplace
 
-## 运行
-```bash
-uv sync
-uv run python src/main.py
-```
+公开安装：
 
-## 项目实例
-- 实例层说明：`projects/README.md`
-- 当前样板：`projects/knowledge_base_basic/instance.toml`
-- 运行时工厂：`src/project_runtime/`
-- 当前实例配置采用“边界大类 -> 同名 section”约定：
-  - frontend：`surface / visual / route / a11y`
-  - knowledge_base：`library / preview / chat / context / return`
+- GitHub Releases: https://github.com/xueyu888/framework/releases
+- 插件源码说明：`tools/vscode/archsync/README.md`
 
-## 知识库 Demo
-基于 `framework/frontend`、`framework/knowledge_base` 与 `framework/backend` 的第一个“项目实例配置驱动”样板位于：
+主要命令：
+
+- `ArchSync: Open Framework Tree`
+- `ArchSync: Refresh Framework Tree`
+- `ArchSync: Validate Mapping Now`
+- `ArchSync: Show Mapping Issues`
+
+## Knowledge Base Demo
+
+仓库内置了一个“项目实例配置驱动”的知识库 demo，用来演示：
+
+- 前端框架 + 领域框架 + 后端接口如何组合
+- `framework/*.md + instance.toml -> generated/*` 的物化链路
+- 运行时模板如何从实例配置构建出真实应用
+
+相关入口：
+
 - 项目配置：`projects/knowledge_base_basic/instance.toml`
 - 运行时模板：`src/knowledge_base_demo/`
-- 编译产物：`projects/knowledge_base_basic/generated/`
+- 物化产物：`projects/knowledge_base_basic/generated/`
 
-物化项目产物：
+手动物化：
+
 ```bash
 uv run python scripts/materialize_project.py --project projects/knowledge_base_basic/instance.toml
 ```
 
-按默认项目实例启动：
-```bash
-uv run uvicorn --app-dir src project_runtime.app_factory:app --reload
-```
+## Framework Tree and Visual Outputs
 
-切换项目文件启动：
-```bash
-SHELF_PROJECT_FILE=projects/knowledge_base_basic/instance.toml \
-uv run uvicorn --app-dir src project_runtime.app_factory:app --reload
-```
+框架树总入口：
 
-入口：
-- 页面：`http://127.0.0.1:8000/knowledge-base`
-- 工作台编译 spec：`http://127.0.0.1:8000/api/knowledge/workbench-spec`
-- 接口：`http://127.0.0.1:8000/api/knowledge/documents`
+- `docs/hierarchy/shelf_framework_tree.html`
 
-## 看图（总入口）
-- 框架标准树结构图（来自 `framework/<module>/Lx-Mn-*.md`）：
-  - `docs/hierarchy/shelf_framework_tree.html`
-- 双族分型子页面入口：
-  - `docs/examples/type_subpages_valid_2x2x2_dualfamily/index.html`
-- 旧版单族分型子页面入口：
-  - `docs/examples/type_subpages_valid_2x2x2/index.html`
-- 3D 分型总览墙：
-  - `docs/examples/type_gallery_3d_valid_2x2x2.html`
+重新生成框架树：
 
-## 打开方式（Linux / WSL）
-### 方式 1：本地 HTTP 服务（推荐）
-```bash
-cd /home/xue/code/shelf
-uv run python -m http.server 8765
-```
-浏览器访问：
-- `http://localhost:8765/docs/examples/type_subpages_valid_2x2x2_dualfamily/index.html`
-- `http://localhost:8765/docs/examples/type_gallery_3d_valid_2x2x2.html`
-
-### 方式 2：WSL 直接调用 Windows 浏览器
-```bash
-explorer.exe "$(wslpath -w /home/xue/code/shelf/docs/examples/type_subpages_valid_2x2x2_dualfamily/index.html)"
-explorer.exe "$(wslpath -w /home/xue/code/shelf/docs/examples/type_gallery_3d_valid_2x2x2.html)"
-```
-
-### 方式 3：Linux 桌面环境
-```bash
-xdg-open /home/xue/code/shelf/docs/examples/type_subpages_valid_2x2x2_dualfamily/index.html
-```
-如果报 `Couldn't find a suitable web browser`，请用“方式 1”或“方式 2”。
-
-## 我要自己调界面，怎么做
-### A. 弹窗交互查看器（非 HTML）
-WSL 下建议优先用系统 Python（通常可直接弹窗）：
-```bash
-PYTHONPATH=src python3 src/interactive_viewer.py
-```
-
-`uv` 方式（如果你的 `uv` Python 已支持 Tk/Qt）：
-```bash
-uv run python src/interactive_viewer.py
-```
-若看到 `FigureCanvasAgg is non-interactive`，说明当前解释器无 GUI 后端，请切回上面的 `python3` 命令，或执行：
-```bash
-uv python install --reinstall 3.12
-```
-界面控件：
-- `x_cells / y_cells / layers`：离散空间大小
-- `cell_w / cell_d / layer_h`：几何尺寸
-- `allow_empty`：是否允许空层
-- `valid / invalid / all`：筛选分型
-- `Prev / Next`：切换分型
-- `Recompute`：按当前参数重新枚举
-
-### B. 重新生成网页分型墙（批量）
-生成“每个类型组一个子页面（含组内 3D）”：
-```bash
-uv run python src/generate_type_subpages.py \
-  --x-cells 2 --y-cells 2 --layers 2 \
-  --filter valid \
-  --output-dir docs/examples/type_subpages_valid_2x2x2_dualfamily \
-  --group-3d-columns 8
-```
-
-生成单页 3D 总览墙：
-```bash
-uv run python src/generate_type_gallery_3d.py \
-  --x-cells 2 --y-cells 2 --layers 2 \
-  --filter valid \
-  --output-html docs/examples/type_gallery_3d_valid_2x2x2.html \
-  --columns 16
-```
-
-常用可调参数：
-- `--x-cells --y-cells --layers`：离散边界
-- `--filter valid|invalid|all`：筛选范围
-- `--columns`：3D 墙局部排布密度
-- `--group-3d-columns`：子页面内组级 3D 排布密度
-
-从 `framework/<module>/Lx-Mn-*.md` 自动抽取并生成“框架标准树结构图”：
 ```bash
 uv run python scripts/generate_framework_tree_hierarchy.py \
   --source framework \
@@ -193,3 +199,50 @@ uv run python scripts/generate_framework_tree_hierarchy.py \
   --output-json docs/hierarchy/shelf_framework_tree.json \
   --output-html docs/hierarchy/shelf_framework_tree.html
 ```
+
+其他可视化示例：
+
+- 双族分型子页面：`docs/examples/type_subpages_valid_2x2x2_dualfamily/index.html`
+- 旧版单族分型子页面：`docs/examples/type_subpages_valid_2x2x2/index.html`
+- 3D 分型总览墙：`docs/examples/type_gallery_3d_valid_2x2x2.html`
+
+## Engineering Rules
+
+这个仓库有几条铁律：
+
+- 必须使用 `uv` 管理 Python 环境和依赖
+- 不直接修改 `projects/<project_id>/generated/*`
+- 项目行为变更先改 `framework/*.md` 或 `projects/<project_id>/instance.toml`
+- 推送前必须通过严格映射验证
+- 公开发布必须遵守 `specs/code/发布与版本说明标准.md`
+
+对应守卫：
+
+- 本地 `pre-push` hook：`.githooks/pre-push`
+- GitHub 工作流：`.github/workflows/strict-mapping-gate.yml`
+
+## Search-Friendly Summary
+
+如果你是在找这些方向，这个仓库就是相关的：
+
+- AI coding framework
+- AI programming workflow
+- AI-native software architecture
+- executable specification
+- spec-driven development
+- strict mapping validation
+- Markdown-driven architecture
+- VSCode extension for framework navigation
+- knowledge base app scaffold
+- traceable project generation
+
+## Project Status
+
+当前仓库更接近 **active framework repository + executable reference implementation**，适合继续扩展为：
+
+- 更完整的 AI-native app framework
+- 更强的生成器与验证器
+- 更成熟的 VSCode / Marketplace 体验
+- 更标准的对外模板与公开示例
+
+如果你希望在 AI 编程里得到的不只是“更快写代码”，而是“让结构、文档、配置、生成产物和运行时保持一致”，Shelf 的重点就在这里。
