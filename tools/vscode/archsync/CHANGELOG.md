@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.0.27 - 2026-03-08
+- Refined the ArchSync sidebar into a denser dark VS Code-style home view with clearer overview, actions, workspace signals, and issue preview sections.
+- Reworked the framework tree page into a more GitLens / Git Graph-like layout with a scrollable full-size graph surface, stronger right-side inspect panels, and improved node detail grouping.
+- Added graph zoom controls (`+`, `-`, `100%`, `适配`) plus `Ctrl/⌘ + 滚轮` zooming so large framework graphs remain readable without shrinking everything to fit.
+
 ## 0.0.25 - 2026-03-08
 - Added boundary-to-instance navigation for instance-exposed framework boundaries such as `SURFACE`, `LIBRARY`, `CHAT`, and `RETURN`, jumping directly to the owning `instance.toml` section.
 - Boundary hover cards now show the mapped project config file and primary related section when that boundary is instantiated as configuration.
