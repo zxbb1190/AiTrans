@@ -18,8 +18,9 @@ class ProjectRuntimeTest(unittest.TestCase):
         self.assertEqual(project.metadata.project_id, "knowledge_base_basic")
         self.assertEqual(project.metadata.template, "knowledge_base_workbench")
         self.assertEqual(project.route.workbench, "/knowledge-base")
+        self.assertEqual(project.route.knowledge_list, "/knowledge-bases")
         self.assertEqual(project.route.api_prefix, "/api/knowledge")
-        self.assertEqual(project.surface.layout_variant, "chat_first_knowledge_workbench")
+        self.assertEqual(project.surface.layout_variant, "chatgpt_knowledge_client")
         self.assertEqual(project.visual.brand, "ArchSync")
         self.assertEqual(len(project.documents), 3)
         self.assertTrue(project.features.upload)
@@ -27,8 +28,12 @@ class ProjectRuntimeTest(unittest.TestCase):
         self.assertEqual(project.domain_ir.module_id, "knowledge_base.L2.M0")
         self.assertEqual(project.backend_ir.module_id, "backend.L2.M0")
         self.assertGreaterEqual(len(project.resolved_modules), 3)
-        self.assertEqual(project.frontend_contract["shell"], "three_pane_workbench")
-        self.assertEqual(project.workbench_contract["flow"][0]["stage_id"], "library")
+        self.assertEqual(project.frontend_contract["shell"], "conversation_sidebar_shell")
+        self.assertEqual(project.workbench_contract["flow"][0]["stage_id"], "knowledge_base_select")
+        self.assertEqual(project.ui_spec["pages"]["knowledge_list"]["title"], project.surface.copy.library_title)
+        self.assertEqual(project.ui_spec["components"]["chat_composer"]["submit_label"], "发送")
+        self.assertEqual(project.backend_spec["return_policy"]["chat_path"], "/knowledge-base")
+        self.assertEqual(project.backend_spec["interaction_copy"]["loading_text"], "正在检索知识库并整理回答…")
         self.assertTrue(project.validation_reports["overall"]["passed"])
 
     def test_generic_project_app_factory_materializes_generated_artifacts(self) -> None:
@@ -40,8 +45,8 @@ class ProjectRuntimeTest(unittest.TestCase):
         self.assertEqual(payload["project"]["project"]["project_id"], "knowledge_base_basic")
         self.assertEqual(payload["frontend"], "/knowledge-base")
         self.assertEqual(payload["workbench_spec"], "/api/knowledge/workbench-spec")
-        self.assertEqual(payload["project"]["routes"]["api"]["create_document"], "/api/knowledge/documents")
-        self.assertEqual(payload["project"]["routes"]["api"]["delete_document"], "/api/knowledge/documents/{document_id}")
+        self.assertEqual(payload["project"]["routes"]["api"]["knowledge_bases"], "/api/knowledge/knowledge-bases")
+        self.assertEqual(payload["project"]["routes"]["pages"]["knowledge_list"], "/knowledge-bases")
         generated = payload["project"]["generated_artifacts"]
         self.assertIsNotNone(generated)
         assert generated is not None
@@ -56,8 +61,8 @@ class ProjectRuntimeTest(unittest.TestCase):
             project_id = "knowledge_base_public"
             template = "knowledge_base_workbench"
             display_name = "Knowledge Base Public"
-            description = "A public workbench instance compiled from the same framework."
-            version = "0.2.0"
+            description = "A public knowledge chat instance compiled from the same framework."
+            version = "0.3.0"
 
             [framework]
             frontend = "framework/frontend/L2-M0-前端框架标准模块.md"
@@ -66,22 +71,22 @@ class ProjectRuntimeTest(unittest.TestCase):
             preset = "document_chat_workbench"
 
             [surface]
-            shell = "three_pane_workbench"
-            layout_variant = "chat_first_knowledge_workbench"
-            sidebar_width = "md"
-            preview_mode = "docked"
+            shell = "conversation_sidebar_shell"
+            layout_variant = "chatgpt_knowledge_client"
+            sidebar_width = "compact"
+            preview_mode = "drawer"
             density = "comfortable"
 
             [surface.copy]
             hero_kicker = "Public Instance"
             hero_title = "Knowledge Base Public"
-            hero_copy = "A public workbench instance compiled from the same framework."
-            library_title = "Public Files"
-            preview_title = "Source Viewer"
-            toc_title = "TOC"
+            hero_copy = "A public knowledge chat client compiled from the same framework."
+            library_title = "Knowledge Bases"
+            preview_title = "Citation Sources"
+            toc_title = "Source Sections"
             chat_title = "Public Chat"
-            empty_state_title = "Select a document"
-            empty_state_copy = "The preview and citations will focus on the current document and section."
+            empty_state_title = "Start a public conversation"
+            empty_state_copy = "Ask directly in the composer. Sources open only when requested."
 
             [visual]
             brand = "Public KB"
@@ -94,20 +99,26 @@ class ProjectRuntimeTest(unittest.TestCase):
             [route]
             home = "/"
             workbench = "/public-knowledge"
+            knowledge_list = "/public-knowledge/bases"
+            knowledge_detail = "/public-knowledge/bases/details"
+            document_detail_prefix = "/public-knowledge/bases/details/documents"
             api_prefix = "/api/public-knowledge"
             workbench_spec = "/api/public-knowledge/workbench-spec"
 
             [a11y]
-            reading_order = ["library", "toc", "preview", "chat"]
-            keyboard_nav = ["library-query", "document-card", "toc-item", "chat-input"]
-            announcements = ["current document", "current section", "citation return path"]
+            reading_order = ["conversation_sidebar", "chat_header", "message_stream", "chat_composer", "citation_drawer"]
+            keyboard_nav = ["new-chat", "conversation-item", "chat-input", "citation-ref", "citation-drawer-close"]
+            announcements = ["current knowledge base", "active conversation", "citation source opened"]
 
             [library]
+            knowledge_base_id = "public-guidance"
+            knowledge_base_name = "Public Guidance"
+            knowledge_base_description = "A public knowledge base rendered through the same chat-first framework."
             enabled = true
             source_types = ["markdown"]
             metadata_fields = ["title", "tags", "updated_at"]
-            default_focus = "first_document"
-            list_variant = "stacked"
+            default_focus = "current_knowledge_base"
+            list_variant = "conversation_companion"
             allow_create = false
             allow_delete = false
 
@@ -119,45 +130,46 @@ class ProjectRuntimeTest(unittest.TestCase):
             renderers = ["markdown"]
             anchor_mode = "heading"
             show_toc = true
-            rail_variant = "sticky"
+            preview_variant = "citation_drawer"
 
             [chat]
             enabled = true
             citations_enabled = true
             mode = "retrieval_stub"
-            citation_style = "cards"
+            citation_style = "inline_refs"
             bubble_variant = "assistant_soft"
-            composer_variant = "expanded"
-            system_prompt = "Answer from the current public knowledge document."
+            composer_variant = "chatgpt_compact"
+            system_prompt = "Answer from the current public knowledge base and cite concrete sections."
+            welcome_prompts = ["Explain the return path", "Summarize the framework chain"]
 
             [chat.copy]
             placeholder = "Ask the public knowledge base"
-            welcome = "Ask a question about the selected public document. The answer will cite concrete sections."
+            welcome = "Ask a question and expect inline citations."
 
             [context]
-            selection_mode = "manual_plus_auto"
+            selection_mode = "knowledge_base_default"
             max_citations = 2
             max_preview_sections = 8
-            sticky_document = true
+            sticky_document = false
 
             [return]
             enabled = true
-            targets = ["preview_anchor", "toc"]
+            targets = ["citation_drawer", "document_detail"]
             anchor_restore = true
-            citation_card_variant = "stacked"
+            citation_card_variant = "chips"
 
             [[documents]]
             document_id = "public-guidance"
             title = "Public Guidance"
-            summary = "A public instance still uses the same framework chain and anchor-return loop."
+            summary = "A public instance still uses the same framework chain and source return loop."
             tags = ["public", "framework"]
-            updated_at = "2026-03-07"
+            updated_at = "2026-03-08"
             body_markdown = \"\"\"
             ## Public Contract
-            The public workbench keeps one library, one preview, and one chat region.
+            The public client keeps one conversation sidebar, one chat main region, and one citation drawer.
 
             ## Return Path
-            Citations must still return to concrete preview anchors.
+            Citations still reopen source context and document detail pages.
             \"\"\"
             """
         ).strip()
@@ -169,7 +181,13 @@ class ProjectRuntimeTest(unittest.TestCase):
             project = load_knowledge_base_project(instance_file)
             self.assertEqual(project.visual.brand, "Public KB")
             self.assertEqual(project.route.workbench, "/public-knowledge")
+            self.assertEqual(project.route.knowledge_list, "/public-knowledge/bases")
             self.assertEqual(len(project.documents), 1)
+            self.assertEqual(project.ui_spec["pages"]["chat_home"]["title"], "Knowledge Base Public")
+            self.assertEqual(
+                project.backend_spec["return_policy"]["document_detail_path"],
+                "/public-knowledge/bases/details/documents/{document_id}",
+            )
             self.assertTrue(project.validation_reports["overall"]["passed"])
 
             client = TestClient(build_project_app(instance_file))
@@ -186,8 +204,12 @@ class ProjectRuntimeTest(unittest.TestCase):
 
             page_response = client.get("/public-knowledge")
             self.assertEqual(page_response.status_code, 200)
+            self.assertIn("今天想了解什么？", page_response.text)
             self.assertIn("Knowledge Base Public", page_response.text)
-            self.assertIn("Public KB", page_response.text)
+
+            knowledge_base_response = client.get("/api/public-knowledge/knowledge-bases")
+            self.assertEqual(knowledge_base_response.status_code, 200)
+            self.assertEqual(knowledge_base_response.json()[0]["knowledge_base_id"], "public-guidance")
 
             documents_response = client.get("/api/public-knowledge/documents")
             self.assertEqual(documents_response.status_code, 200)
@@ -207,6 +229,10 @@ class ProjectRuntimeTest(unittest.TestCase):
             chat_payload = chat_response.json()
             self.assertTrue(chat_payload["citations"])
             self.assertIn("/public-knowledge?document=public-guidance&section=return-path", chat_payload["citations"][0]["return_path"])
+            self.assertIn(
+                "/public-knowledge/bases/details/documents/public-guidance",
+                chat_payload["citations"][0]["document_path"],
+            )
 
     def test_rule_validation_rejects_non_conforming_instance_values(self) -> None:
         instance_toml = textwrap.dedent(
@@ -216,7 +242,7 @@ class ProjectRuntimeTest(unittest.TestCase):
             template = "knowledge_base_workbench"
             display_name = "Knowledge Base Invalid"
             description = "A workbench instance that violates the framework rule chain."
-            version = "0.2.0"
+            version = "0.3.0"
 
             [framework]
             frontend = "framework/frontend/L2-M0-前端框架标准模块.md"
@@ -225,22 +251,22 @@ class ProjectRuntimeTest(unittest.TestCase):
             preset = "document_chat_workbench"
 
             [surface]
-            shell = "three_pane_workbench"
-            layout_variant = "chat_first_knowledge_workbench"
+            shell = "conversation_sidebar_shell"
+            layout_variant = "chatgpt_knowledge_client"
             sidebar_width = "md"
-            preview_mode = "docked"
+            preview_mode = "drawer"
             density = "comfortable"
 
             [surface.copy]
             hero_kicker = "Invalid Instance"
             hero_title = "Knowledge Base Invalid"
             hero_copy = "A workbench instance that violates the framework rule chain."
-            library_title = "Knowledge Files"
-            preview_title = "Source Viewer"
-            toc_title = "TOC"
+            library_title = "Knowledge Bases"
+            preview_title = "Citation Sources"
+            toc_title = "Source Sections"
             chat_title = "Knowledge Chat"
-            empty_state_title = "Select a document"
-            empty_state_copy = "The preview and citations will focus on the current document and section."
+            empty_state_title = "Start a conversation"
+            empty_state_copy = "Sources open only on demand."
 
             [visual]
             brand = "Invalid KB"
@@ -253,20 +279,26 @@ class ProjectRuntimeTest(unittest.TestCase):
             [route]
             home = "/"
             workbench = "/invalid"
+            knowledge_list = "/invalid/bases"
+            knowledge_detail = "/invalid/bases/details"
+            document_detail_prefix = "/invalid/bases/details/documents"
             api_prefix = "/api/invalid"
             workbench_spec = "/api/invalid/workbench-spec"
 
             [a11y]
-            reading_order = ["library", "toc", "preview", "chat"]
-            keyboard_nav = ["library-query", "document-card", "toc-item", "chat-input"]
-            announcements = ["current document", "current section", "citation return path"]
+            reading_order = ["conversation_sidebar", "chat_header", "message_stream", "chat_composer", "citation_drawer"]
+            keyboard_nav = ["new-chat", "conversation-item", "chat-input", "citation-ref", "citation-drawer-close"]
+            announcements = ["current knowledge base", "active conversation", "citation source opened"]
 
             [library]
+            knowledge_base_id = "invalid-doc"
+            knowledge_base_name = "Invalid KB"
+            knowledge_base_description = "Invalid configuration."
             enabled = true
             source_types = ["markdown"]
             metadata_fields = ["title", "tags", "updated_at"]
-            default_focus = "manual"
-            list_variant = "stacked"
+            default_focus = "current_knowledge_base"
+            list_variant = "conversation_companion"
             allow_create = false
             allow_delete = false
 
@@ -278,44 +310,45 @@ class ProjectRuntimeTest(unittest.TestCase):
             renderers = ["markdown"]
             anchor_mode = "heading"
             show_toc = true
-            rail_variant = "sticky"
+            preview_variant = "citation_drawer"
 
             [chat]
             enabled = true
             citations_enabled = true
             mode = "retrieval_stub"
-            citation_style = "cards"
+            citation_style = "inline_refs"
             bubble_variant = "assistant_soft"
-            composer_variant = "expanded"
+            composer_variant = "chatgpt_compact"
             system_prompt = "Answer from the selected document."
+            welcome_prompts = ["Explain the invalid setup"]
 
             [chat.copy]
             placeholder = "Ask the selected document"
             welcome = "Ask a question and expect citations."
 
             [context]
-            selection_mode = "manual_plus_auto"
+            selection_mode = "knowledge_base_default"
             max_citations = 2
             max_preview_sections = 8
-            sticky_document = true
+            sticky_document = false
 
             [return]
             enabled = true
-            targets = ["preview_anchor", "toc"]
+            targets = ["citation_drawer", "document_detail"]
             anchor_restore = true
-            citation_card_variant = "stacked"
+            citation_card_variant = "orbit"
 
             [[documents]]
             document_id = "invalid-doc"
             title = "Invalid Doc"
-            summary = "This document still has anchors and citations but the library focus is wrong."
+            summary = "This document still has anchors and citations but the return variant is unsupported."
             tags = ["invalid", "framework"]
-            updated_at = "2026-03-07"
+            updated_at = "2026-03-08"
             body_markdown = \"\"\"
-            ## Wrong Focus
+            ## Wrong Return
             The document body still has headings.
 
-            ## Return Path
+            ## Context
             Citations still return to anchors.
             \"\"\"
             """
@@ -325,7 +358,7 @@ class ProjectRuntimeTest(unittest.TestCase):
             instance_file = Path(temp_dir) / "instance.toml"
             instance_file.write_text(instance_toml, encoding="utf-8")
 
-            with self.assertRaisesRegex(ValueError, "knowledge_base\\.R1"):
+            with self.assertRaisesRegex(ValueError, "knowledge_base\\.R4"):
                 load_knowledge_base_project(instance_file)
 
 

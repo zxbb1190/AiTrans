@@ -24,29 +24,65 @@ def _outcome(
 
 def validate_frontend_rules(project: "KnowledgeBaseProject") -> tuple[dict[str, Any], ...]:
     contract = project.frontend_contract
+    ui_spec = project.ui_spec
     surface_regions = {item["region_id"] for item in contract["surface_regions"]}
     interaction_actions = {item["action_id"] for item in contract["interaction_actions"]}
     a11y = contract["a11y"]
+    route_contract = contract["route_contract"]
+    shell_spec = ui_spec.get("shell", {})
+    component_spec = ui_spec.get("components", {})
+    pages_spec = ui_spec.get("pages", {})
 
-    r1_missing = [item for item in ("library", "preview", "toc", "chat") if item not in surface_regions]
+    r1_required_regions = tuple(shell_spec.get("regions", ())) + ("knowledge_pages",)
+    r1_missing = [item for item in r1_required_regions if item not in surface_regions]
     r1_reasons = [f"missing surface region: {item}" for item in r1_missing]
-    r1_reasons.extend([] if contract["shell"] == "three_pane_workbench" else ["frontend shell must be three_pane_workbench"])
-    if contract["layout_variant"] != "chat_first_knowledge_workbench":
-        r1_reasons.append("frontend layout_variant must stay chat_first_knowledge_workbench")
-    if contract["surface_config"]["preview_mode"] != "docked":
-        r1_reasons.append("surface.preview_mode must stay docked")
+    if contract["shell"] != shell_spec.get("id"):
+        r1_reasons.append("frontend shell must match ui_spec.shell.id")
+    if contract["layout_variant"] != shell_spec.get("layout_variant"):
+        r1_reasons.append("frontend layout_variant must match ui_spec.shell.layout_variant")
+    if contract["surface_config"]["preview_mode"] != shell_spec.get("preview_mode"):
+        r1_reasons.append("surface.preview_mode must match ui_spec.shell.preview_mode")
 
-    r2_required = ("search_documents", "select_document", "jump_to_section", "submit_chat", "return_from_citation")
+    r2_required = (
+        "start_new_chat",
+        "select_session",
+        "open_knowledge_switch",
+        "search_documents",
+        "select_document",
+        "submit_chat",
+        "open_citation_drawer",
+        "browse_knowledge_bases",
+        "open_knowledge_base_detail",
+        "open_document_detail",
+        "return_from_citation",
+    )
     r2_missing = [item for item in r2_required if item not in interaction_actions]
     r2_reasons = [f"missing interaction action: {item}" for item in r2_missing]
     if project.library.allow_create and "create_document" not in interaction_actions:
         r2_reasons.append("missing interaction action: create_document")
     if project.library.allow_delete and "delete_document" not in interaction_actions:
         r2_reasons.append("missing interaction action: delete_document")
-    if a11y["reading_order"] != ["library", "toc", "preview", "chat"]:
-        r2_reasons.append("reading order must stay library -> toc -> preview -> chat")
+    if a11y["reading_order"] != [
+        "conversation_sidebar",
+        "chat_header",
+        "message_stream",
+        "chat_composer",
+        "citation_drawer",
+    ]:
+        r2_reasons.append(
+            "reading order must stay conversation_sidebar -> chat_header -> message_stream -> chat_composer -> citation_drawer"
+        )
     if not project.preview.show_toc:
         r2_reasons.append("preview TOC must stay enabled")
+    if not route_contract["knowledge_list"].startswith("/"):
+        r2_reasons.append("route.knowledge_list must stay routable")
+    if not route_contract["knowledge_detail"].startswith(route_contract["knowledge_list"]):
+        r2_reasons.append("route.knowledge_detail must stay under route.knowledge_list")
+    if not route_contract["document_detail_prefix"].startswith(route_contract["knowledge_detail"]):
+        r2_reasons.append("route.document_detail_prefix must stay under route.knowledge_detail")
+    for page_id in ("chat_home", "knowledge_list", "knowledge_detail", "document_detail"):
+        if page_id not in pages_spec:
+            r2_reasons.append(f"missing ui_spec page: {page_id}")
 
     r3_reasons: list[str] = []
     if project.metadata.template != "knowledge_base_workbench":
@@ -63,10 +99,16 @@ def validate_frontend_rules(project: "KnowledgeBaseProject") -> tuple[dict[str, 
         r4_reasons.append("chat cannot be disabled")
     if project.chat.citations_enabled and not project.return_config.enabled:
         r4_reasons.append("citation cannot be enabled without return_to_anchor")
-    if "preview_anchor" not in project.return_config.targets:
-        r4_reasons.append("return targets must include preview_anchor")
-    if contract["component_variants"]["chat_bubble"] not in {"assistant_soft", "assistant_solid"}:
+    if "citation_drawer" not in project.return_config.targets:
+        r4_reasons.append("return targets must include citation_drawer")
+    if "document_detail" not in project.return_config.targets:
+        r4_reasons.append("return targets must include document_detail")
+    if contract["component_variants"]["chat_bubble"] not in {"assistant_soft", "assistant_minimal"}:
         r4_reasons.append("chat bubble variant must stay within supported framework set")
+    if contract["component_variants"]["chat_composer"] not in {"chatgpt_compact", "expanded"}:
+        r4_reasons.append("chat composer variant must stay within supported framework set")
+    if component_spec.get("citation_drawer", {}).get("return_targets") != list(project.return_config.targets):
+        r4_reasons.append("ui_spec citation drawer return_targets must match return.targets")
 
     return (
         _outcome(
@@ -87,7 +129,7 @@ def validate_frontend_rules(project: "KnowledgeBaseProject") -> tuple[dict[str, 
             {
                 "interaction_actions": contract["interaction_actions"],
                 "reading_order": a11y["reading_order"],
-                "route_contract": contract["route_contract"],
+                "route_contract": route_contract,
                 "component_variants": contract["component_variants"],
             },
         ),

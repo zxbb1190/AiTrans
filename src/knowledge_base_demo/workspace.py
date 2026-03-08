@@ -26,26 +26,26 @@ def _module_bases(project: KnowledgeBaseProject) -> tuple[Base, ...]:
 
 
 KNOWLEDGE_BASE_WORKSPACE_CAPABILITIES = (
-    Capability("C1", "将文件库、预览、TOC 与对话引用收敛为统一工作台场景。"),
-    Capability("C2", "统一当前文件、当前章节、引用域与回合上下文的传递结构。"),
-    Capability("C3", "支持基于知识库的对话、引用与来源回跳闭环。"),
+    Capability("C1", "将会话侧栏、聊天主区与来源抽屉收敛为统一知识问答客户端。"),
+    Capability("C2", "统一当前知识库、当前文档、当前章节与当前会话的上下文传递。"),
+    Capability("C3", "支持从回答内引用展开来源、进入文档详情并返回会话。"),
 )
 
 KNOWLEDGE_BASE_WORKSPACE_BOUNDARY = BoundaryDefinition(
     items=(
-        BoundaryItem("SURFACE", "文件管理区、文档预览区、目录区与对话区必须同时存在。"),
-        BoundaryItem("LIBRARY", "当前文档焦点和查询过滤动作必须统一。"),
-        BoundaryItem("PREVIEW", "正文、TOC 与章节锚点切换必须稳定。"),
-        BoundaryItem("CHAT", "输入、回合顺序、引用附着与回看路径必须稳定。"),
-        BoundaryItem("CONTEXT", "当前文件和当前章节上下文必须显式传递。"),
-        BoundaryItem("RETURN", "引用必须返回到文档与章节锚点。"),
+        BoundaryItem("SURFACE", "会话侧栏、聊天主区与引用抽屉必须同时存在。"),
+        BoundaryItem("LIBRARY", "知识库切换、文档浏览与文件入口必须统一。"),
+        BoundaryItem("PREVIEW", "来源抽屉、文档详情与章节锚点必须稳定。"),
+        BoundaryItem("CHAT", "输入、回合顺序、流式回复与引用附着必须稳定。"),
+        BoundaryItem("CONTEXT", "当前知识库、当前文档和当前章节上下文必须显式传递。"),
+        BoundaryItem("RETURN", "引用必须能返回抽屉和文档详情页。"),
     )
 )
 
 KNOWLEDGE_BASE_WORKSPACE_BASES = (
-    Base("B1", "文件预览场景基", "library + preview + toc chain"),
-    Base("B2", "对话引用场景基", "chat turns + citations + return paths"),
-    Base("B3", "工作台闭环场景基", "library -> preview -> chat context loop"),
+    Base("B1", "聊天客户端场景基", "conversation sidebar + chat main + composer"),
+    Base("B2", "引用来源场景基", "inline refs + citation drawer + document detail"),
+    Base("B3", "知识问答回路场景基", "knowledge base select -> conversation -> citation -> document detail"),
 )
 
 
@@ -63,30 +63,38 @@ class WorkspaceScenario:
 
 def compose_workspace_flow(project: KnowledgeBaseProject | None = None) -> tuple[WorkspaceScenario, ...]:
     resolved = _resolve_project(project)
+    lead_document = resolved.documents[0]
+    lead_section = lead_document.sections[1]
+    ui_spec = resolved.ui_spec
+    return_policy = resolved.backend_spec["return_policy"]
+    knowledge_base_detail = return_policy["knowledge_base_detail_path"].replace(
+        "{knowledge_base_id}", resolved.library.knowledge_base_id
+    )
+    document_detail = (
+        return_policy["document_detail_path"].replace("{document_id}", lead_document.document_id)
+        + f"?section={lead_section.section_id}"
+    )
     return (
         WorkspaceScenario(
-            scene_id="library",
-            title="Library Focus",
-            steps=("open workbench", "add or scan document cards", "select current document"),
+            scene_id="chat_home",
+            title=ui_spec["pages"]["chat_home"]["title"],
+            steps=("open chat shell", "review current knowledge base", "start a new conversation"),
             entry_path=resolved.route.workbench,
             return_path=resolved.route.workbench,
         ),
         WorkspaceScenario(
-            scene_id="preview",
-            title="Preview Focus",
-            steps=("open selected document", "scan toc", "jump to section anchor"),
-            entry_path=f"{resolved.route.workbench}?document={resolved.documents[0].document_id}",
+            scene_id="citation_review",
+            title=ui_spec["components"]["citation_drawer"]["title"],
+            steps=("ask question", "inspect inline references", "open citation drawer"),
+            entry_path=f"{resolved.route.workbench}?document={lead_document.document_id}&section={lead_section.section_id}",
             return_path=resolved.route.workbench,
         ),
         WorkspaceScenario(
-            scene_id="chat",
-            title="Chat With Citation",
-            steps=("ask question", "inspect citations", "jump back to cited anchor"),
-            entry_path=(
-                f"{resolved.route.workbench}?document={resolved.documents[0].document_id}"
-                f"&section={resolved.documents[0].sections[1].section_id}"
-            ),
-            return_path=resolved.route.workbench,
+            scene_id="document_trace",
+            title=ui_spec["pages"]["document_detail"]["title"],
+            steps=("open knowledge base detail", "open document detail", "return to chat"),
+            entry_path=knowledge_base_detail,
+            return_path=document_detail,
         ),
     )
 
@@ -99,9 +107,9 @@ def verify_workspace_flow(project: KnowledgeBaseProject | None = None) -> Verifi
         VerificationInput(
             subject="knowledge base workbench flow",
             pass_criteria=[
-                "library, preview, toc, and chat regions all exist",
-                "the current document and current section stay explicit across preview and chat",
-                "citations expose return paths back to preview anchors",
+                "conversation sidebar, chat main, and citation drawer all exist",
+                "the current knowledge base, document, and section stay explicit across chat and source review",
+                "citations expose return paths back to drawer and document detail views",
             ],
             evidence={
                 "project": resolved.public_summary(),
@@ -109,6 +117,8 @@ def verify_workspace_flow(project: KnowledgeBaseProject | None = None) -> Verifi
                 "boundary": boundary.to_dict(),
                 "bases": [item.to_dict() for item in _module_bases(resolved)],
                 "workbench_contract": resolved.workbench_contract,
+                "ui_spec": resolved.ui_spec,
+                "backend_spec": resolved.backend_spec,
                 "workspace_flow": [item.to_dict() for item in compose_workspace_flow(resolved)],
                 "rule_validation": resolved.validation_reports.get("knowledge_base", {}),
             },

@@ -7,15 +7,48 @@ if TYPE_CHECKING:
 
 
 def build_workbench_contract(project: "KnowledgeBaseProject") -> dict[str, Any]:
-    library_actions = ["search", "focus", "select"]
+    library_actions = ["switch_knowledge_base", "browse_documents", "open_document_detail"]
     if project.library.allow_create:
         library_actions.append("create_document")
     if project.library.allow_delete:
         library_actions.append("delete_document")
+    flow = project.backend_spec.get(
+        "interaction_flow",
+        [
+            {
+                "stage_id": "knowledge_base_select",
+                "depends_on": [],
+                "produces": ["knowledge_base_id"],
+            },
+            {
+                "stage_id": "conversation",
+                "depends_on": ["knowledge_base_id"],
+                "produces": ["conversation_id", "answer", "citations"],
+            },
+            {
+                "stage_id": "citation_review",
+                "depends_on": ["conversation_id", "citations"],
+                "produces": ["document_id", "section_id", "drawer_state"],
+            },
+            {
+                "stage_id": "document_detail",
+                "depends_on": ["document_id", "section_id"],
+                "produces": ["document_page", "return_path"],
+            },
+        ],
+    )
+
     return {
         "module_id": project.domain_ir.module_id,
         "layout_variant": project.surface.layout_variant,
-        "regions": ["library", "preview", "toc", "chat"],
+        "regions": [
+            "conversation_sidebar",
+            "chat_main",
+            "citation_drawer",
+            "knowledge_list_page",
+            "knowledge_detail_page",
+            "document_detail_page",
+        ],
         "surface": {
             "sidebar_width": project.surface.sidebar_width,
             "preview_mode": project.surface.preview_mode,
@@ -29,28 +62,20 @@ def build_workbench_contract(project: "KnowledgeBaseProject") -> dict[str, Any]:
         "chat": project.chat.to_dict(),
         "context": project.context.to_dict(),
         "return": project.return_config.to_dict(),
-        "flow": [
-            {
-                "stage_id": "library",
-                "depends_on": [],
-                "produces": ["document_id", "tag_filter"],
-            },
-            {
-                "stage_id": "preview",
-                "depends_on": ["document_id"],
-                "produces": ["section_id", "anchor"],
-            },
-            {
-                "stage_id": "chat",
-                "depends_on": ["document_id", "section_id"],
-                "produces": ["answer", "citations", "return_path"],
-            },
-        ],
+        "flow": flow,
         "citation_return_contract": {
-            "query_keys": ["document", "section"],
+            "query_keys": ["document", "section", "citation"],
             "targets": list(project.return_config.targets),
             "anchor_restore": project.return_config.anchor_restore,
         },
+        "knowledge_bases": [
+            {
+                "knowledge_base_id": project.library.knowledge_base_id,
+                "name": project.library.knowledge_base_name,
+                "description": project.library.knowledge_base_description,
+                "document_count": len(project.documents),
+            }
+        ],
         "documents": [
             {
                 "document_id": item.document_id,

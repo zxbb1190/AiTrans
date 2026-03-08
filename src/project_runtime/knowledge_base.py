@@ -255,6 +255,9 @@ class FeatureConfig:
 class RouteConfig:
     home: str
     workbench: str
+    knowledge_list: str
+    knowledge_detail: str
+    document_detail_prefix: str
     api_prefix: str
     workbench_spec: str
 
@@ -278,6 +281,9 @@ class A11yConfig:
 
 @dataclass(frozen=True)
 class LibraryConfig:
+    knowledge_base_id: str
+    knowledge_base_name: str
+    knowledge_base_description: str
     enabled: bool
     source_types: tuple[str, ...]
     metadata_fields: tuple[str, ...]
@@ -289,6 +295,9 @@ class LibraryConfig:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "knowledge_base_id": self.knowledge_base_id,
+            "knowledge_base_name": self.knowledge_base_name,
+            "knowledge_base_description": self.knowledge_base_description,
             "enabled": self.enabled,
             "source_types": list(self.source_types),
             "metadata_fields": list(self.metadata_fields),
@@ -306,7 +315,7 @@ class PreviewConfig:
     renderers: tuple[str, ...]
     anchor_mode: str
     show_toc: bool
-    rail_variant: str
+    preview_variant: str
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -314,7 +323,7 @@ class PreviewConfig:
             "renderers": list(self.renderers),
             "anchor_mode": self.anchor_mode,
             "show_toc": self.show_toc,
-            "rail_variant": self.rail_variant,
+            "preview_variant": self.preview_variant,
         }
 
 
@@ -329,9 +338,12 @@ class ChatConfig:
     system_prompt: str
     placeholder: str
     welcome: str
+    welcome_prompts: tuple[str, ...]
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        payload = asdict(self)
+        payload["welcome_prompts"] = list(self.welcome_prompts)
+        return payload
 
 
 @dataclass(frozen=True)
@@ -469,6 +481,8 @@ class KnowledgeBaseProject:
     documents: tuple[KnowledgeDocument, ...]
     frontend_contract: dict[str, Any] = field(default_factory=dict)
     workbench_contract: dict[str, Any] = field(default_factory=dict)
+    ui_spec: dict[str, Any] = field(default_factory=dict)
+    backend_spec: dict[str, Any] = field(default_factory=dict)
     validation_reports: dict[str, Any] = field(default_factory=dict)
     generated_artifacts: GeneratedArtifactPaths | None = None
 
@@ -506,7 +520,14 @@ class KnowledgeBaseProject:
             "route": self.route.to_dict(),
             "routes": {
                 **self.route.to_dict(),
+                "pages": {
+                    "knowledge_list": self.route.knowledge_list,
+                    "knowledge_detail": f"{self.route.knowledge_detail}/{{knowledge_base_id}}",
+                    "document_detail": f"{self.route.document_detail_prefix}/{{document_id}}",
+                },
                 "api": {
+                    "knowledge_bases": f"{self.route.api_prefix}/knowledge-bases",
+                    "knowledge_base_detail": f"{self.route.api_prefix}/knowledge-bases/{{knowledge_base_id}}",
                     "documents": f"{self.route.api_prefix}/documents",
                     "create_document": f"{self.route.api_prefix}/documents",
                     "document_detail": f"{self.route.api_prefix}/documents/{{document_id}}",
@@ -538,6 +559,8 @@ class KnowledgeBaseProject:
             "documents": [item.to_dict() for item in self.documents],
             "frontend_contract": self.frontend_contract,
             "workbench_contract": self.workbench_contract,
+            "ui_spec": self.ui_spec,
+            "backend_spec": self.backend_spec,
             "validation_reports": self.validation_reports,
             "generated_artifacts": self.generated_artifacts.to_dict() if self.generated_artifacts else None,
         }
@@ -553,7 +576,14 @@ class KnowledgeBaseProject:
             "a11y": self.a11y.to_dict(),
             "routes": {
                 **self.route.to_dict(),
+                "pages": {
+                    "knowledge_list": self.route.knowledge_list,
+                    "knowledge_detail": f"{self.route.knowledge_detail}/{{knowledge_base_id}}",
+                    "document_detail": f"{self.route.document_detail_prefix}/{{document_id}}",
+                },
                 "api": {
+                    "knowledge_bases": f"{self.route.api_prefix}/knowledge-bases",
+                    "knowledge_base_detail": f"{self.route.api_prefix}/knowledge-bases/{{knowledge_base_id}}",
                     "documents": f"{self.route.api_prefix}/documents",
                     "create_document": f"{self.route.api_prefix}/documents",
                     "document_detail": f"{self.route.api_prefix}/documents/{{document_id}}",
@@ -566,6 +596,18 @@ class KnowledgeBaseProject:
             },
             "document_count": len(self.documents),
             "resolved_module_ids": [item.module_id for item in self.resolved_modules],
+            "ui_spec_summary": {
+                "renderer": self.ui_spec.get("renderer"),
+                "page_ids": list(self.ui_spec.get("pages", {}).keys()),
+                "component_ids": list(self.ui_spec.get("components", {}).keys()),
+            },
+            "backend_spec_summary": {
+                "renderer": self.backend_spec.get("renderer"),
+                "retrieval": self.backend_spec.get("retrieval", {}),
+                "answer_policy": {
+                    "citation_style": self.backend_spec.get("answer_policy", {}).get("citation_style"),
+                },
+            },
             "validation_reports": self.validation_reports,
             "validation_summary": {
                 key: {
@@ -815,6 +857,9 @@ def _load_instance_config(project_path: Path) -> KnowledgeBaseInstanceConfig:
         route=RouteConfig(
             home=_require_string(route_table, "home"),
             workbench=_require_string(route_table, "workbench"),
+            knowledge_list=_require_string(route_table, "knowledge_list"),
+            knowledge_detail=_require_string(route_table, "knowledge_detail"),
+            document_detail_prefix=_require_string(route_table, "document_detail_prefix"),
             api_prefix=_require_string(route_table, "api_prefix"),
             workbench_spec=_require_string(route_table, "workbench_spec"),
         ),
@@ -824,6 +869,9 @@ def _load_instance_config(project_path: Path) -> KnowledgeBaseInstanceConfig:
             announcements=_require_string_tuple(a11y_table, "announcements"),
         ),
         library=LibraryConfig(
+            knowledge_base_id=_require_string(library_table, "knowledge_base_id"),
+            knowledge_base_name=_require_string(library_table, "knowledge_base_name"),
+            knowledge_base_description=_require_string(library_table, "knowledge_base_description"),
             enabled=library_enabled,
             source_types=_require_string_tuple(library_table, "source_types"),
             metadata_fields=_require_string_tuple(library_table, "metadata_fields"),
@@ -838,7 +886,7 @@ def _load_instance_config(project_path: Path) -> KnowledgeBaseInstanceConfig:
             renderers=_require_string_tuple(preview_table, "renderers"),
             anchor_mode=_require_string(preview_table, "anchor_mode"),
             show_toc=_require_bool(preview_table, "show_toc"),
-            rail_variant=_require_string(preview_table, "rail_variant"),
+            preview_variant=_require_string(preview_table, "preview_variant"),
         ),
         chat=ChatConfig(
             enabled=chat_enabled,
@@ -850,6 +898,7 @@ def _load_instance_config(project_path: Path) -> KnowledgeBaseInstanceConfig:
             system_prompt=_require_string(chat_table, "system_prompt"),
             placeholder=_require_string(chat_copy_table, "placeholder"),
             welcome=_require_string(chat_copy_table, "welcome"),
+            welcome_prompts=_require_string_tuple(chat_table, "welcome_prompts"),
         ),
         context=ContextConfig(
             selection_mode=_require_string(context_table, "selection_mode"),
@@ -912,7 +961,7 @@ def _build_visual_tokens(visual: VisualConfig, surface: SurfaceConfig, preview: 
         raise ValueError(f"unsupported surface.sidebar_width: {surface.sidebar_width}")
     rail_width = RAIL_WIDTH_PRESETS.get(surface.sidebar_width)
     if rail_width is None:
-        raise ValueError(f"unsupported rail width preset for surface.sidebar_width: {surface.sidebar_width}")
+        raise ValueError(f"unsupported drawer width preset for surface.sidebar_width: {surface.sidebar_width}")
     density_values = DENSITY_PRESETS.get(surface.density)
     if density_values is None:
         raise ValueError(f"unsupported surface.density: {surface.density}")
@@ -926,13 +975,14 @@ def _build_visual_tokens(visual: VisualConfig, surface: SurfaceConfig, preview: 
         "font_body": font_values["body"],
         "font_title": font_values["title"],
         "font_hero": font_values["hero"],
+        "message_width": "820px",
         "sidebar_width": sidebar_width,
-        "rail_width": rail_width,
+        "drawer_width": rail_width,
         "shell_gap": density_values["shell_gap"],
         "shell_padding": density_values["shell_padding"],
         "panel_gap": density_values["panel_gap"],
         "preview_mode": surface.preview_mode,
-        "rail_variant": preview.rail_variant,
+        "preview_variant": preview.preview_variant,
     }
 
 
@@ -963,6 +1013,9 @@ def _derive_copy(
         "hero_kicker": surface_copy.hero_kicker or instance.visual.brand,
         "hero_title": surface_copy.hero_title or instance.metadata.display_name,
         "hero_copy": surface_copy.hero_copy or hero_copy,
+        "mode_label": "知识问答",
+        "knowledge_base_name": instance.library.knowledge_base_name,
+        "knowledge_base_description": instance.library.knowledge_base_description,
         "contract_title": "Framework Contract",
         "contract_value": base_labels,
         "contract_meta": f"Boundaries: {boundary_labels}",
@@ -978,6 +1031,261 @@ def _derive_copy(
     }
 
 
+def _build_ui_spec(project: KnowledgeBaseProject) -> dict[str, Any]:
+    knowledge_base_detail_path = f"{project.route.knowledge_detail}/{{knowledge_base_id}}"
+    document_detail_path = f"{project.route.document_detail_prefix}/{{document_id}}"
+    return {
+        "renderer": "knowledge_chat_client_v1",
+        "derived_from": {
+            "framework_modules": {
+                "frontend": project.frontend_ir.module_id,
+                "domain": project.domain_ir.module_id,
+            },
+            "boundary_sections": {
+                "SURFACE": "surface",
+                "VISUAL": "visual",
+                "ROUTE": "route",
+                "A11Y": "a11y",
+                "LIBRARY": "library",
+                "PREVIEW": "preview",
+                "CHAT": "chat",
+                "CONTEXT": "context",
+                "RETURN": "return",
+            },
+            "rule_drivers": {
+                "frontend": [item.rule_id for item in project.frontend_ir.rules],
+                "domain": [item.rule_id for item in project.domain_ir.rules],
+            },
+        },
+        "shell": {
+            "id": project.surface.shell,
+            "layout_variant": project.surface.layout_variant,
+            "regions": ["conversation_sidebar", "chat_main", "citation_drawer"],
+            "secondary_pages": ["knowledge_list", "knowledge_detail", "document_detail"],
+            "default_page": "chat_home",
+            "preview_mode": project.surface.preview_mode,
+            "density": project.surface.density,
+        },
+        "visual": {
+            "theme": project.visual.to_dict(),
+            "tokens": project.visual_tokens,
+        },
+        "pages": {
+            "chat_home": {
+                "path": project.route.workbench,
+                "title": project.metadata.display_name,
+                "slots": [
+                    "conversation_sidebar",
+                    "chat_header",
+                    "message_stream",
+                    "chat_composer",
+                    "citation_drawer",
+                    "knowledge_switch_dialog",
+                ],
+                "entry_state": "welcome_prompts",
+            },
+            "knowledge_list": {
+                "path": project.route.knowledge_list,
+                "title": project.surface.copy.library_title,
+                "subtitle": "聊天是主入口，知识库页用于切换上下文和确认可用来源。",
+                "primary_action_label": "返回聊天",
+                "rationale_title": "为什么这页是二级入口",
+                "rationale_copy": (
+                    "主界面保持 ChatGPT 风格：左侧历史会话，中央聊天区，底部输入框。"
+                    "知识库管理和文档浏览退到二级页面，只在需要验证来源时展开。"
+                ),
+                "chat_action_label": "用此知识库开始聊天",
+                "detail_action_label": "查看知识库详情",
+                "slots": ["aux_sidebar", "page_header", "knowledge_cards"],
+            },
+            "knowledge_detail": {
+                "path": knowledge_base_detail_path,
+                "chat_action_label": "用此知识库开始聊天",
+                "overview_title": "知识库概况",
+                "return_chat_with_document_label": "回到聊天并聚焦此文档",
+                "document_detail_action_label": "查看文档详情",
+                "slots": ["aux_sidebar", "page_header", "document_cards"],
+            },
+            "document_detail": {
+                "path": document_detail_path,
+                "title": "文档详情",
+                "subtitle": "从引用抽屉进入完整文档上下文，再返回聊天继续提问。",
+                "return_chat_label": "返回聊天",
+                "return_knowledge_detail_label": "返回知识库详情",
+                "slots": ["aux_sidebar", "page_header", "document_sections"],
+            },
+        },
+        "components": {
+            "conversation_sidebar": {
+                "title": "历史会话",
+                "actions": ["start_new_chat", "select_session", "open_knowledge_switch"],
+                "new_chat_label": "新建聊天",
+                "browse_knowledge_label": "浏览知识库与文档",
+                "knowledge_entry_label": f"知识库 · {project.library.knowledge_base_name}",
+            },
+            "aux_sidebar": {
+                "nav": {
+                    "chat": "返回聊天",
+                    "knowledge_list": "知识库列表",
+                    "knowledge_detail": "当前知识库详情",
+                },
+                "note": "辅助页面负责知识库浏览、来源验证与文档追溯，不抢占聊天主舞台。",
+            },
+            "chat_header": {
+                "title_source": "conversation.title",
+                "subtitle_template": "知识库 · {knowledge_base_name}",
+                "knowledge_badge_template": "基于：{knowledge_base_name}",
+                "knowledge_entry_link_label": "知识库入口",
+            },
+            "message_stream": {
+                "max_width": project.visual_tokens["message_width"],
+                "roles": ["user", "assistant"],
+                "role_labels": {"user": "You", "assistant": "Assistant"},
+                "assistant_actions": ["copy_answer"],
+                "copy_action_label": "复制回答",
+                "copy_failure_message": "复制失败，请手动复制。",
+                "loading_label": "正在检索知识库并整理回答…",
+                "summary_template": "参考了 {count} 个来源",
+                "citation_style": project.chat.citation_style,
+            },
+            "chat_composer": {
+                "placeholder": project.chat.placeholder,
+                "submit_label": "发送",
+                "context_template": "当前上下文：{context_label}",
+                "citation_hint": "引用默认轻量展示，点击后打开来源抽屉",
+                "mode_label": "知识问答",
+                "knowledge_link_label": "查看知识库",
+            },
+            "citation_drawer": {
+                "title": project.copy["preview_title"],
+                "close_aria_label": "Close citation drawer",
+                "tab_variant": "numbered",
+                "sections": ["snippet", "source_context"],
+                "section_label": "章节",
+                "snippet_title": "命中片段",
+                "source_context_title": "来源上下文",
+                "empty_context_text": "暂无来源上下文。",
+                "load_failure_text": "无法加载来源片段。",
+                "document_link_label": "打开文档详情",
+                "return_targets": list(project.return_config.targets),
+            },
+            "knowledge_switch_dialog": {
+                "title": "切换知识库",
+                "description": "默认保持 ChatGPT 风格聊天界面，知识库切换只在需要时展开。",
+                "close_aria_label": "Close knowledge dialog",
+                "select_action_label": "使用此知识库",
+                "detail_action_label": "查看详情",
+                "card_actions": ["select", "open_knowledge_detail"],
+            },
+        },
+        "conversation": {
+            "default_title": "新建聊天",
+            "relative_groups": {
+                "today": "今天",
+                "last_7_days": "7 天内",
+                "last_30_days": "30 天内",
+                "older": "更早",
+            },
+            "welcome_kicker": project.surface.copy.chat_title,
+            "welcome_title": "今天想了解什么？",
+            "welcome_copy": project.chat.welcome,
+            "welcome_prompts": list(project.chat.welcome_prompts),
+            "current_knowledge_base_template": "当前知识库：{knowledge_base_name}",
+        },
+        "citation": {
+            "style": project.chat.citation_style,
+            "summary_variant": project.return_config.citation_card_variant,
+            "drawer_sections": ["snippet", "source_context"],
+            "document_detail_path": document_detail_path,
+        },
+    }
+
+
+def _build_backend_spec(project: KnowledgeBaseProject) -> dict[str, Any]:
+    return {
+        "renderer": "knowledge_chat_backend_v1",
+        "derived_from": {
+            "framework_modules": {
+                "domain": project.domain_ir.module_id,
+                "backend": project.backend_ir.module_id,
+            },
+            "boundary_sections": {
+                "LIBRARY": "library",
+                "PREVIEW": "preview",
+                "CHAT": "chat",
+                "CONTEXT": "context",
+                "RETURN": "return",
+            },
+            "rule_drivers": {
+                "domain": [item.rule_id for item in project.domain_ir.rules],
+                "backend": [item.rule_id for item in project.backend_ir.rules],
+            },
+        },
+        "knowledge_base": {
+            "knowledge_base_id": project.library.knowledge_base_id,
+            "knowledge_base_name": project.library.knowledge_base_name,
+            "knowledge_base_description": project.library.knowledge_base_description,
+            "source_types": list(project.library.source_types),
+            "metadata_fields": list(project.library.metadata_fields),
+        },
+        "retrieval": {
+            "query_token_min_length": 3,
+            "focus_section_bonus": 4,
+            "token_match_bonus": 3,
+            "max_preview_sections": project.context.max_preview_sections,
+            "max_citations": project.context.max_citations,
+            "selection_mode": project.context.selection_mode,
+        },
+        "interaction_flow": [
+            {
+                "stage_id": "knowledge_base_select",
+                "depends_on": [],
+                "produces": ["knowledge_base_id"],
+            },
+            {
+                "stage_id": "conversation",
+                "depends_on": ["knowledge_base_id"],
+                "produces": ["conversation_id", "answer", "citations"],
+            },
+            {
+                "stage_id": "citation_review",
+                "depends_on": ["conversation_id", "citations"],
+                "produces": ["document_id", "section_id", "drawer_state"],
+            },
+            {
+                "stage_id": "document_detail",
+                "depends_on": ["document_id", "section_id"],
+                "produces": ["document_page", "return_path"],
+            },
+        ],
+        "answer_policy": {
+            "citation_style": project.chat.citation_style,
+            "no_match_text": (
+                "当前知识库里没有找到足够相关的证据。你可以换一种问法，或者先浏览知识库与文档详情页确认可用来源。"
+            ),
+            "lead_template": "根据当前知识库，最相关的证据来自《{document_title}》的“{section_title}”。[{citation_index}]",
+            "lead_snippet_template": "该片段指出：{snippet}",
+            "followup_template": "补充来源还包括《{document_title}》的“{section_title}”。[{citation_index}] {snippet}",
+            "closing_text": "点击文中引用可打开来源抽屉，并继续进入文档详情页查看完整上下文。",
+        },
+        "interaction_copy": {
+            "loading_text": "正在检索知识库并整理回答…",
+            "error_text": "回答生成失败。你可以重新提问，或稍后再试。",
+        },
+        "return_policy": {
+            "targets": list(project.return_config.targets),
+            "anchor_restore": project.return_config.anchor_restore,
+            "chat_path": project.route.workbench,
+            "knowledge_base_detail_path": f"{project.route.knowledge_detail}/{{knowledge_base_id}}",
+            "document_detail_path": f"{project.route.document_detail_prefix}/{{document_id}}",
+        },
+        "write_policy": {
+            "allow_create": project.library.allow_create,
+            "allow_delete": project.library.allow_delete,
+        },
+    }
+
+
 def _validate_instance_config(
     instance: KnowledgeBaseInstanceConfig,
     frontend_ir: FrameworkModuleIR,
@@ -986,12 +1294,12 @@ def _validate_instance_config(
 ) -> None:
     if instance.metadata.template != SUPPORTED_PROJECT_TEMPLATE:
         raise ValueError(f"unsupported project template: {instance.metadata.template}")
-    if instance.surface.shell != "three_pane_workbench":
-        raise ValueError("surface.shell must be three_pane_workbench")
-    if instance.surface.layout_variant != "chat_first_knowledge_workbench":
-        raise ValueError("surface.layout_variant must be chat_first_knowledge_workbench")
-    if instance.surface.preview_mode != "docked":
-        raise ValueError("surface.preview_mode must be docked")
+    if instance.surface.shell != "conversation_sidebar_shell":
+        raise ValueError("surface.shell must be conversation_sidebar_shell")
+    if instance.surface.layout_variant != "chatgpt_knowledge_client":
+        raise ValueError("surface.layout_variant must be chatgpt_knowledge_client")
+    if instance.surface.preview_mode != "drawer":
+        raise ValueError("surface.preview_mode must be drawer")
     if not all(
         (
             instance.library.enabled,
@@ -1004,32 +1312,58 @@ def _validate_instance_config(
         raise ValueError("knowledge_base_workbench requires library, preview, chat, citations, and return")
     if not instance.route.home.startswith("/") or not instance.route.workbench.startswith("/"):
         raise ValueError("route.home and route.workbench must start with '/'")
+    if not instance.route.knowledge_list.startswith("/") or not instance.route.knowledge_detail.startswith("/"):
+        raise ValueError("route.knowledge_list and route.knowledge_detail must start with '/'")
+    if not instance.route.document_detail_prefix.startswith("/"):
+        raise ValueError("route.document_detail_prefix must start with '/'")
     if not instance.route.api_prefix.startswith("/api"):
         raise ValueError("route.api_prefix must start with '/api'")
     if not instance.route.workbench_spec.startswith(instance.route.api_prefix):
         raise ValueError("route.workbench_spec must stay under route.api_prefix")
+    if not instance.route.knowledge_detail.startswith(instance.route.knowledge_list):
+        raise ValueError("route.knowledge_detail must stay under route.knowledge_list")
+    if not instance.route.document_detail_prefix.startswith(instance.route.knowledge_detail):
+        raise ValueError("route.document_detail_prefix must stay under route.knowledge_detail")
+    if not instance.library.knowledge_base_id.strip():
+        raise ValueError("library.knowledge_base_id must be non-empty")
     if "markdown" not in instance.library.source_types:
         raise ValueError("library.source_types must include markdown")
     if "title" not in instance.library.metadata_fields:
         raise ValueError("library.metadata_fields must include title")
     if not instance.library.allow_create and instance.library.allow_delete:
         raise ValueError("library.allow_delete cannot be true when library.allow_create is false")
+    if instance.library.default_focus != "current_knowledge_base":
+        raise ValueError("library.default_focus must be current_knowledge_base")
     if instance.preview.anchor_mode != "heading":
         raise ValueError("preview.anchor_mode must be heading")
     if not instance.preview.show_toc:
         raise ValueError("preview.show_toc must stay enabled for the knowledge-base workbench")
+    if instance.preview.preview_variant != "citation_drawer":
+        raise ValueError("preview.preview_variant must be citation_drawer")
     if instance.chat.mode != "retrieval_stub":
         raise ValueError("chat.mode must be retrieval_stub")
-    if instance.chat.citation_style != "cards":
-        raise ValueError("chat.citation_style must be cards")
+    if instance.chat.citation_style != "inline_refs":
+        raise ValueError("chat.citation_style must be inline_refs")
+    if not instance.chat.welcome_prompts:
+        raise ValueError("chat.welcome_prompts must not be empty")
     if instance.context.max_citations <= 0 or instance.context.max_preview_sections <= 0:
         raise ValueError("context max values must be positive")
     if not instance.return_config.anchor_restore:
         raise ValueError("return.anchor_restore must stay enabled")
-    if "preview_anchor" not in instance.return_config.targets:
-        raise ValueError("return.targets must include preview_anchor")
-    if tuple(instance.a11y.reading_order) != ("library", "toc", "preview", "chat"):
-        raise ValueError("a11y.reading_order must stay library -> toc -> preview -> chat")
+    if "citation_drawer" not in instance.return_config.targets:
+        raise ValueError("return.targets must include citation_drawer")
+    if "document_detail" not in instance.return_config.targets:
+        raise ValueError("return.targets must include document_detail")
+    if tuple(instance.a11y.reading_order) != (
+        "conversation_sidebar",
+        "chat_header",
+        "message_stream",
+        "chat_composer",
+        "citation_drawer",
+    ):
+        raise ValueError(
+            "a11y.reading_order must stay conversation_sidebar -> chat_header -> message_stream -> chat_composer -> citation_drawer"
+        )
     if len(instance.documents) < 1:
         raise ValueError("at least one document is required")
     if not frontend_ir.bases or not domain_ir.bases or not backend_ir.bases:
@@ -1176,10 +1510,15 @@ def _compile_project(instance: KnowledgeBaseInstanceConfig) -> KnowledgeBaseProj
         resolved_modules=_collect_framework_closure(frontend_ir, domain_ir, backend_ir),
         documents=documents,
     )
+    project = replace(project, backend_spec=_build_backend_spec(project))
     project = replace(
         project,
         frontend_contract=build_frontend_contract(project),
         workbench_contract=build_workbench_contract(project),
+    )
+    project = replace(
+        project,
+        ui_spec=_build_ui_spec(project),
     )
     validation_reports = _collect_validation_reports(project)
     _raise_on_validation_failures(validation_reports)

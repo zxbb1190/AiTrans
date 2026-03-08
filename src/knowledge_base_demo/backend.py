@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 import re
-from typing import Iterable
 
 from fastapi import APIRouter, HTTPException, Query, status
 from framework_core import Base, BoundaryDefinition, BoundaryItem, Capability, VerificationInput, VerificationResult, verify
@@ -37,16 +36,16 @@ def _module_bases(project: KnowledgeBaseProject) -> tuple[Base, ...]:
 
 
 KNOWLEDGE_BASE_API_CAPABILITIES = (
-    Capability("C1", "稳定提供文件列表、创建、删除、文档详情、章节锚点与标签接口。"),
-    Capability("C2", "稳定提供正文预览、目录定位与章节读取接口。"),
-    Capability("C3", "稳定提供问答、引用条目与返回路径接口。"),
+    Capability("C1", "稳定提供知识库列表、详情、文档列表、创建、删除、文档详情与章节锚点接口。"),
+    Capability("C2", "稳定提供正文预览、章节读取、引用抽屉与文档详情所需的来源结构。"),
+    Capability("C3", "稳定提供问答、行内引用、引用返回路径与文档详情跳转接口。"),
 )
 
 KNOWLEDGE_BASE_API_BOUNDARY = BoundaryDefinition(
     items=(
-        BoundaryItem("LIBRARY", "文件列表、聚焦与标签过滤接口必须统一。"),
-        BoundaryItem("PREVIEW", "正文、章节和锚点接口必须返回完整预览结构。"),
-        BoundaryItem("CHAT", "对话输入、回答与引用条目结构必须统一。"),
+        BoundaryItem("LIBRARY", "知识库列表、详情、文档列表与写入入口必须统一。"),
+        BoundaryItem("PREVIEW", "正文、章节和锚点接口必须返回完整来源结构。"),
+        BoundaryItem("CHAT", "对话输入、回答、行内引用与来源跳转结构必须统一。"),
         BoundaryItem("RESULT", "接口返回结构必须保持稳定。"),
         BoundaryItem("AUTH", "写入类能力需由实例策略显式声明。"),
         BoundaryItem("TRACE", "请求参数、错误原因与引用来源必须可追踪。"),
@@ -54,10 +53,19 @@ KNOWLEDGE_BASE_API_BOUNDARY = BoundaryDefinition(
 )
 
 KNOWLEDGE_BASE_API_BASES = (
-    Base("B1", "文件预览接口基", "document list + detail + section + tag endpoints"),
-    Base("B2", "对话引用接口基", "chat turn + citation return endpoints"),
-    Base("B3", "接口治理基", "workbench spec + route trace + feature policy"),
+    Base("B1", "知识库浏览接口基", "knowledge base list + detail + document list endpoints"),
+    Base("B2", "来源详情接口基", "document detail + section + citation drawer source endpoints"),
+    Base("B3", "问答引用接口基", "chat turn + inline refs + return/document detail paths"),
 )
+
+
+class KnowledgeBaseSummaryResponse(BaseModel):
+    knowledge_base_id: str
+    name: str
+    description: str
+    document_count: int
+    source_types: list[str]
+    updated_at: str
 
 
 class KnowledgeDocumentSummaryResponse(BaseModel):
@@ -67,6 +75,10 @@ class KnowledgeDocumentSummaryResponse(BaseModel):
     tags: list[str]
     updated_at: str
     section_count: int
+
+
+class KnowledgeBaseDetailResponse(KnowledgeBaseSummaryResponse):
+    documents: list[KnowledgeDocumentSummaryResponse]
 
 
 class KnowledgeSectionResponse(BaseModel):
@@ -101,12 +113,14 @@ class KnowledgeDocumentCreateRequest(BaseModel):
 
 
 class KnowledgeCitationResponse(BaseModel):
+    citation_id: str
     document_id: str
     document_title: str
     section_id: str
     section_title: str
     snippet: str
     return_path: str
+    document_path: str
 
 
 class KnowledgeChatTurnRequest(BaseModel):
@@ -139,11 +153,41 @@ def _make_document_id(value: str) -> str:
     return slug or "knowledge-document"
 
 
+def _document_detail_path(project: KnowledgeBaseProject, document_id: str, section_id: str | None = None) -> str:
+    base = project.backend_spec["return_policy"]["document_detail_path"].replace("{document_id}", document_id)
+    if section_id:
+        return f"{base}?section={section_id}"
+    return base
+
+
 class KnowledgeRepository:
     def __init__(self, project: KnowledgeBaseProject | None = None) -> None:
         self.project = _resolve_project(project)
+        self.backend_spec = self.project.backend_spec
         self._documents = {item.document_id: item for item in self.project.documents}
         self._document_order = [item.document_id for item in self.project.documents]
+
+    def list_knowledge_bases(self) -> list[KnowledgeBaseSummaryResponse]:
+        latest = max((item.updated_at for item in self._documents.values()), default=date.today().isoformat())
+        return [
+            KnowledgeBaseSummaryResponse(
+                knowledge_base_id=self.project.library.knowledge_base_id,
+                name=self.project.library.knowledge_base_name,
+                description=self.project.library.knowledge_base_description,
+                document_count=len(self._document_order),
+                source_types=list(self.project.library.source_types),
+                updated_at=latest,
+            )
+        ]
+
+    def get_knowledge_base(self, knowledge_base_id: str) -> KnowledgeBaseDetailResponse | None:
+        if knowledge_base_id != self.project.library.knowledge_base_id:
+            return None
+        summary = self.list_knowledge_bases()[0]
+        return KnowledgeBaseDetailResponse(
+            **summary.model_dump(),
+            documents=[_to_document_summary(item) for item in self.list_documents()],
+        )
 
     def list_documents(self, query: str = "", tag: str | None = None) -> list[KnowledgeDocument]:
         query_tokens = set(query.lower().split())
@@ -214,38 +258,58 @@ class KnowledgeRepository:
         document_id: str | None = None,
         section_id: str | None = None,
     ) -> KnowledgeChatTurnResponse:
+        answer_policy = self.backend_spec["answer_policy"]
+        retrieval = self.backend_spec["retrieval"]
+        return_policy = self.backend_spec["return_policy"]
         ranked = self._rank_sections(message, document_id=document_id, section_id=section_id)
         citations = [
             KnowledgeCitationResponse(
+                citation_id=str(index),
                 document_id=item.document.document_id,
                 document_title=item.document.title,
                 section_id=item.section.section_id,
                 section_title=item.section.title,
-                snippet=item.section.plain_text[:180],
+                snippet=item.section.plain_text[:220],
                 return_path=(
-                    f"{self.project.route.workbench}?document={item.document.document_id}&section={item.section.section_id}"
+                    f"{return_policy['chat_path']}?document={item.document.document_id}"
+                    f"&section={item.section.section_id}&citation={index}"
                 ),
+                document_path=_document_detail_path(self.project, item.document.document_id, item.section.section_id),
             )
-            for item in ranked[: self.project.context.max_citations]
+            for index, item in enumerate(ranked[: retrieval["max_citations"]], start=1)
         ]
         if not citations:
-            answer = (
-                "No strong section match was found. Try selecting a document or use more concrete terms from the "
-                "library and preview panels."
-            )
+            answer = answer_policy["no_match_text"]
+            context_document_id = document_id
+            context_section_id = section_id
         else:
             lead = citations[0]
             answer_parts = [
-                f"The strongest evidence is in {lead.document_title} / {lead.section_title}.",
+                answer_policy["lead_template"].format(
+                    document_title=lead.document_title,
+                    section_title=lead.section_title,
+                    citation_index=1,
+                ),
+                answer_policy["lead_snippet_template"].format(snippet=lead.snippet),
             ]
-            for citation in citations:
-                answer_parts.append(f"{citation.section_title}: {citation.snippet}")
-            answer = " ".join(answer_parts)
+            for index, citation in enumerate(citations[1:], start=2):
+                answer_parts.append(
+                    answer_policy["followup_template"].format(
+                        document_title=citation.document_title,
+                        section_title=citation.section_title,
+                        citation_index=index,
+                        snippet=citation.snippet,
+                    )
+                )
+            answer_parts.append(answer_policy["closing_text"])
+            answer = "\n\n".join(answer_parts)
+            context_document_id = lead.document_id
+            context_section_id = lead.section_id
         return KnowledgeChatTurnResponse(
             answer=answer,
             citations=citations,
-            context_document_id=document_id,
-            context_section_id=section_id,
+            context_document_id=context_document_id,
+            context_section_id=context_section_id,
         )
 
     def _rank_sections(
@@ -254,7 +318,10 @@ class KnowledgeRepository:
         document_id: str | None = None,
         section_id: str | None = None,
     ) -> list[RankedSection]:
-        query_tokens = {token for token in message.lower().split() if len(token) >= 3}
+        retrieval = self.backend_spec["retrieval"]
+        query_tokens = {
+            token for token in message.lower().split() if len(token) >= retrieval["query_token_min_length"]
+        }
         if not query_tokens:
             return []
 
@@ -267,15 +334,14 @@ class KnowledgeRepository:
 
         ranked: list[RankedSection] = []
         for document in documents:
-            for section in document.sections[: self.project.context.max_preview_sections]:
+            for section in document.sections[: retrieval["max_preview_sections"]]:
+                score = 0
                 if section_id and document.document_id == document_id and section.section_id == section_id:
-                    score = 4
-                else:
-                    score = 0
+                    score += retrieval["focus_section_bonus"]
                 haystack = f"{document.title} {document.summary} {section.search_text}".lower()
                 for token in query_tokens:
                     if token in haystack:
-                        score += 3
+                        score += retrieval["token_match_bonus"]
                 if score == 0:
                     continue
                 ranked.append(RankedSection(document=document, section=section, score=score))
@@ -319,8 +385,8 @@ def verify_knowledge_base_backend(project: KnowledgeBaseProject | None = None) -
         VerificationInput(
             subject="knowledge base backend",
             pass_criteria=[
-                "document list, create, delete, detail, section, tag, and chat endpoints all exist",
-                "chat answers cite concrete sections and expose return paths",
+                "knowledge base list/detail, document list/detail, section, tag, create, delete, and chat endpoints all exist",
+                "chat answers cite concrete sections and expose drawer plus document detail paths",
                 "workbench spec endpoint exposes generated framework and instance evidence",
             ],
             evidence={
@@ -329,6 +395,7 @@ def verify_knowledge_base_backend(project: KnowledgeBaseProject | None = None) -
                 "boundary": boundary.to_dict(),
                 "bases": [item.to_dict() for item in _module_bases(resolved)],
                 "routes": resolved.to_spec_dict()["routes"]["api"],
+                "backend_spec": resolved.backend_spec,
                 "upload_enabled": resolved.features.upload,
             },
         )
@@ -347,6 +414,17 @@ def build_knowledge_base_router(
     resolved = _resolve_project(project)
     repo = repository or KnowledgeRepository(resolved)
     router = APIRouter(prefix=resolved.route.api_prefix, tags=[resolved.metadata.project_id])
+
+    @router.get("/knowledge-bases", response_model=list[KnowledgeBaseSummaryResponse])
+    def list_knowledge_bases() -> list[KnowledgeBaseSummaryResponse]:
+        return repo.list_knowledge_bases()
+
+    @router.get("/knowledge-bases/{knowledge_base_id}", response_model=KnowledgeBaseDetailResponse)
+    def get_knowledge_base(knowledge_base_id: str) -> KnowledgeBaseDetailResponse:
+        knowledge_base = repo.get_knowledge_base(knowledge_base_id)
+        if knowledge_base is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+        return knowledge_base
 
     @router.get("/documents", response_model=list[KnowledgeDocumentSummaryResponse])
     def list_documents(
