@@ -846,16 +846,26 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       fill: var(--graph-edge-active);
     }
 
+    .node-group {
+      cursor: pointer;
+    }
+
+    .node-hit-area {
+      fill: transparent;
+      pointer-events: all;
+      cursor: pointer;
+    }
+
     .node-circle {
       fill: var(--node-fill, var(--graph-node-active));
       stroke: var(--canvas);
       stroke-width: 2.4;
-      cursor: pointer;
+      pointer-events: none;
       transition: transform 140ms ease, opacity 140ms ease, filter 140ms ease;
       transform-origin: center;
     }
 
-    .node-circle:hover {
+    .node-group.hovered .node-circle {
       transform: scale(1.02);
     }
 
@@ -1111,6 +1121,8 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     const SIDE_VISIBILITY_KEY = "archsync.frameworkTree.sideVisible";
 
     const layoutEl = document.querySelector(".layout");
+    const graphCardEl = document.querySelector(".graph-card");
+    const sideEl = document.querySelector(".side");
     const svg = document.getElementById("graphSvg");
     const graphScrollEl = document.querySelector(".graph-scroll");
     const titleEl = document.getElementById("title");
@@ -1165,8 +1177,20 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     }
 
     function renderSideVisibility() {
+      const isNarrowLayout = typeof window.matchMedia === "function"
+        ? window.matchMedia("(max-width: 1220px)").matches
+        : window.innerWidth <= 1220;
       if (layoutEl) {
         layoutEl.classList.toggle("side-collapsed", !sideVisible);
+        layoutEl.style.gridTemplateColumns = sideVisible
+          ? (isNarrowLayout ? "1fr" : "minmax(0, 1fr) minmax(300px, 320px)")
+          : "minmax(0, 1fr)";
+      }
+      if (graphCardEl) {
+        graphCardEl.style.gridColumn = sideVisible ? "" : "1 / -1";
+      }
+      if (sideEl) {
+        sideEl.style.display = sideVisible ? "grid" : "none";
       }
       if (sideToggleButtonEl) {
         sideToggleButtonEl.textContent = sideVisible ? "隐藏侧栏" : "显示侧栏";
@@ -1304,6 +1328,9 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
         return;
       }
       if (event.target.closest("button, input, label, a")) {
+        return;
+      }
+      if (event.target.closest("[data-node-hit='1'], [data-node-group='1']")) {
         return;
       }
       panState.active = true;
@@ -1534,9 +1561,13 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     const nodeCircleMap = new Map();
     const nodeLabelMap = new Map();
     const nodeLabelBoxMap = new Map();
+    const nodeGroupMap = new Map();
 
     for (const node of graphData.nodes) {
       const group = document.createElementNS(SVG_NS, "g");
+      group.setAttribute("class", "node-group");
+      group.setAttribute("data-node-group", "1");
+      group.setAttribute("data-node-id", node.id);
 
       const circle = document.createElementNS(SVG_NS, "circle");
       circle.setAttribute("cx", String(node.x));
@@ -1560,7 +1591,36 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       label.textContent = node.label;
       group.appendChild(label);
 
-      group.addEventListener("click", (event) => {
+      svg.appendChild(group);
+      const bbox = label.getBBox();
+      const padX = 7;
+      const padY = 2;
+      labelBox.setAttribute("x", String(bbox.x - padX));
+      labelBox.setAttribute("y", String(bbox.y - padY));
+      labelBox.setAttribute("width", String(Math.max(10, bbox.width + padX * 2)));
+      labelBox.setAttribute("height", String(Math.max(10, bbox.height + padY * 2)));
+      group.insertBefore(labelBox, label);
+
+      const hitPadding = 10;
+      const circleRadius = 24;
+      const minX = Math.min(node.x - circleRadius - hitPadding, bbox.x - padX - hitPadding);
+      const maxX = Math.max(node.x + circleRadius + hitPadding, bbox.x + bbox.width + padX + hitPadding);
+      const minY = Math.min(node.y - circleRadius - hitPadding, bbox.y - padY - hitPadding);
+      const maxY = Math.max(node.y + circleRadius + hitPadding, bbox.y + bbox.height + padY + hitPadding);
+
+      const hitArea = document.createElementNS(SVG_NS, "rect");
+      hitArea.setAttribute("class", "node-hit-area");
+      hitArea.setAttribute("data-node-hit", "1");
+      hitArea.setAttribute("data-node-id", node.id);
+      hitArea.setAttribute("x", String(minX));
+      hitArea.setAttribute("y", String(minY));
+      hitArea.setAttribute("width", String(Math.max(1, maxX - minX)));
+      hitArea.setAttribute("height", String(Math.max(1, maxY - minY)));
+      hitArea.setAttribute("rx", "14");
+      hitArea.setAttribute("ry", "14");
+      group.insertBefore(hitArea, circle);
+
+      hitArea.addEventListener("click", (event) => {
         if (panState.suppressClick) {
           event.stopPropagation();
           return;
@@ -1581,11 +1641,12 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
         selectNode(node.id);
       });
 
-      group.addEventListener("mouseenter", (event) => {
+      hitArea.addEventListener("mouseenter", (event) => {
+        group.classList.add("hovered");
         showNodeHover(node, event.clientX, event.clientY);
       });
 
-      group.addEventListener("mousemove", (event) => {
+      hitArea.addEventListener("mousemove", (event) => {
         if (!hoverCardEl?.classList.contains("visible")) {
           showNodeHover(node, event.clientX, event.clientY);
           return;
@@ -1593,23 +1654,15 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
         positionHoverCard(event.clientX, event.clientY);
       });
 
-      group.addEventListener("mouseleave", () => {
+      hitArea.addEventListener("mouseleave", () => {
+        group.classList.remove("hovered");
         hideNodeHover();
       });
-
-      svg.appendChild(group);
-      const bbox = label.getBBox();
-      const padX = 7;
-      const padY = 2;
-      labelBox.setAttribute("x", String(bbox.x - padX));
-      labelBox.setAttribute("y", String(bbox.y - padY));
-      labelBox.setAttribute("width", String(Math.max(10, bbox.width + padX * 2)));
-      labelBox.setAttribute("height", String(Math.max(10, bbox.height + padY * 2)));
-      group.insertBefore(labelBox, label);
 
       nodeCircleMap.set(node.id, circle);
       nodeLabelMap.set(node.id, label);
       nodeLabelBoxMap.set(node.id, labelBox);
+      nodeGroupMap.set(node.id, group);
     }
 
     function applyThemeState() {
@@ -1862,6 +1915,9 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
 
     function resetSelection() {
       hideNodeHover();
+      for (const group of nodeGroupMap.values()) {
+        group.classList.remove("hovered");
+      }
       for (const circle of nodeCircleMap.values()) {
         circle.classList.remove("active", "faded");
       }

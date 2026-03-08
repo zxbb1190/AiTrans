@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.0.29 - 2026-03-08
+- Fixed framework-tree interaction regressions in the generated graph page: node hover no longer flickers around the hit zone, node click selection works again, and `Ctrl/⌘ + click` jump-to-document is restored.
+- Fixed the framework-tree right sidebar toggle so the statistics / detail panel can actually be hidden and shown again, instead of leaving the layout visually stuck open.
+- This release is primarily a repository-side framework-tree generator / HTML interaction fix; users should refresh or regenerate `docs/hierarchy/shelf_framework_tree.html` after updating.
+
 ## 0.0.28 - 2026-03-08
 - Expanded boundary-to-instance navigation from explicit top-level sections to full boundary traceability across framework markdown. Derived boundaries such as `CITATION`, `TURN`, `INPUT`, `SCOPE`, and `STATUS` now jump to their owning or related `instance.toml` sections instead of stopping at local definitions only.
 - Boundary hover cards now distinguish primary owning sections from additional related sections and include an ownership note when the mapping is inferred rather than directly declared.
