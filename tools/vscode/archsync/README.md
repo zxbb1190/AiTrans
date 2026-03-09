@@ -23,9 +23,12 @@
 - Provides a direct fallback command to insert the standard `@framework` module template even when editor snippet suggestions are not showing.
 
 ## Install (Local)
-1. Install latest packaged VSIX:
+1. Package the current source version and install it into local VSCode:
    `bash tools/vscode/archsync/install_local.sh`
-2. Reload VSCode window if the sidebar icon does not appear immediately.
+2. The script reads `package.json`, rebuilds `releases/archsync-<version>.vsix`, force-installs it, and verifies the installed version.
+3. If your VSCode CLI is not `code`, set it explicitly:
+   `CODE_BIN=code-insiders bash tools/vscode/archsync/install_local.sh`
+4. Reload VSCode window if the sidebar icon does not appear immediately.
 
 ## Public Distribution
 - GitHub Packages is not a VSCode extension gallery, so VSCode cannot install this extension from a GitHub package registry entry.

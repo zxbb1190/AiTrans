@@ -155,6 +155,8 @@ ArchSync 是这个仓库配套的 VSCode 插件，目标不是做一个泛用聊
 bash tools/vscode/archsync/install_local.sh
 ```
 
+这个脚本会按当前源码版本自动重新打包 VSIX，并覆盖安装到本机 VSCode。
+
 公开安装：
 
 - GitHub Releases: https://github.com/xueyu888/framework/releases
