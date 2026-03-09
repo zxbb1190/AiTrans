@@ -391,17 +391,18 @@ def _compute_framework_columns_layout(
         incoming[edge.target].append(edge.source)
         outgoing[edge.source].append(edge.target)
 
-    group_min_width = 260.0
-    group_gap = 72.0
-    group_padding_left = 68.0
-    group_padding_right = 56.0
-    left_margin = 56.0
-    right_margin = 44.0
-    top_margin = 152.0
-    bottom_margin = 108.0
+    group_min_width = 236.0
+    group_gap = 44.0
+    group_padding_left = 52.0
+    group_padding_right = 40.0
+    left_margin = 40.0
+    right_margin = 28.0
+    top_margin = 118.0
+    bottom_margin = 72.0
+    level_gap = 164.0
 
     positions: dict[str, tuple[float, float]] = {}
-    max_required_height = float(height)
+    max_required_height = 0.0
     cursor_x = left_margin
 
     for group in framework_groups:
@@ -444,15 +445,14 @@ def _compute_framework_columns_layout(
         max_row_count = max(len(level_orders[level]) for level in local_levels)
         usable_width = max(group_min_width - group_padding_left - group_padding_right, 1.0)
         if max_row_count > 1:
-            min_cell = 112.0
+            min_cell = 96.0
             usable_width = max(usable_width, float(max_row_count + 1) * min_cell)
         group_width = max(group_min_width, usable_width + group_padding_left + group_padding_right)
 
-        vertical_span = max(1.0, float(height) - top_margin - bottom_margin)
-        y_step = vertical_span / max(1, len(local_levels) - 1)
+        group_height = top_margin + bottom_margin + (len(local_levels) - 1) * level_gap
         max_required_height = max(
             max_required_height,
-            top_margin + bottom_margin + (len(local_levels) - 1) * y_step,
+            group_height,
         )
 
         for level_idx, local_level in enumerate(local_levels):
@@ -465,14 +465,14 @@ def _compute_framework_columns_layout(
                 cell = row_usable_width / float(count + 1)
                 xs = [cursor_x + group_padding_left + cell * float(i + 1) for i in range(count)]
 
-            y = top_margin + level_idx * y_step
+            y = top_margin + level_idx * level_gap
             for node_id, x in zip(row_ids, xs):
                 positions[node_id] = (x, y)
 
         cursor_x += group_width + group_gap
 
     layout_width = int(max(width, round(cursor_x - group_gap + right_margin)))
-    layout_height = int(max(height, round(max_required_height)))
+    layout_height = int(max(620, round(max_required_height)))
     return LayoutResult(positions=positions, width=layout_width, height=layout_height)
 
 
@@ -1129,14 +1129,10 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
 
     .arrow-default {
       fill: var(--graph-edge);
-      stroke: color-mix(in srgb, var(--canvas) 48%, transparent);
-      stroke-width: 0.55;
     }
 
     .arrow-active {
       fill: var(--graph-edge-active);
-      stroke: color-mix(in srgb, var(--canvas) 38%, transparent);
-      stroke-width: 0.4;
     }
 
     .node-group {
@@ -1474,7 +1470,7 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     const DRAG_THRESHOLD = 4;
     const NODE_RADIUS = 24;
     const EDGE_START_PADDING = NODE_RADIUS + 2;
-    const EDGE_END_PADDING = NODE_RADIUS + 12;
+    const EDGE_END_PADDING = NODE_RADIUS + 1;
     let zoomLevel = 1;
     let sideVisible = true;
     let selectedNodeId = null;
@@ -1488,6 +1484,7 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       startClientY: 0,
       startScrollLeft: 0,
       startScrollTop: 0,
+      captured: false,
       moved: false,
       suppressClick: false
     };
@@ -1674,22 +1671,21 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     }
 
     // Interaction contract:
-    // - background drag pans the canvas
-    // - node / edge click keeps relationship selection working
+    // - the whole graph surface can start a pan gesture
+    // - node / edge click keeps relationship selection working until drag threshold is crossed
     // - framework header / toggle interactions stay isolated from canvas pan
     function shouldIgnorePanStart(target) {
       if (!target || typeof target.closest !== "function") {
         return false;
       }
-      return Boolean(
-        target.closest(
-          "button, input, label, a, [data-pan-ignore='1'], [data-node-hit='1'], [data-node-group='1'], [data-edge-hit='1']"
-        )
-      );
+      return Boolean(target.closest("button, input, label, a, [data-pan-ignore='1']"));
     }
 
     function beginPan(event) {
-      if (!graphScrollEl || event.button !== 0) {
+      if (!graphScrollEl || panState.active || event.button !== 0) {
+        return;
+      }
+      if (!graphScrollEl.contains(event.target)) {
         return;
       }
       if (shouldIgnorePanStart(event.target)) {
@@ -1701,12 +1697,9 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       panState.startClientY = event.clientY;
       panState.startScrollLeft = graphScrollEl.scrollLeft;
       panState.startScrollTop = graphScrollEl.scrollTop;
+      panState.captured = false;
       panState.moved = false;
       hideNodeHover();
-      graphScrollEl.classList.add("dragging");
-      if (typeof graphScrollEl.setPointerCapture === "function") {
-        graphScrollEl.setPointerCapture(event.pointerId);
-      }
     }
 
     function updatePan(event) {
@@ -1718,6 +1711,14 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       if (!panState.moved && Math.hypot(dx, dy) >= DRAG_THRESHOLD) {
         panState.moved = true;
         panState.suppressClick = true;
+        if (typeof event.preventDefault === "function") {
+          event.preventDefault();
+        }
+        graphScrollEl.classList.add("dragging");
+        if (typeof graphScrollEl.setPointerCapture === "function") {
+          graphScrollEl.setPointerCapture(event.pointerId);
+          panState.captured = true;
+        }
       }
       if (!panState.moved) {
         return;
@@ -1735,6 +1736,7 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       }
       if (
         typeof graphScrollEl.releasePointerCapture === "function" &&
+        panState.captured &&
         panState.pointerId !== null &&
         typeof graphScrollEl.hasPointerCapture === "function" &&
         graphScrollEl.hasPointerCapture(panState.pointerId)
@@ -1743,6 +1745,7 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       }
       panState.active = false;
       panState.pointerId = null;
+      panState.captured = false;
       graphScrollEl.classList.remove("dragging");
       window.setTimeout(() => {
         panState.suppressClick = false;
@@ -1921,18 +1924,18 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       const group = frameworkDescriptors[index];
       const prevGroup = index > 0 ? frameworkDescriptors[index - 1] : null;
       const nextGroup = index < frameworkDescriptors.length - 1 ? frameworkDescriptors[index + 1] : null;
-      const panelLeft = prevGroup ? (prevGroup.maxX + group.minX) / 2 : Math.max(20, group.minX - 74);
+      const panelLeft = prevGroup ? (prevGroup.maxX + group.minX) / 2 : Math.max(16, group.minX - 56);
       const panelRight = nextGroup
         ? (group.maxX + nextGroup.minX) / 2
-        : Math.min(graphData.width - 20, group.maxX + 74);
+        : Math.min(graphData.width - 16, group.maxX + 56);
       group.panelLeft = panelLeft;
       group.panelRight = panelRight;
-      group.panelTop = 22;
-      group.panelBottom = graphData.height - 24;
+      group.panelTop = 18;
+      group.panelBottom = graphData.height - 18;
       group.panelWidth = Math.max(1, panelRight - panelLeft);
       group.panelHeight = Math.max(1, group.panelBottom - group.panelTop);
-      group.bandTopFloor = group.panelTop + 58;
-      group.bandBottomCeil = group.panelBottom - 18;
+      group.bandTopFloor = group.panelTop + 52;
+      group.bandBottomCeil = group.panelBottom - 12;
     }
 
     const frameworkByNodeId = new Map(
@@ -1973,11 +1976,11 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
 
     const defs = document.createElementNS(SVG_NS, "defs");
     defs.innerHTML = `
-      <marker id=\"arrowDefault\" markerWidth=\"14\" markerHeight=\"14\" viewBox=\"0 0 14 10\" refX=\"12\" refY=\"5\" orient=\"auto\" markerUnits=\"userSpaceOnUse\">
-        <path class=\"arrow-default\" d=\"M0,0 L0,10 L14,5 z\"></path>
+      <marker id=\"arrowDefault\" markerWidth=\"12\" markerHeight=\"12\" viewBox=\"0 0 12 9\" refX=\"10.5\" refY=\"4.5\" orient=\"auto\" markerUnits=\"userSpaceOnUse\">
+        <path class=\"arrow-default\" d=\"M0,0 L0,9 L12,4.5 z\"></path>
       </marker>
-      <marker id=\"arrowActive\" markerWidth=\"14\" markerHeight=\"14\" viewBox=\"0 0 14 10\" refX=\"12\" refY=\"5\" orient=\"auto\" markerUnits=\"userSpaceOnUse\">
-        <path class=\"arrow-active\" d=\"M0,0 L0,10 L14,5 z\"></path>
+      <marker id=\"arrowActive\" markerWidth=\"12\" markerHeight=\"12\" viewBox=\"0 0 12 9\" refX=\"10.5\" refY=\"4.5\" orient=\"auto\" markerUnits=\"userSpaceOnUse\">
+        <path class=\"arrow-active\" d=\"M0,0 L0,9 L12,4.5 z\"></path>
       </marker>
     `;
 
@@ -2998,15 +3001,6 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     }
 
     if (graphScrollEl) {
-      graphScrollEl.addEventListener("pointerdown", beginPan);
-      graphScrollEl.addEventListener("pointermove", updatePan);
-      graphScrollEl.addEventListener("pointerup", endPan);
-      graphScrollEl.addEventListener("pointercancel", endPan);
-      graphScrollEl.addEventListener("pointerleave", (event) => {
-        if (panState.active) {
-          endPan(event);
-        }
-      });
       graphScrollEl.addEventListener("scroll", () => {
         hideNodeHover();
       });
@@ -3023,6 +3017,11 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
         { passive: false }
       );
     }
+
+    window.addEventListener("pointerdown", beginPan, true);
+    window.addEventListener("pointermove", updatePan);
+    window.addEventListener("pointerup", endPan);
+    window.addEventListener("pointercancel", endPan);
 
     svg.addEventListener("pointermove", (event) => {
       if (!groupDragState.active || event.pointerId !== groupDragState.pointerId) {
