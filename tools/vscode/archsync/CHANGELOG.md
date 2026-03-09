@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.0.33 - 2026-03-09
+- Switched ArchSync boundary-to-project navigation from the legacy `instance.toml` convention to the new `product_spec.toml` convention, so boundary jumps and hover cards now point to the product-truth file that the repository actually uses.
+- Updated the packaged extension guidance and repository-facing tests to match the new layering model (`Framework -> Product Spec -> Implementation Config -> Code -> Evidence`), keeping navigation and validation language aligned with the runtime/compiler changes.
+- This release is mainly a repository-structure and navigation terminology update; after upgrading, reopen or refresh the framework tree if you had an older navigation result cached.
+
 ## 0.0.32 - 2026-03-09
 - Hardened the framework-tree interaction contract in the repository-side HTML generator and tests: background drag pans the graph, node / edge click selection stays intact, `Ctrl/⌘ + click` source jumps stay intact, and framework-group controls remain isolated from canvas pan.
 - Improved default framework-tree edge readability by making relationship lines and arrowheads more visible without overpowering the graph.
