@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.0.34 - 2026-03-09
+- Published a packaging / documentation sync release so the versioned ArchSync metadata tracks the current repository-side framework-tree interaction updates and the new Chinese-first product-spec authoring guidance.
+- This release does not add new extension-side commands; the main visible changes come from the refreshed workspace framework-tree generator/artifacts and the updated spec-writing conventions in the repository.
+- After upgrading, regenerate or refresh the framework tree if you want the tighter layout / arrow / pan behavior from the current repository sources.
+
 ## 0.0.33 - 2026-03-09
 - Switched ArchSync boundary-to-project navigation from the legacy `instance.toml` convention to the new `product_spec.toml` convention, so boundary jumps and hover cards now point to the product-truth file that the repository actually uses.
 - Updated the packaged extension guidance and repository-facing tests to match the new layering model (`Framework -> Product Spec -> Implementation Config -> Code -> Evidence`), keeping navigation and validation language aligned with the runtime/compiler changes.
