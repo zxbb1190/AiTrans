@@ -1,0 +1,43 @@
+# desktop_screenshot_translate app skeleton
+
+本目录承载 `desktop_screenshot_translate` 的真实实现代码，不承载产品真相本身。
+
+上游输入仍然是：
+
+- `framework/*.md`
+- `projects/desktop_screenshot_translate/product_spec.toml`
+- `projects/desktop_screenshot_translate/implementation_config.toml`
+- `projects/desktop_screenshot_translate/generated/*`
+
+目录说明：
+
+- `electron/`：Windows MVP 的纯 Electron 主链，负责托盘、快捷键、截图、OCR、翻译 provider 和结果面板
+  - `renderer/overlay/`：原生 HTML/JS
+  - `renderer/panel-src/`：`Vue 3 + Vite + .vue SFC` 源码
+  - `renderer/panel-dist/`：构建产物，由 Vite 生成
+- `python_sidecar/`：可选扩展点，后续若 OCR / 翻译编排明显更适合 Python 时再接回主链
+
+运行约定：
+
+- Electron 真正联调应在 Windows 原生工具链中完成
+- WSL 主要负责编辑、生成、校验与 Python sidecar 开发
+
+建议启动顺序：
+
+1. 先物化项目：
+   - `uv run python scripts/materialize_project.py --project projects/desktop_screenshot_translate/product_spec.toml`
+2. 在 Windows 侧进入 `apps/desktop_screenshot_translate/electron/` 运行：
+   - `npm install`
+3. 若要启用真实 OCR / 翻译 provider，再补运行时环境：
+   - 安装 `tesseract`，或设置 `AITRANS_TESSERACT_PATH`
+   - 设置 `OPENAI_API_KEY`
+4. 在 Windows 侧做一次预检并启动：
+   - `npm run doctor`
+   - `npm run panel:build`
+   - `npm run dev`
+5. 若后续需要 Python sidecar 扩展，再额外启动：
+   - `uv run python -m apps.desktop_screenshot_translate.python_sidecar.service.app`
+
+更完整的 Windows 端到端联调步骤见：
+
+- [WINDOWS-联调清单.md](/home/zx/shelf/apps/desktop_screenshot_translate/WINDOWS-联调清单.md)

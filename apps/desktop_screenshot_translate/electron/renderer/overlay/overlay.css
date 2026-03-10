@@ -1,0 +1,54 @@
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  background: rgba(11, 18, 20, 0.24);
+  cursor: crosshair;
+}
+
+.overlay-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.hint-card {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  max-width: 360px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(252, 254, 253, 0.92);
+  box-shadow: 0 18px 44px rgba(12, 23, 20, 0.18);
+  backdrop-filter: blur(10px);
+  color: #16302b;
+}
+
+.hint-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.hint-copy {
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.selection-box {
+  position: absolute;
+  border: 2px solid #0f766e;
+  background: rgba(15, 118, 110, 0.14);
+  box-shadow: 0 0 0 9999px rgba(11, 18, 20, 0.32);
+}
+
+.selection-box.hidden {
+  display: none;
+}

@@ -1,0 +1,23 @@
+{
+  "name": "desktop-screenshot-translate-electron",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Windows MVP Electron shell for ArchSync screenshot translation.",
+  "main": "main.js",
+  "dependencies": {
+    "vue": "^3.5.13"
+  },
+  "scripts": {
+    "doctor": "node scripts/doctor.js",
+    "panel:build": "vite build --config vite.panel.config.mjs",
+    "dev": "npm run panel:build && electron .",
+    "dev:doctor": "npm run doctor && npm run dev",
+    "check": "node --check main.js && node --check preload.js && node --check lib/project-config.js && node --check lib/window-state.js && node --check lib/local-pipeline.js && node --check lib/ocr-adapters.js && node --check lib/translation-adapters.js && node --check renderer/overlay/overlay.js && node --check scripts/doctor.js && vite build --config vite.panel.config.mjs"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "electron": "^40.0.0"
+    ,
+    "vite": "^7.1.3"
+  }
+}

@@ -357,6 +357,8 @@ class CaptureRuntimeConfig:
 class ProvidersConfig:
     ocr_chain: tuple[str, ...]
     translation_chain: tuple[str, ...]
+    translation_api: str
+    translation_model: str
     source_language_detection: str
     secret_source: str
 
@@ -367,6 +369,7 @@ class ProvidersConfig:
 @dataclass(frozen=True)
 class PresentationRuntimeConfig:
     renderer: str
+    ui_framework: str
     overlay_profile: str
     clipboard_bridge: str
 
@@ -654,11 +657,14 @@ def _load_implementation_config(implementation_config_path: Path) -> AitransImpl
         providers=ProvidersConfig(
             ocr_chain=_require_string_tuple(providers, "ocr_chain"),
             translation_chain=_require_string_tuple(providers, "translation_chain"),
+            translation_api=_require_string(providers, "translation_api"),
+            translation_model=_require_string(providers, "translation_model"),
             source_language_detection=_require_string(providers, "source_language_detection"),
             secret_source=_require_string(providers, "secret_source"),
         ),
         presentation_runtime=PresentationRuntimeConfig(
             renderer=_require_string(presentation_runtime, "renderer"),
+            ui_framework=_require_string(presentation_runtime, "ui_framework"),
             overlay_profile=_require_string(presentation_runtime, "overlay_profile"),
             clipboard_bridge=_require_string(presentation_runtime, "clipboard_bridge"),
         ),
@@ -892,12 +898,18 @@ def _validate_implementation_config(
         raise ValueError("desktop_runtime.host must be electron or tauri")
     if not implementation.providers.ocr_chain or not implementation.providers.translation_chain:
         raise ValueError("providers.ocr_chain and providers.translation_chain must be non-empty")
+    if implementation.providers.translation_api not in {"openai_responses_v1", "stub_only"}:
+        raise ValueError("providers.translation_api must be openai_responses_v1 or stub_only")
     if not implementation.evidence.product_spec_endpoint.startswith("/api/"):
         raise ValueError("evidence.product_spec_endpoint must be an API path")
     if not implementation.evidence.runtime_bundle_endpoint.startswith("/api/"):
         raise ValueError("evidence.runtime_bundle_endpoint must be an API path")
     if implementation.release.auto_update and implementation.release.channel != product_spec.governance.update_channel:
         raise ValueError("release.channel must match governance.update_channel when auto_update is enabled")
+    if implementation.presentation_runtime.ui_framework not in {"vanilla_html", "vue3"}:
+        raise ValueError("presentation_runtime.ui_framework must be vanilla_html or vue3")
+    if implementation.presentation_runtime.ui_framework == "vue3" and implementation.presentation_runtime.renderer != "floating_panel_vue_vite_v1":
+        raise ValueError("vue3 panel runtime must use floating_panel_vue_vite_v1")
 
 
 def _build_generated_artifact_payloads(project: AitransProject) -> dict[str, str]:

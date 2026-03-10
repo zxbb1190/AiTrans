@@ -32,16 +32,27 @@ coordinate_profile = "windows_per_monitor_dpi_compensation"
 # [providers] 细化 OCR / 翻译提供方与密钥来源。
 # 这里负责“怎么实现 provider 切换与 secrets 接入”，
 # 不负责决定用户最终看到哪些字段和交互动作。
+# 当前说明：
+# - `windows_ocr_api` 对应 Windows 内建 OCR 路线，但按微软桌面应用文档，这类 WinRT OCR API 需要 package identity
+# - 因此当前未打包的 Electron Windows MVP 会优先尝试它并快速回退到 `tesseract`
+# - 等后续接入 MSIX / external location package identity 后，再把 Windows 内建 OCR 变成真正稳定主链
+# - 翻译当前接入 `OpenAI Responses API`，模型固定在实现层；密钥通过环境变量或凭据管理提供，不写入产品层
 [providers]
 ocr_chain = ["windows_ocr_api", "tesseract"]
 translation_chain = ["openai_translation", "fallback_stub"]
+translation_api = "openai_responses_v1"
+translation_model = "gpt-4.1-mini"
 source_language_detection = "provider_auto"
 secret_source = "windows_credential_manager_or_env"
 
 # [presentation_runtime] 细化结果面板与系统剪贴板实现。
 # 它决定浮层渲染方案，不改变产品层动作集合和面板语义。
+# 当前约定是：
+# - overlay 截图遮罩继续使用原生 HTML/JS，保持轻量
+# - panel 结果面板使用 `Vue 3 + Vite + .vue SFC`，承接后续更复杂的状态与交互
 [presentation_runtime]
-renderer = "floating_panel_html_v1"
+renderer = "floating_panel_vue_vite_v1"
+ui_framework = "vue3"
 overlay_profile = "frameless_transparent_always_on_top"
 clipboard_bridge = "native_clipboard"
 
