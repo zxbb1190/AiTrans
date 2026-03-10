@@ -1203,7 +1203,22 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
             for identifier in file_identifiers
             if CANONICAL_CAPABILITY_ID_PATTERN.fullmatch(identifier) is not None
         }
+        non_capability_ids: set[str] = set()
+        for capability_line_num, capability_line in iter_section_bullet_lines(file_text, "## 1. 能力声明"):
+            capability_match = FRAMEWORK_NUMBERED_ITEM_PATTERN.match(capability_line)
+            if capability_match is None:
+                continue
+            capability_id = capability_match.group(1)
+            if capability_id not in capability_ids:
+                continue
+            if "非能力项" in capability_line:
+                non_capability_ids.add(capability_id)
+        positive_capability_ids = capability_ids - non_capability_ids
+        base_ids = {
+            identifier for identifier in file_identifiers if CANONICAL_BASE_ID_PATTERN.fullmatch(identifier)
+        }
         boundary_ids: set[str] = set()
+        base_source_tokens_by_base: dict[str, set[str]] = {}
 
         for base_item_match in FRAMEWORK_BASE_ITEM_LINE_PATTERN.finditer(file_text):
             base_id = base_item_match.group(1)
@@ -1404,6 +1419,7 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                 )
                 continue
 
+            base_source_tokens_by_base[base_id] = set(source_tokens)
             for token in source_tokens:
                 if token not in file_identifiers:
                     issues.append(
@@ -1513,12 +1529,18 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
         rule_top_lines: dict[str, int] = {}
         rule_child_items: dict[str, list[tuple[int, str]]] = {}
         rule_declared_symbols: dict[str, set[str]] = {}
+        rule_participant_bases: dict[str, set[str]] = {}
+        rule_output_capabilities: dict[str, set[str]] = {}
+        rule_boundary_bindings: dict[str, set[str]] = {}
         for rule_line_num, rule_line in iter_section_bullet_lines(file_text, "## 4. 基组合原则"):
             top_match = FRAMEWORK_RULE_TOP_LINE_PATTERN.match(rule_line)
             if top_match is not None:
                 parent_rule = top_match.group(1)
                 rule_top_lines.setdefault(parent_rule, rule_line_num)
                 rule_child_items.setdefault(parent_rule, [])
+                rule_participant_bases.setdefault(parent_rule, set())
+                rule_output_capabilities.setdefault(parent_rule, set())
+                rule_boundary_bindings.setdefault(parent_rule, set())
                 continue
 
             child_match = FRAMEWORK_RULE_CHILD_LINE_PATTERN.match(rule_line)
@@ -1528,6 +1550,61 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
             parent_rule = child_rule.split(".", 1)[0]
             content = child_match.group(2).strip()
             rule_child_items.setdefault(parent_rule, []).append((rule_line_num, content))
+            child_tokens = extract_backtick_tokens(content)
+
+            if "参与基" in content:
+                participant_bases = {
+                    token for token in child_tokens if CANONICAL_BASE_ID_PATTERN.fullmatch(token) is not None
+                }
+                rule_participant_bases.setdefault(parent_rule, set()).update(participant_bases)
+                if not participant_bases:
+                    issues.append(
+                        make_issue(
+                            f"{parent_rule} participating bases must reference at least one B*",
+                            rel_file,
+                            rule_line_num,
+                            code="FW042",
+                        )
+                    )
+                for token in child_tokens:
+                    if token in base_ids:
+                        continue
+                    issues.append(
+                        make_issue(
+                            f"{parent_rule} participating bases reference undefined base: {token}",
+                            rel_file,
+                            rule_line_num,
+                            code="FW042",
+                        )
+                    )
+
+            if "输出能力" in content:
+                output_capabilities = set(re.findall(r"C\d+", content))
+                rule_output_capabilities.setdefault(parent_rule, set()).update(output_capabilities)
+
+            if "边界绑定" in content:
+                boundary_refs = {token for token in child_tokens if token in boundary_ids}
+                rule_boundary_bindings.setdefault(parent_rule, set()).update(boundary_refs)
+                if not boundary_refs:
+                    issues.append(
+                        make_issue(
+                            f"{parent_rule} boundary binding must reference at least one declared boundary",
+                            rel_file,
+                            rule_line_num,
+                            code="FW043",
+                        )
+                    )
+                for token in child_tokens:
+                    if token in boundary_ids:
+                        continue
+                    issues.append(
+                        make_issue(
+                            f"{parent_rule} boundary binding references undefined boundary: {token}",
+                            rel_file,
+                            rule_line_num,
+                            code="FW043",
+                        )
+                    )
 
             if "输出结构" in content:
                 for token in extract_backtick_tokens(content):
@@ -1583,6 +1660,101 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                             code="FW050",
                         )
                     )
+
+        capability_source_bases: dict[str, set[str]] = {cap_id: set() for cap_id in positive_capability_ids}
+        for base_ref_id, base_source_tokens in base_source_tokens_by_base.items():
+            for capability_id in positive_capability_ids:
+                if capability_id in base_source_tokens:
+                    capability_source_bases.setdefault(capability_id, set()).add(base_ref_id)
+
+        capability_output_rules: dict[str, set[str]] = {cap_id: set() for cap_id in positive_capability_ids}
+        for parent_rule, output_capability_refs in rule_output_capabilities.items():
+            for capability_id in positive_capability_ids:
+                if capability_id in output_capability_refs:
+                    capability_output_rules.setdefault(capability_id, set()).add(parent_rule)
+
+        for capability_id in sorted(positive_capability_ids):
+            capability_line_num = int(file_identifier_origin.get(capability_id, 1))
+            supporting_bases = capability_source_bases.get(capability_id, set())
+            output_rules = capability_output_rules.get(capability_id, set())
+            if not supporting_bases:
+                issues.append(
+                    make_issue(
+                        (
+                            f"{capability_id} lacks weak sufficiency support: no B* source expression "
+                            "references this capability"
+                        ),
+                        rel_file,
+                        capability_line_num,
+                        code="FW070",
+                    )
+                )
+            if not output_rules:
+                issues.append(
+                    make_issue(
+                        (
+                            f"{capability_id} lacks weak sufficiency support: no R* output capability "
+                            "references this capability"
+                        ),
+                        rel_file,
+                        capability_line_num,
+                        code="FW071",
+                    )
+                )
+            if supporting_bases and output_rules:
+                has_chain = any(
+                    bool(rule_participant_bases.get(parent_rule, set()).intersection(supporting_bases))
+                    for parent_rule in output_rules
+                )
+                if not has_chain:
+                    issues.append(
+                        make_issue(
+                            (
+                                f"{capability_id} lacks weak sufficiency chain: expected at least one "
+                                "B -> R -> C derivation path"
+                            ),
+                            rel_file,
+                            capability_line_num,
+                            code="FW072",
+                        )
+                    )
+
+        used_bases = {
+            base_id
+            for base_refs in rule_participant_bases.values()
+            for base_id in base_refs
+        }
+        for base_id in sorted(base_ids):
+            if base_id in used_bases:
+                continue
+            issues.append(
+                make_issue(
+                    f"{base_id} is never used by any R* participating bases",
+                    rel_file,
+                    file_identifier_origin.get(base_id, 1),
+                    code="FW073",
+                )
+            )
+
+        used_boundaries = {
+            boundary_id
+            for boundary_refs in rule_boundary_bindings.values()
+            for boundary_id in boundary_refs
+        }
+        for boundary_id in sorted(boundary_ids):
+            used_in_base_source = any(
+                boundary_id in source_tokens for source_tokens in base_source_tokens_by_base.values()
+            )
+            if used_in_base_source or boundary_id in used_boundaries:
+                continue
+            issues.append(
+                make_issue(
+                    f"{boundary_id} is not used by any B* source or R* boundary binding",
+                    rel_file,
+                    file_identifier_origin.get(boundary_id, 1),
+                    code="FW074",
+                )
+            )
 
         declared_by_order: list[tuple[int, set[str]]] = []
         for parent_rule, symbols in rule_declared_symbols.items():
