@@ -1,7 +1,7 @@
-# ArchSync (VSCode Extension)
+# Shelf AI (VSCode Extension)
 
 ## What It Does
-- Adds an Activity Bar icon entry (`ArchSync`) for direct plugin access from the sidebar.
+- Adds an Activity Bar icon entry (`Shelf AI`) for direct plugin access from the sidebar.
 - Sidebar home view provides one-click actions: open tree, refresh tree, run validation, show issues.
 - Opens framework tree structure HTML in Webview (`docs/hierarchy/shelf_framework_tree.html`).
 - Refreshes framework tree artifacts by running the generator script.
@@ -16,7 +16,7 @@
 - Runs strict mapping validation when watched files change outside VSCode and when window regains focus.
 - Auto-disables validation for repositories that do not contain `specs/规范总纲与树形结构.md`.
 - Shows validation issues in VSCode Problems panel.
-- Status bar (`ArchSync issues`) is clickable and opens an issue picker for direct file/line jump.
+- Status bar (`Shelf AI issues`) is clickable and opens an issue picker for direct file/line jump.
 - Disabled status text no longer shows `n/a`.
 - Auto-fail notification provides buttons: `Open Problems` / `Open Log`.
 - Provides manual commands for validation and framework tree viewing.
@@ -24,10 +24,10 @@
 
 ## Install (Local)
 1. Package the current source version and install it into local VSCode:
-   `bash tools/vscode/archsync/install_local.sh`
-2. The script reads `package.json`, rebuilds `releases/archsync-<version>.vsix`, force-installs it, and verifies the installed version.
+   `bash tools/vscode/shelf-ai/install_local.sh`
+2. The script reads `package.json`, rebuilds `releases/shelf-ai-<version>.vsix`, force-installs it, and verifies the installed version.
 3. If your VSCode CLI is not `code`, set it explicitly:
-   `CODE_BIN=code-insiders bash tools/vscode/archsync/install_local.sh`
+   `CODE_BIN=code-insiders bash tools/vscode/shelf-ai/install_local.sh`
 4. Reload VSCode window if the sidebar icon does not appear immediately.
 5. If you are using WSL, run the script from WSL and make sure the target VS Code window is attached to the same WSL workspace.
 
@@ -35,11 +35,11 @@
 - GitHub Packages is not a VSCode extension gallery, so VSCode cannot install this extension from a GitHub package registry entry.
 - Public install channels for this extension are:
   - GitHub Releases: download the `.vsix` and use `Extensions: Install from VSIX...`
-  - Open VSX: publish `rdshr.archsync` for VSCodium / compatible clients
-  - Visual Studio Marketplace: publish `rdshr.archsync` for standard VSCode installs
-- Release automation lives in `.github/workflows/publish-archsync.yml`.
-- Tagging `archsync-vX.Y.Z` packages the current source, creates a GitHub Release, and attaches the generated `.vsix`.
-- Public tag releases must include a curated bilingual notes file at `tools/vscode/archsync/release-notes/<version>.md`; the workflow uses that file as the GitHub Release body.
+  - Open VSX: publish `rdshr.shelf-ai` for VSCodium / compatible clients
+  - Visual Studio Marketplace: publish `rdshr.shelf-ai` for standard VSCode installs
+- Release automation lives in `.github/workflows/publish-shelf-ai.yml`.
+- Tagging `shelf-ai-vX.Y.Z` packages the current source, creates a GitHub Release, and attaches the generated `.vsix`.
+- Public tag releases must include a curated bilingual notes file at `tools/vscode/shelf-ai/release-notes/<version>.md`; the workflow uses that file as the GitHub Release body.
 - If repository secrets are configured, the same tag also publishes to:
   - `OPEN_VSX_TOKEN`
   - `VS_MARKETPLACE_TOKEN`
@@ -48,26 +48,26 @@
   - create the corresponding publish tokens for each registry
 
 ## Install (Dev)
-1. Open `tools/vscode/archsync` in VSCode.
+1. Open `tools/vscode/shelf-ai` in VSCode.
 2. Press `F5` to launch Extension Development Host.
 3. Open the repository in the launched host window.
 
 ## Sidebar Icon
-- Activity Bar icon uses custom product icon glyph `$(archsync-logo)` from `media/archsync-icons.woff2`.
-- Current source mark lives in `media/archsync.svg`.
-- Explicit rollback snapshot for the previous tomoe build is `media/archsync-backup-0.0.11-tomoe-triad.svg`.
+- Activity Bar icon uses custom product icon glyph `$(shelf-logo)` from `media/shelf-ai-icons.woff2`.
+- Current source mark lives in `media/shelf-ai.svg`.
+- Explicit rollback snapshot for the previous tomoe build is `media/shelf-ai-backup-0.0.11-tomoe-triad.svg`.
 
 ## Commands
-- `ArchSync: Insert Framework Module Template`
-- `ArchSync: Open Framework Tree`
-- `ArchSync: Refresh Framework Tree`
-- `ArchSync: Validate Mapping Now`
-- `ArchSync: Show Mapping Issues`
+- `Shelf: Insert Framework Module Template`
+- `Shelf: Open Framework Tree`
+- `Shelf: Refresh Framework Tree`
+- `Shelf: Validate Mapping Now`
+- `Shelf: Show Mapping Issues`
 
 ## Markdown Snippets
 - `@framework`: insert the standard framework module template.
 - The `@framework` template entry is a repository-side hard authoring contract and must not be removed without an equally direct, default-available replacement.
-- If editor snippet suggestions are not cooperating, use `ArchSync: Insert Framework Module Template` as the explicit fallback entry.
+- If editor snippet suggestions are not cooperating, use `Shelf: Insert Framework Module Template` as the explicit fallback entry.
 - Framework-markdown completion also covers the fixed skeleton directly: `@framework`、五个主章节标题、`C/P/B/R/V` 条目，以及 `R*.1~R*.4` 子项。
 - `B`: insert one `B*` line format only.
 - `R`: insert one `R*` + `R*.*` rule block format only.
@@ -94,12 +94,12 @@
 - `FW060`: any new symbol in rules must be declared via `输出结构` in same/upstream rule.
 
 ## Configuration
-- `archSync.enableOnSave`
-- `archSync.notifyOnAutoFail`
-- `archSync.changeValidationCommand`
-- `archSync.fullValidationCommand`
-- `archSync.frameworkTreeHtmlPath`
-- `archSync.frameworkTreeGenerateCommand`
+- `shelf.enableOnSave`
+- `shelf.notifyOnAutoFail`
+- `shelf.changeValidationCommand`
+- `shelf.fullValidationCommand`
+- `shelf.frameworkTreeHtmlPath`
+- `shelf.frameworkTreeGenerateCommand`
 
 Default commands use the repository validator:
 - `uv run python scripts/validate_strict_mapping.py --check-changes --json`

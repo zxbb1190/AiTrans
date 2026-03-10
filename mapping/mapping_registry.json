@@ -80,7 +80,7 @@
       },
       {
         "id": "SYNC-20260308-frontend-extreme-compression",
-        "note": "Rework the frontend framework into a cleaner compressed chain: L0 carrier/state/visual atoms, L1 trigger-text-display-navigation-feedback atomic families, L2 standard contract, and L3 page-runtime orchestration; then realign knowledge_base and ArchSync navigation fixtures to the new module graph."
+        "note": "Rework the frontend framework into a cleaner compressed chain: L0 carrier/state/visual atoms, L1 trigger-text-display-navigation-feedback atomic families, L2 standard contract, and L3 page-runtime orchestration; then realign knowledge_base and Shelf AI navigation fixtures to the new module graph."
       }
     ]
   },

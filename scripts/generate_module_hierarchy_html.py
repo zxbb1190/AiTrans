@@ -1426,7 +1426,7 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
     const graphData = __PAYLOAD_JSON__;
     const SVG_NS = "http://www.w3.org/2000/svg";
     const vscodeApi = typeof acquireVsCodeApi === "function" ? acquireVsCodeApi() : null;
-    const SIDE_VISIBILITY_KEY = "archsync.frameworkTree.sideVisible";
+    const SIDE_VISIBILITY_KEY = "shelf.frameworkTree.sideVisible";
 
     const layoutEl = document.querySelector(".layout");
     const graphCardEl = document.querySelector(".graph-card");
@@ -2675,7 +2675,7 @@ def render_html(graph: HierarchyGraph, output_path: Path, width: int = 1520, hei
       const safeLine = Number.isFinite(Number(lineNumber)) ? Math.max(1, Number(lineNumber)) : 1;
       if (vscodeApi) {
         vscodeApi.postMessage({
-          type: "archSync.openSource",
+          type: "shelf.openSource",
           file: String(filePath || ""),
           line: safeLine
         });

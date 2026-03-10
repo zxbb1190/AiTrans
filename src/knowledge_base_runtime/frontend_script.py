@@ -18,7 +18,7 @@ def build_chat_script(project: KnowledgeBaseProject) -> str:
       const drawerSpec = uiSpec.components.citation_drawer;
       const switchDialogSpec = uiSpec.components.knowledge_switch_dialog;
       const conversationSpec = uiSpec.conversation;
-      const storageKey = `archsync-kb-conversations:${productSpec.product.project_id}`;
+      const storageKey = `shelf-kb-conversations:${productSpec.product.project_id}`;
       const state = {
         knowledgeBases: [],
         documents: [],

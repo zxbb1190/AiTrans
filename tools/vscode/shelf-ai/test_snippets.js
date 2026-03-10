@@ -29,12 +29,12 @@ function main() {
   );
 
   const commandContribution = (packageJson.contributes?.commands || []).find(
-    (item) => item.command === "archSync.insertFrameworkModuleTemplate"
+    (item) => item.command === "shelf.insertFrameworkModuleTemplate"
   );
   assert(commandContribution, "package.json must contribute the framework template insert command");
 
   assert(
-    (packageJson.activationEvents || []).includes("onCommand:archSync.insertFrameworkModuleTemplate"),
+    (packageJson.activationEvents || []).includes("onCommand:shelf.insertFrameworkModuleTemplate"),
     "package.json must activate on the framework template insert command"
   );
 
@@ -65,7 +65,7 @@ function main() {
   );
 
   assert(
-    /registerCommand\s*\(\s*"archSync\.insertFrameworkModuleTemplate"/.test(extensionSource),
+    /registerCommand\s*\(\s*"shelf\.insertFrameworkModuleTemplate"/.test(extensionSource),
     "extension.js must register the framework template insert command"
   );
   assert(
@@ -73,7 +73,7 @@ function main() {
     "extension.js must register a markdown completion provider"
   );
   assert(
-    readme.includes("ArchSync: Insert Framework Module Template"),
+    readme.includes("Shelf: Insert Framework Module Template"),
     "README must document the framework template insert command"
   );
   assert(

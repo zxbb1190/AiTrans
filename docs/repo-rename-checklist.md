@@ -25,7 +25,7 @@ After the rename, switch remaining hard-coded URLs that still point to the old r
 Main places to update:
 
 - `README.md`
-- `tools/vscode/archsync/package.json`
+- `tools/vscode/shelf-ai/package.json`
 - `.github/ISSUE_TEMPLATE/config.yml`
 - release notes or launch posts that still mention the old repo path
 
@@ -49,7 +49,7 @@ Main places to update:
 - confirm release links still work
 - confirm issue template contact links still work
 
-## ArchSync metadata
+## Shelf AI metadata
 
 If you publish the extension again after the rename, update:
 
@@ -57,7 +57,7 @@ If you publish the extension again after the rename, update:
 - `bugs.url`
 - `homepage`
 
-in `tools/vscode/archsync/package.json`
+in `tools/vscode/shelf-ai/package.json`
 
 ## Final sanity check
 
@@ -65,7 +65,7 @@ Run:
 
 ```bash
 git remote -v
-rg -n "<old-owner>/<old-repo>" README.md CONTRIBUTING.md docs .github tools/vscode/archsync -g '!docs/examples/**'
+rg -n "<old-owner>/<old-repo>" README.md CONTRIBUTING.md docs .github tools/vscode/shelf-ai -g '!docs/examples/**'
 ```
 
 The remaining hits should be intentional historical references only.

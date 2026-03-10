@@ -1,8 +1,8 @@
 {
-  "name": "archsync",
-  "displayName": "ArchSync",
-  "description": "ArchSync: framework tree webview + strict mapping validation guard.",
-  "version": "0.0.36",
+  "name": "shelf-ai",
+  "displayName": "Shelf AI",
+  "description": "Shelf AI: structure-first framework tree workspace and strict mapping guard.",
+  "version": "0.0.37",
   "publisher": "rdshr",
   "license": "SEE LICENSE IN LICENSE.txt",
   "repository": {
@@ -12,7 +12,7 @@
   "bugs": {
     "url": "https://github.com/xueyu888/framework/issues"
   },
-  "homepage": "https://github.com/xueyu888/framework/tree/main/tools/vscode/archsync",
+  "homepage": "https://github.com/xueyu888/framework/tree/main/tools/vscode/shelf-ai",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -32,11 +32,11 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onView:archSync.sidebarHome",
-    "onCommand:archSync.insertFrameworkModuleTemplate",
-    "onCommand:archSync.validateNow",
-    "onCommand:archSync.openFrameworkTree",
-    "onCommand:archSync.refreshFrameworkTree"
+    "onView:shelf.sidebarHome",
+    "onCommand:shelf.insertFrameworkModuleTemplate",
+    "onCommand:shelf.validateNow",
+    "onCommand:shelf.openFrameworkTree",
+    "onCommand:shelf.refreshFrameworkTree"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -48,31 +48,31 @@
     ],
     "commands": [
       {
-        "command": "archSync.insertFrameworkModuleTemplate",
-        "title": "ArchSync: Insert Framework Module Template"
+        "command": "shelf.insertFrameworkModuleTemplate",
+        "title": "Shelf: Insert Framework Module Template"
       },
       {
-        "command": "archSync.validateNow",
-        "title": "ArchSync: Validate Mapping Now"
+        "command": "shelf.validateNow",
+        "title": "Shelf: Validate Mapping Now"
       },
       {
-        "command": "archSync.showIssues",
-        "title": "ArchSync: Show Mapping Issues"
+        "command": "shelf.showIssues",
+        "title": "Shelf: Show Mapping Issues"
       },
       {
-        "command": "archSync.openFrameworkTree",
-        "title": "ArchSync: Open Framework Tree"
+        "command": "shelf.openFrameworkTree",
+        "title": "Shelf: Open Framework Tree"
       },
       {
-        "command": "archSync.refreshFrameworkTree",
-        "title": "ArchSync: Refresh Framework Tree"
+        "command": "shelf.refreshFrameworkTree",
+        "title": "Shelf: Refresh Framework Tree"
       }
     ],
     "icons": {
-      "archsync-logo": {
-        "description": "ArchSync Activity Bar icon",
+      "shelf-logo": {
+        "description": "Shelf AI Activity Bar icon",
         "default": {
-          "fontPath": "media/archsync-icons.woff2",
+          "fontPath": "media/shelf-ai-icons.woff2",
           "fontCharacter": "\\ea01"
         }
       }
@@ -80,17 +80,17 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "archSyncSidebar",
-          "title": "ArchSync",
-          "icon": "$(archsync-logo)"
+          "id": "shelfSidebar",
+          "title": "Shelf",
+          "icon": "$(shelf-logo)"
         }
       ]
     },
     "views": {
-      "archSyncSidebar": [
+      "shelfSidebar": [
         {
-          "id": "archSync.sidebarHome",
-          "name": "ArchSync",
+          "id": "shelf.sidebarHome",
+          "name": "Shelf",
           "type": "webview"
         }
       ]
@@ -98,51 +98,51 @@
     "menus": {
       "view/title": [
         {
-          "command": "archSync.openFrameworkTree",
-          "when": "view == archSync.sidebarHome",
+          "command": "shelf.openFrameworkTree",
+          "when": "view == shelf.sidebarHome",
           "group": "navigation@1"
         },
         {
-          "command": "archSync.refreshFrameworkTree",
-          "when": "view == archSync.sidebarHome",
+          "command": "shelf.refreshFrameworkTree",
+          "when": "view == shelf.sidebarHome",
           "group": "navigation@2"
         },
         {
-          "command": "archSync.validateNow",
-          "when": "view == archSync.sidebarHome",
+          "command": "shelf.validateNow",
+          "when": "view == shelf.sidebarHome",
           "group": "navigation@3"
         }
       ]
     },
     "configuration": {
-      "title": "ArchSync",
+      "title": "Shelf",
       "properties": {
-        "archSync.enableOnSave": {
+        "shelf.enableOnSave": {
           "type": "boolean",
           "default": true,
           "description": "Run strict mapping validation when a relevant file is saved."
         },
-        "archSync.notifyOnAutoFail": {
+        "shelf.notifyOnAutoFail": {
           "type": "boolean",
           "default": true,
           "description": "Show notification when auto validation detects mapping issues."
         },
-        "archSync.changeValidationCommand": {
+        "shelf.changeValidationCommand": {
           "type": "string",
           "default": "uv run python scripts/validate_strict_mapping.py --check-changes --json",
           "description": "Command used for save-triggered validation."
         },
-        "archSync.fullValidationCommand": {
+        "shelf.fullValidationCommand": {
           "type": "string",
           "default": "uv run python scripts/validate_strict_mapping.py --json",
           "description": "Command used for manual full validation."
         },
-        "archSync.frameworkTreeHtmlPath": {
+        "shelf.frameworkTreeHtmlPath": {
           "type": "string",
           "default": "docs/hierarchy/shelf_framework_tree.html",
           "description": "Workspace-relative path of generated framework tree HTML."
         },
-        "archSync.frameworkTreeGenerateCommand": {
+        "shelf.frameworkTreeGenerateCommand": {
           "type": "string",
           "default": "uv run python scripts/generate_framework_tree_hierarchy.py --source framework --framework-dir framework --output-json docs/hierarchy/shelf_framework_tree.json --output-html docs/hierarchy/shelf_framework_tree.html",
           "description": "Command used by 'Refresh Framework Tree'."

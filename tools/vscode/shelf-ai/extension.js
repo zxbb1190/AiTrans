@@ -16,7 +16,7 @@ const WATCH_FILES = new Set([
 const STANDARDS_TREE_FILE = path.join("specs", "规范总纲与树形结构.md");
 const REGISTRY_FILE = path.join("mapping", "mapping_registry.json");
 const DEFAULT_FRAMEWORK_TREE_HTML = path.join("docs", "hierarchy", "shelf_framework_tree.html");
-const SIDEBAR_VIEW_ID = "archSync.sidebarHome";
+const SIDEBAR_VIEW_ID = "shelf.sidebarHome";
 const DEFAULT_FRAMEWORK_TREE_GENERATE_COMMAND =
   "uv run python scripts/generate_framework_tree_hierarchy.py --source framework --framework-dir framework --output-json docs/hierarchy/shelf_framework_tree.json --output-html docs/hierarchy/shelf_framework_tree.html";
 const FRAMEWORK_RULE_HINTS = {
@@ -43,12 +43,12 @@ const FRAMEWORK_RULE_HINTS = {
 };
 
 function activate(context) {
-  const output = vscode.window.createOutputChannel("ArchSync");
-  const diagnostics = vscode.languages.createDiagnosticCollection("archsync-mapping");
+  const output = vscode.window.createOutputChannel("Shelf");
+  const diagnostics = vscode.languages.createDiagnosticCollection("shelf-mapping");
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  status.text = "$(check) ArchSync idle";
-  status.tooltip = "ArchSync";
-  status.command = "archSync.showIssues";
+  status.text = "$(check) Shelf idle";
+  status.tooltip = "Shelf";
+  status.command = "shelf.showIssues";
   status.backgroundColor = undefined;
   status.color = undefined;
   status.show();
@@ -121,7 +121,7 @@ function activate(context) {
     }
     mappingValidationActive = true;
 
-    const config = vscode.workspace.getConfiguration("archSync");
+    const config = vscode.workspace.getConfiguration("shelf");
     const command = task.mode === "full"
       ? config.get("fullValidationCommand")
       : config.get("changeValidationCommand");
@@ -133,7 +133,7 @@ function activate(context) {
     const showProgressStatus = task.source === "manual";
     const shouldSetErrorStatus = task.source === "save" || task.source === "manual";
     if (showProgressStatus) {
-      status.text = "$(sync~spin) ArchSync validating";
+      status.text = "$(sync~spin) Shelf validating";
       status.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
       status.color = new vscode.ThemeColor("statusBarItem.warningForeground");
     }
@@ -154,14 +154,14 @@ function activate(context) {
     output.appendLine(`[result] passed=${parsed.passed} errors=${parsed.errors.length}`);
 
     if (parsed.passed) {
-      status.text = "$(check) ArchSync OK";
-      status.tooltip = "ArchSync: no mapping issues";
+      status.text = "$(check) Shelf OK";
+      status.tooltip = "Shelf: no mapping issues";
       status.backgroundColor = undefined;
       status.color = undefined;
       lastFailureSignature = "";
     } else {
       if (shouldSetErrorStatus) {
-        status.text = "$(error) ArchSync issues";
+        status.text = "$(error) Shelf issues";
         status.tooltip = buildTooltip(parsed.errors);
         status.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
         status.color = new vscode.ThemeColor("statusBarItem.errorForeground");
@@ -171,7 +171,7 @@ function activate(context) {
       if (shouldNotify && shouldNotifyFailure(parsed.errors, lastFailureSignature)) {
         lastFailureSignature = signature(parsed.errors);
         const action = await vscode.window.showErrorMessage(
-          `ArchSync mapping validation failed (${parsed.errors.length} issue(s)).`,
+          `Shelf mapping validation failed (${parsed.errors.length} issue(s)).`,
           "Open Problems",
           "Open Log"
         );
@@ -223,7 +223,7 @@ function activate(context) {
     const normalizedRel = relFile.replace(/\\/g, "/").replace(/^\/+/, "");
     const absPath = path.resolve(repoRoot, normalizedRel);
     if (!fs.existsSync(absPath)) {
-      vscode.window.showWarningMessage(`ArchSync: source file not found: ${normalizedRel}`);
+      vscode.window.showWarningMessage(`Shelf: source file not found: ${normalizedRel}`);
       return;
     }
 
@@ -238,8 +238,8 @@ function activate(context) {
   const ensureFrameworkTreePanel = () => {
     if (!frameworkTreePanel) {
       frameworkTreePanel = vscode.window.createWebviewPanel(
-        "archSyncFrameworkTree",
-        "ArchSync · Framework Tree",
+        "shelfFrameworkTree",
+        "Shelf · Framework Tree",
         vscode.ViewColumn.Active,
         {
           enableScripts: true,
@@ -251,7 +251,7 @@ function activate(context) {
         frameworkTreeRepoRoot = "";
       });
       frameworkTreePanel.webview.onDidReceiveMessage(async (message) => {
-        if (!message || message.type !== "archSync.openSource") {
+        if (!message || message.type !== "shelf.openSource") {
           return;
         }
         await openFrameworkTreeSource(
@@ -269,13 +269,13 @@ function activate(context) {
   const openFrameworkTree = async (options = { regenerateIfMissing: false }) => {
     const folder = vscode.workspace.workspaceFolders?.[0];
     if (!folder) {
-      vscode.window.showWarningMessage("ArchSync: no workspace is open.");
+      vscode.window.showWarningMessage("Shelf: no workspace is open.");
       return;
     }
 
     const repoRoot = folder.uri.fsPath;
     frameworkTreeRepoRoot = repoRoot;
-    const config = vscode.workspace.getConfiguration("archSync");
+    const config = vscode.workspace.getConfiguration("shelf");
     const htmlPath = resolveFrameworkTreeHtmlPath(repoRoot, config.get("frameworkTreeHtmlPath"));
 
     if (options.regenerateIfMissing && !fs.existsSync(htmlPath)) {
@@ -383,12 +383,12 @@ function activate(context) {
         issueOverflow: 0,
         calloutTone: "unknown",
         calloutTitle: "从工作区开始",
-        calloutBody: "ArchSync 侧边栏不是占位区。打开仓库后，它会变成树图入口、校验面板和问题导航工作台。"
+        calloutBody: "Shelf 侧边栏不是占位区。打开仓库后，它会变成树图入口、校验面板和问题导航工作台。"
       });
     }
 
     const repoRoot = folder.uri.fsPath;
-    const config = vscode.workspace.getConfiguration("archSync");
+    const config = vscode.workspace.getConfiguration("shelf");
     const treePath = resolveFrameworkTreeHtmlPath(repoRoot, config.get("frameworkTreeHtmlPath"));
     const standardsExists = hasStandardsTree(repoRoot);
     const validationEnabled = standardsExists && mappingValidationActive;
@@ -406,7 +406,7 @@ function activate(context) {
         index,
         code: recognizedCode || String(issue.code || "ARCHSYNC"),
         hint: recognizedCode ? frameworkRuleHint(recognizedCode) : "",
-        message: issue.message || "ArchSync mapping issue",
+        message: issue.message || "Shelf mapping issue",
         location: issue.file
           ? `${issue.file}:${Number(issue.line || 1)}`
           : `line ${Number(issue.line || 1)}`
@@ -427,7 +427,7 @@ function activate(context) {
     if (!standardsExists) {
       heroTone = "error";
       heroStatus = "严格守卫未启用";
-      heroSummary = `当前工作区缺少 ${STANDARDS_TREE_FILE}，ArchSync 会自动停用严格映射校验。`;
+      heroSummary = `当前工作区缺少 ${STANDARDS_TREE_FILE}，Shelf 会自动停用严格映射校验。`;
       calloutTone = "error";
       calloutTitle = "先补齐规范入口";
       calloutBody = "没有规范总纲时，侧边栏仍可作为树图入口，但严格映射问题不会自动汇总。";
@@ -439,7 +439,7 @@ function activate(context) {
       heroStatus = "树图产物缺失";
       heroSummary = "侧边栏已经可用，但框架树 HTML 还没准备好，下一步应该生成并打开树图。";
       calloutTitle = "生成并打开树图";
-      calloutBody = `目标产物位于 ${toWorkspaceRelative(treePath, repoRoot)}。使用 ArchSync 可以直接生成并打开。`;
+      calloutBody = `目标产物位于 ${toWorkspaceRelative(treePath, repoRoot)}。使用 Shelf 可以直接生成并打开。`;
       calloutAction = {
         action: "openTree",
         label: "生成树图并打开"
@@ -519,7 +519,7 @@ function activate(context) {
     } else if (lastValidationPassed === null) {
       issueEmptyText = "本会话尚未执行校验。先跑一次完整校验，侧边栏才能显示最新问题摘要。";
     } else if (lastValidationPassed === true) {
-      issueEmptyText = "当前没有可展示的问题，ArchSync 严格映射守卫状态正常。";
+      issueEmptyText = "当前没有可展示的问题，Shelf 严格映射守卫状态正常。";
     }
 
     return buildSidebarHomeHtml({
@@ -574,34 +574,34 @@ function activate(context) {
           return;
         }
 
-        if (message.type === "archSync.sidebar.openTree") {
+        if (message.type === "shelf.sidebar.openTree") {
           await openFrameworkTree({ regenerateIfMissing: true });
           return;
         }
-        if (message.type === "archSync.sidebar.refreshTree") {
-          await vscode.commands.executeCommand("archSync.refreshFrameworkTree");
+        if (message.type === "shelf.sidebar.refreshTree") {
+          await vscode.commands.executeCommand("shelf.refreshFrameworkTree");
           return;
         }
-        if (message.type === "archSync.sidebar.validate") {
+        if (message.type === "shelf.sidebar.validate") {
           scheduleValidation({ mode: "full", triggerUri: null, notifyOnFail: true, source: "manual" });
           return;
         }
-        if (message.type === "archSync.sidebar.showIssues") {
-          await vscode.commands.executeCommand("archSync.showIssues");
+        if (message.type === "shelf.sidebar.showIssues") {
+          await vscode.commands.executeCommand("shelf.showIssues");
           return;
         }
-        if (message.type === "archSync.sidebar.openLog") {
+        if (message.type === "shelf.sidebar.openLog") {
           output.show(true);
           return;
         }
-        if (message.type === "archSync.sidebar.openStandards") {
+        if (message.type === "shelf.sidebar.openStandards") {
           const repoRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
           if (repoRoot) {
             await openFrameworkTreeSource(repoRoot, STANDARDS_TREE_FILE, 1);
           }
           return;
         }
-        if (message.type === "archSync.sidebar.openIssue") {
+        if (message.type === "shelf.sidebar.openIssue") {
           const index = Number(message.index);
           if (Number.isInteger(index) && index >= 0 && index < lastRunIssues.length && lastRepoRoot) {
             await revealIssue(lastRunIssues[index], lastRepoRoot);
@@ -764,21 +764,21 @@ function activate(context) {
     "."
   );
 
-  const validateNowDisposable = vscode.commands.registerCommand("archSync.validateNow", async () => {
+  const validateNowDisposable = vscode.commands.registerCommand("shelf.validateNow", async () => {
     scheduleValidation({ mode: "full", triggerUri: null, notifyOnFail: true, source: "manual" });
   });
 
   const insertFrameworkTemplateDisposable = vscode.commands.registerCommand(
-    "archSync.insertFrameworkModuleTemplate",
+    "shelf.insertFrameworkModuleTemplate",
     async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
-        vscode.window.showWarningMessage("ArchSync: no active editor for framework template insertion.");
+        vscode.window.showWarningMessage("Shelf: no active editor for framework template insertion.");
         return;
       }
 
       if (editor.document.languageId !== "markdown") {
-        vscode.window.showWarningMessage("ArchSync: framework module template can only be inserted into Markdown files.");
+        vscode.window.showWarningMessage("Shelf: framework module template can only be inserted into Markdown files.");
         return;
       }
 
@@ -788,7 +788,7 @@ function activate(context) {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         output.appendLine(`[template] ${message}`);
-        vscode.window.showErrorMessage("ArchSync: failed to load the @framework module template.");
+        vscode.window.showErrorMessage("Shelf: failed to load the @framework module template.");
         return;
       }
 
@@ -797,15 +797,15 @@ function activate(context) {
         editor.selections
       );
       if (!inserted) {
-        vscode.window.showWarningMessage("ArchSync: framework module template insertion was cancelled.");
+        vscode.window.showWarningMessage("Shelf: framework module template insertion was cancelled.");
       }
     }
   );
 
-  const showIssuesDisposable = vscode.commands.registerCommand("archSync.showIssues", async () => {
+  const showIssuesDisposable = vscode.commands.registerCommand("shelf.showIssues", async () => {
     if (!mappingValidationActive && lastRepoRoot) {
       vscode.window.showInformationMessage(
-        `ArchSync mapping guard is disabled: missing ${STANDARDS_TREE_FILE} in this workspace.`
+        `Shelf mapping guard is disabled: missing ${STANDARDS_TREE_FILE} in this workspace.`
       );
       return;
     }
@@ -834,7 +834,7 @@ function activate(context) {
     });
 
     const selected = await vscode.window.showQuickPick(picks, {
-      title: `ArchSync Mapping Issues (${lastRunIssues.length})`,
+      title: `Shelf Mapping Issues (${lastRunIssues.length})`,
       placeHolder: "Select an issue to jump to its location"
     });
 
@@ -843,26 +843,26 @@ function activate(context) {
     }
   });
 
-  const openFrameworkTreeDisposable = vscode.commands.registerCommand("archSync.openFrameworkTree", async () => {
+  const openFrameworkTreeDisposable = vscode.commands.registerCommand("shelf.openFrameworkTree", async () => {
     await openFrameworkTree({ regenerateIfMissing: true });
   });
 
-  const refreshFrameworkTreeDisposable = vscode.commands.registerCommand("archSync.refreshFrameworkTree", async () => {
+  const refreshFrameworkTreeDisposable = vscode.commands.registerCommand("shelf.refreshFrameworkTree", async () => {
     const folder = vscode.workspace.workspaceFolders?.[0];
     if (!folder) {
-      vscode.window.showWarningMessage("ArchSync: no workspace is open.");
+      vscode.window.showWarningMessage("Shelf: no workspace is open.");
       return;
     }
 
     const repoRoot = folder.uri.fsPath;
-    const config = vscode.workspace.getConfiguration("archSync");
+    const config = vscode.workspace.getConfiguration("shelf");
     const generateCommand = String(
       config.get("frameworkTreeGenerateCommand") || DEFAULT_FRAMEWORK_TREE_GENERATE_COMMAND
     );
 
     const ok = await generateFrameworkTree(repoRoot, generateCommand, output);
     if (!ok) {
-      await vscode.window.showErrorMessage("ArchSync: failed to refresh framework tree.", "Open Log").then((action) => {
+      await vscode.window.showErrorMessage("Shelf: failed to refresh framework tree.", "Open Log").then((action) => {
         if (action === "Open Log") {
           output.show(true);
         }
@@ -874,7 +874,7 @@ function activate(context) {
   });
 
   const saveDisposable = vscode.workspace.onDidSaveTextDocument(async (doc) => {
-    const config = vscode.workspace.getConfiguration("archSync");
+    const config = vscode.workspace.getConfiguration("shelf");
     if (!config.get("enableOnSave")) {
       return;
     }
@@ -1096,8 +1096,8 @@ function applyDiagnostics(parsed, collection, repoRoot, triggerUri) {
     const ruleCode = normalizeFrameworkRuleCode(issue.code);
     const ruleHint = frameworkRuleHint(ruleCode);
     const message = ruleCode
-      ? `[archsync ${ruleCode}] ${ruleHint} | ${issue.message}`
-      : `[archsync] ${issue.message}`;
+      ? `[shelf ${ruleCode}] ${ruleHint} | ${issue.message}`
+      : `[shelf] ${issue.message}`;
     const diag = new vscode.Diagnostic(
       range,
       message,
@@ -1177,7 +1177,7 @@ function buildFrameworkTreeFallbackHtml(message) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ArchSync · Framework Tree</title>
+  <title>Shelf · Framework Tree</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -1258,9 +1258,9 @@ function buildFrameworkTreeFallbackHtml(message) {
 </head>
 <body>
   <div class="card">
-    <h1>ArchSync</h1>
+    <h1>Shelf</h1>
     <p class="message">${escaped}</p>
-    <p class="next-step">使用 <code>ArchSync: Refresh Framework Tree</code> 重新生成树图。</p>
+    <p class="next-step">使用 <code>Shelf: Refresh Framework Tree</code> 重新生成树图。</p>
   </div>
 </body>
 </html>`;
@@ -1781,7 +1781,7 @@ function buildSidebarHomeHtml(model) {
       <div class="hero-header">
         <div class="title-row">
           <div class="title-stack">
-            <h1 class="title">ArchSync</h1>
+            <h1 class="title">Shelf</h1>
             <p class="summary">${heroSummary}</p>
           </div>
         <span class="status-badge ${heroTone}">${heroStatus}</span>
@@ -1845,7 +1845,7 @@ function buildSidebarHomeHtml(model) {
         const action = button.getAttribute("data-action");
         if (!action) return;
         const index = button.getAttribute("data-index");
-        const message = { type: "archSync.sidebar." + action };
+        const message = { type: "shelf.sidebar." + action };
         if (index !== null) {
           message.index = Number(index);
         }
@@ -1899,7 +1899,7 @@ function normalizeIssue(item) {
   }
 
   return {
-    message: String(item.message || "ArchSync mapping issue"),
+    message: String(item.message || "Shelf mapping issue"),
     file: item.file || null,
     line: Number(item.line || 1),
     column: Number(item.column || 1),
@@ -1921,9 +1921,9 @@ function normalizeFrameworkRuleCode(rawCode) {
 
 function frameworkRuleHint(ruleCode) {
   if (!ruleCode) {
-    return "ArchSync 规则";
+    return "Shelf 规则";
   }
-  return FRAMEWORK_RULE_HINTS[ruleCode] || "ArchSync 规则";
+  return FRAMEWORK_RULE_HINTS[ruleCode] || "Shelf 规则";
 }
 
 function signature(errors) {
@@ -1939,11 +1939,11 @@ function shouldNotifyFailure(errors, prevSignature) {
 
 function buildTooltip(errors) {
   if (!errors.length) {
-    return "ArchSync";
+    return "Shelf";
   }
   const preview = errors.slice(0, 3).map((e) => `• ${e.message}`).join("\n");
   const more = errors.length > 3 ? `\n... +${errors.length - 3} more` : "";
-  return `ArchSync\n${preview}${more}\n(click to open Problems)`;
+  return `Shelf\n${preview}${more}\n(click to open Problems)`;
 }
 
 function hasStandardsTree(repoRoot) {
@@ -1951,8 +1951,8 @@ function hasStandardsTree(repoRoot) {
 }
 
 function setStatusDisabled(status, repoRoot) {
-  status.text = "$(circle-slash) ArchSync";
-  status.tooltip = `ArchSync mapping guard disabled: ${toWorkspaceRelative(
+  status.text = "$(circle-slash) Shelf";
+  status.tooltip = `Shelf mapping guard disabled: ${toWorkspaceRelative(
     path.join(repoRoot, STANDARDS_TREE_FILE),
     repoRoot
   )} not found`;

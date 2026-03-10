@@ -1,20 +1,20 @@
-name: Publish ArchSync
+name: Publish Shelf AI
 
 on:
   push:
     tags:
-      - "archsync-v*"
+      - "shelf-ai-v*"
   workflow_dispatch:
 
 jobs:
-  publish-archsync:
+  publish-shelf-ai:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     defaults:
       run:
         shell: bash
-        working-directory: tools/vscode/archsync
+        working-directory: tools/vscode/shelf-ai
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,17 +29,17 @@ jobs:
         run: |
           VERSION="$(node -p "require('./package.json').version")"
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            TAG_VERSION="${GITHUB_REF_NAME#archsync-v}"
+            TAG_VERSION="${GITHUB_REF_NAME#shelf-ai-v}"
             if [[ "${TAG_VERSION}" != "${VERSION}" ]]; then
               echo "Tag ${GITHUB_REF_NAME} does not match package version ${VERSION}" >&2
               exit 1
             fi
           fi
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "vsix_run_path=releases/archsync-${VERSION}.vsix" >> "${GITHUB_OUTPUT}"
-          echo "vsix_repo_path=tools/vscode/archsync/releases/archsync-${VERSION}.vsix" >> "${GITHUB_OUTPUT}"
+          echo "vsix_run_path=releases/shelf-ai-${VERSION}.vsix" >> "${GITHUB_OUTPUT}"
+          echo "vsix_repo_path=tools/vscode/shelf-ai/releases/shelf-ai-${VERSION}.vsix" >> "${GITHUB_OUTPUT}"
           echo "notes_run_path=release-notes/${VERSION}.md" >> "${GITHUB_OUTPUT}"
-          echo "notes_repo_path=tools/vscode/archsync/release-notes/${VERSION}.md" >> "${GITHUB_OUTPUT}"
+          echo "notes_repo_path=tools/vscode/shelf-ai/release-notes/${VERSION}.md" >> "${GITHUB_OUTPUT}"
 
       - name: Validate release notes
         if: github.ref_type == 'tag'
@@ -75,7 +75,7 @@ jobs:
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v4
         with:
-          name: archsync-${{ steps.meta.outputs.version }}-vsix
+          name: shelf-ai-${{ steps.meta.outputs.version }}-vsix
           path: ${{ steps.meta.outputs.vsix_repo_path }}
 
       - name: Create GitHub release
@@ -85,11 +85,11 @@ jobs:
         run: |
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
             gh release edit "${GITHUB_REF_NAME}" \
-              --title "ArchSync ${{ steps.meta.outputs.version }}" \
+              --title "Shelf AI ${{ steps.meta.outputs.version }}" \
               --notes-file "${{ steps.meta.outputs.notes_run_path }}"
           else
             gh release create "${GITHUB_REF_NAME}" \
-              --title "ArchSync ${{ steps.meta.outputs.version }}" \
+              --title "Shelf AI ${{ steps.meta.outputs.version }}" \
               --notes-file "${{ steps.meta.outputs.notes_run_path }}"
           fi
           gh release upload "${GITHUB_REF_NAME}" "${{ steps.meta.outputs.vsix_run_path }}" --clobber

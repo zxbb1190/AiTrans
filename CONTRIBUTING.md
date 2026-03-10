@@ -55,7 +55,7 @@ Framework modules should remain explicit about:
 - combination rules
 - verification
 
-The repository authoring entrypoint for framework modules is the `@framework` template and the ArchSync insertion command.
+The repository authoring entrypoint for framework modules is the `@framework` template and the Shelf AI insertion command.
 
 ## Project Authoring Rules
 
@@ -74,7 +74,7 @@ When practical, prefer detailed Chinese comments over minimal labels.
 - project templates and examples
 - mapping validation and materialization
 - runtime templates
-- ArchSync navigation and validation UX
+- Shelf AI navigation and validation UX
 - public docs and onboarding
 
 ## Pull Request Notes

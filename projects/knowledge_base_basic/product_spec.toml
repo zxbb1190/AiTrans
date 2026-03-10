@@ -16,8 +16,8 @@
 [project]
 project_id = "knowledge_base_basic"
 template = "knowledge_base_workbench"
-display_name = "ArchSync Knowledge Chat"
-description = "A ChatGPT-style knowledge chat client compiled from framework standards and one product spec."
+display_name = "Shelf AI Knowledge Chat"
+description = "A ChatGPT-style knowledge chat client compiled from Shelf framework standards and one product spec."
 version = "0.3.0"
 
 # [framework] 声明这个产品依附于哪些框架标准。
@@ -47,7 +47,7 @@ density = "comfortable"
 # 当团队讨论“首屏应该给用户什么心理预期”时，优先看这里。
 [surface.copy]
 hero_kicker = "Framework-Compiled Product"
-hero_title = "ArchSync Knowledge Chat"
+hero_title = "Shelf AI Knowledge Chat"
 hero_copy = "A ChatGPT-style knowledge chat client with inline citations, on-demand source drawers, and secondary knowledge pages."
 library_title = "Knowledge Bases"
 preview_title = "Citation Sources"
@@ -61,7 +61,7 @@ empty_state_copy = "Ask directly in the composer. Sources stay quiet until you o
 # 它保留的是跨实现可复用的语义选择，例如“中等阴影”“大圆角”“浅色面板”，
 # 而不是某个 CSS 变量名、像素值、设计工具导出结果或特定组件库主题配置。
 [visual]
-brand = "ArchSync"
+brand = "Shelf"
 accent = "#2563eb"
 surface_preset = "light"
 radius_scale = "xl"

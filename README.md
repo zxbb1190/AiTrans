@@ -2,7 +2,7 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](./pyproject.toml)
 [![uv](https://img.shields.io/badge/deps-uv-6A5ACD)](https://github.com/astral-sh/uv)
-[![VSCode](https://img.shields.io/badge/VSCode-ArchSync-007ACC?logo=visualstudiocode&logoColor=white)](./tools/vscode/archsync)
+[![VSCode](https://img.shields.io/badge/VSCode-Shelf AI-007ACC?logo=visualstudiocode&logoColor=white)](./tools/vscode/shelf-ai)
 [![GitHub stars](https://img.shields.io/github/stars/xueyu888/framework?style=social)](https://github.com/xueyu888/framework/stargazers)
 [![Strict Mapping Gate](https://github.com/xueyu888/framework/actions/workflows/strict-mapping-gate.yml/badge.svg)](https://github.com/xueyu888/framework/actions/workflows/strict-mapping-gate.yml)
 [![Latest Release](https://img.shields.io/github/v/release/xueyu888/framework?display_name=tag)](https://github.com/xueyu888/framework/releases)
@@ -31,7 +31,7 @@ Instead of asking AI to "just write code", Shelf gives AI a real structure to wo
 - [Quick Start](#quick-start)
 - [Start Here](#start-here)
 - [Reference Demo: Knowledge Base Workbench](#reference-demo-knowledge-base-workbench)
-- [ArchSync VS Code Extension](#archsync-vs-code-extension)
+- [Shelf AI VS Code Extension](#shelf-ai-vs-code-extension)
 - [Contributing](#contributing)
 - [GitHub Launch Kit](#github-launch-kit)
 
@@ -117,7 +117,7 @@ This repository is organized around that flow:
 - **Project materialization**
   - Materialize project artifacts from framework docs plus instance configs.
 - **Framework-aware VS Code tooling**
-  - Use ArchSync to inspect framework trees, jump across mappings, and run validation from the editor.
+  - Use Shelf AI to inspect framework trees, jump across mappings, and run validation from the editor.
 - **Runnable reference application**
   - Run a knowledge-base demo compiled from framework markdown, product spec, and implementation config.
 
@@ -140,7 +140,7 @@ Shelf is meant to be inspectable proof, not just a design manifesto.
 - The demo app is runnable from this repository today.
 - The generated artifacts are materialized into `projects/<project_id>/generated/*`.
 - The repo has a CI workflow for strict mapping validation.
-- The ArchSync VS Code extension has release automation in `.github/workflows/publish-archsync.yml`.
+- The Shelf AI VS Code extension has release automation in `.github/workflows/publish-shelf-ai.yml`.
 
 ## Who Shelf Is For
 
@@ -229,7 +229,7 @@ If you want to inspect a concrete framework module:
 5. **Validate the chain**
    - Run strict mapping checks to catch structural drift.
 6. **Run and inspect**
-   - Launch the demo app and inspect the framework graph in ArchSync.
+   - Launch the demo app and inspect the framework graph in Shelf AI.
 
 ## Reference Demo: Knowledge Base Workbench
 
@@ -251,9 +251,9 @@ Manual materialization for the current project:
 uv run python scripts/materialize_project.py --project projects/knowledge_base_basic/product_spec.toml
 ```
 
-## ArchSync VS Code Extension
+## Shelf AI VS Code Extension
 
-ArchSync is the companion extension for Shelf.
+Shelf AI is the companion extension for Shelf.
 
 It is not a generic chat assistant. It is a **framework-aware AI coding companion** for this repository model.
 
@@ -268,7 +268,7 @@ It provides:
 Local install:
 
 ```bash
-bash tools/vscode/archsync/install_local.sh
+bash tools/vscode/shelf-ai/install_local.sh
 ```
 
 The local install script rebuilds the VSIX from the current source version and force-installs it into local VS Code.
@@ -281,15 +281,15 @@ WSL note:
 
 More:
 
-- [ArchSync README](./tools/vscode/archsync/README.md)
+- [Shelf AI README](./tools/vscode/shelf-ai/README.md)
 - [GitHub Releases](https://github.com/xueyu888/framework/releases)
 
 Main commands:
 
-- `ArchSync: Open Framework Tree`
-- `ArchSync: Refresh Framework Tree`
-- `ArchSync: Validate Mapping Now`
-- `ArchSync: Show Mapping Issues`
+- `Shelf: Open Framework Tree`
+- `Shelf: Refresh Framework Tree`
+- `Shelf: Validate Mapping Now`
+- `Shelf: Show Mapping Issues`
 
 ## Contributing
 
@@ -316,7 +316,7 @@ Shelf is strict by design. Framework, product truth, implementation choices, cod
   - materialization, validation, release, and support scripts
 - `src/`
   - runtime templates, generator core, validators
-- `tools/vscode/archsync/`
+- `tools/vscode/shelf-ai/`
   - the companion VS Code extension
 
 ## Engineering Rules

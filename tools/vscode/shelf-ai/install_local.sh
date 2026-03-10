@@ -31,7 +31,7 @@ resolve_code_bin() {
 installed_version() {
   local code_bin="$1"
   "${code_bin}" --list-extensions --show-versions 2>/dev/null \
-    | sed -n -E 's/^(rdshr|local)\.archsync@(.+)$/\2/p' \
+    | sed -n -E 's/^(rdshr|local)\.(shelf-ai|archsync)@(.+)$/\3/p' \
     | head -n 1
 }
 
@@ -43,12 +43,12 @@ require_command npx
 
 VERSION="$(cd "${SCRIPT_DIR}" && node -p "require('./package.json').version")"
 RELEASES_DIR="${SCRIPT_DIR}/releases"
-VSIX_PATH="${RELEASES_DIR}/archsync-${VERSION}.vsix"
+VSIX_PATH="${RELEASES_DIR}/shelf-ai-${VERSION}.vsix"
 PREVIOUS_VERSION="$(installed_version "${CODE_BIN}" || true)"
 
 mkdir -p "${RELEASES_DIR}"
 
-echo "Packaging ArchSync ${VERSION}..."
+echo "Packaging Shelf AI ${VERSION}..."
 (
   cd "${SCRIPT_DIR}"
   npx --yes @vscode/vsce package -o "${VSIX_PATH}"
@@ -57,10 +57,12 @@ echo "Packaging ArchSync ${VERSION}..."
 if [[ -n "${PREVIOUS_VERSION}" ]]; then
   echo "Installed version before update: ${PREVIOUS_VERSION}"
 else
-  echo "ArchSync is not currently installed."
+  echo "Shelf AI is not currently installed."
 fi
 
 # Clean up existing installs so the remote host doesn't keep multiple stale versions around.
+"${CODE_BIN}" --uninstall-extension local.shelf-ai >/dev/null 2>&1 || true
+"${CODE_BIN}" --uninstall-extension rdshr.shelf-ai >/dev/null 2>&1 || true
 "${CODE_BIN}" --uninstall-extension local.archsync >/dev/null 2>&1 || true
 "${CODE_BIN}" --uninstall-extension rdshr.archsync >/dev/null 2>&1 || true
 "${CODE_BIN}" --install-extension "${VSIX_PATH}" --force
@@ -71,4 +73,4 @@ if [[ "${CURRENT_VERSION}" != "${VERSION}" ]]; then
   exit 1
 fi
 
-echo "Installed ArchSync ${CURRENT_VERSION} from ${VSIX_PATH}"
+echo "Installed Shelf AI ${CURRENT_VERSION} from ${VSIX_PATH}"

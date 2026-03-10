@@ -65,7 +65,7 @@ class ProjectRuntimeTest(unittest.TestCase):
         self.assertEqual(project.route.knowledge_list, "/knowledge-bases")
         self.assertEqual(project.route.api_prefix, "/api/knowledge")
         self.assertEqual(project.surface.layout_variant, "chatgpt_knowledge_client")
-        self.assertEqual(project.visual.brand, "ArchSync")
+        self.assertEqual(project.visual.brand, "Shelf")
         self.assertEqual(len(project.documents), 3)
         self.assertTrue(project.features.upload)
         self.assertEqual(project.frontend_ir.module_id, "frontend.L2.M0")
