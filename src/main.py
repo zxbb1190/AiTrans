@@ -7,19 +7,18 @@ import sys
 
 import uvicorn
 
-from project_runtime.app_factory import PRODUCT_SPEC_FILE_ENV, build_project_app
-from project_runtime.template_registry import (
-    get_default_project_template_registration,
-    materialize_registered_project,
+from project_runtime.knowledge_base import (
+    DEFAULT_KNOWLEDGE_BASE_PRODUCT_SPEC_FILE,
+    materialize_knowledge_base_project,
 )
-from shelf_reference_pipeline import run_reference_pipeline
 
 SRC_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SRC_DIR.parent
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
-KNOWN_COMMANDS = {"serve", "reference-shelf"}
-DEFAULT_PRODUCT_SPEC_FILE = get_default_project_template_registration().default_product_spec_file
+KNOWN_COMMANDS = {"serve", "legacy-reference-shelf", "reference-shelf"}
+DEFAULT_PRODUCT_SPEC_FILE = DEFAULT_KNOWLEDGE_BASE_PRODUCT_SPEC_FILE
+PRODUCT_SPEC_FILE_ENV = "SHELF_PRODUCT_SPEC_FILE"
 RELOAD_DIRS = [
     SRC_DIR,
     REPO_ROOT / "framework",
@@ -70,16 +69,22 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers.add_parser(
-        "reference-shelf",
+        "legacy-reference-shelf",
         help=(
-            "run the legacy shelf reference pipeline that generates docs/examples "
-            "for the shelf domain sample"
+            "run the legacy shelf reference pipeline that generates docs/legacy_shelf/* "
+            "for the historical shelf domain sample"
         ),
+    )
+    subparsers.add_parser(
+        "reference-shelf",
+        help=argparse.SUPPRESS,
     )
     return parser
 
 
 def _serve_project(product_spec_file: str | Path, *, host: str, port: int, reload: bool) -> None:
+    from project_runtime.app_factory import build_project_app
+
     resolved_product_spec = Path(product_spec_file)
     if not resolved_product_spec.is_absolute():
         resolved_product_spec = (SRC_DIR.parent / resolved_product_spec).resolve()
@@ -88,7 +93,7 @@ def _serve_project(product_spec_file: str | Path, *, host: str, port: int, reloa
 
     if reload:
         # Fail fast and keep generated evidence synchronized before the reload server starts.
-        materialize_registered_project(resolved_product_spec)
+        materialize_knowledge_base_project(resolved_product_spec)
         uvicorn.run(
             "project_runtime.app_factory:app",
             host=host,
@@ -108,7 +113,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(_normalize_argv(list(sys.argv[1:] if argv is None else argv)))
 
-    if args.command == "reference-shelf":
+    if args.command in {"legacy-reference-shelf", "reference-shelf"}:
+        from examples.legacy_shelf.reference_pipeline import run_reference_pipeline
+
         run_reference_pipeline()
         return 0
 

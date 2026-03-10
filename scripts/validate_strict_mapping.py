@@ -27,15 +27,19 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from project_runtime import (
-    get_default_project_template_registration,
-    materialize_registered_project,
-    resolve_project_template_registration,
+    KNOWLEDGE_BASE_IMPLEMENTATION_CONFIG_LAYOUT,
+    KNOWLEDGE_BASE_PRODUCT_SPEC_LAYOUT,
+    KNOWLEDGE_BASE_TEMPLATE_ID,
+    detect_project_template_id,
+    load_knowledge_base_project,
+    materialize_knowledge_base_project,
 )
 from project_runtime.governance import (
     compare_project_to_tree,
     parse_governance_tree,
     validate_tree_closure,
 )
+from standards_tree import build_standards_tree, level_files_from_tree
 from workspace_governance import (
     DEFAULT_WORKSPACE_GOVERNANCE_HTML,
     DEFAULT_WORKSPACE_GOVERNANCE_JSON,
@@ -385,21 +389,31 @@ def validate_project_configuration_layout(product_spec_files: list[Path] | None 
 
     for product_spec_file in project_product_spec_files:
         try:
-            template_registration = resolve_project_template_registration(product_spec_file)
+            template_id = detect_project_template_id(product_spec_file)
         except Exception as exc:
-            if "unsupported project template" in str(exc):
-                rel_product_spec_file = product_spec_file.relative_to(REPO_ROOT).as_posix()
-                issues.append(
-                    make_issue(
-                        str(exc),
-                        rel_product_spec_file,
-                        find_line(read_text(product_spec_file), 'template = "'),
-                        code="PROJECT_TEMPLATE_UNSUPPORTED",
-                    )
+            rel_product_spec_file = product_spec_file.relative_to(REPO_ROOT).as_posix()
+            issues.append(
+                make_issue(
+                    str(exc),
+                    rel_product_spec_file,
+                    find_line(read_text(product_spec_file), 'template = "'),
+                    code="PROJECT_TEMPLATE_UNSUPPORTED",
                 )
-            template_registration = get_default_project_template_registration()
+            )
+            template_id = KNOWLEDGE_BASE_TEMPLATE_ID
 
-        product_spec_layout = template_registration.product_spec_layout
+        if template_id != KNOWLEDGE_BASE_TEMPLATE_ID:
+            rel_product_spec_file = product_spec_file.relative_to(REPO_ROOT).as_posix()
+            issues.append(
+                make_issue(
+                    f"unsupported project template: {template_id}",
+                    rel_product_spec_file,
+                    find_line(read_text(product_spec_file), 'template = "'),
+                    code="PROJECT_TEMPLATE_UNSUPPORTED",
+                )
+            )
+
+        product_spec_layout = KNOWLEDGE_BASE_PRODUCT_SPEC_LAYOUT
         issues.extend(
             _validate_project_toml_layout(
                 product_spec_file,
@@ -438,7 +452,7 @@ def validate_project_configuration_layout(product_spec_files: list[Path] | None 
                 )
             )
             continue
-        implementation_layout = template_registration.implementation_config_layout
+        implementation_layout = KNOWLEDGE_BASE_IMPLEMENTATION_CONFIG_LAYOUT
         issues.extend(
             _validate_project_toml_layout(
                 implementation_config_file,
@@ -472,7 +486,7 @@ def validate_project_generation_discipline(
     issues.extend(validate_project_configuration_layout(project_product_spec_files))
 
     try:
-        materialize_registered_project
+        materialize_knowledge_base_project
     except Exception as exc:
         issues.append(
             make_issue(
@@ -556,10 +570,34 @@ def validate_project_generation_discipline(
             )
             continue
 
+        expected_generated_file_set = set(expected_generated_files)
+        actual_generated_files = {path.name for path in actual_generated_dir.iterdir() if path.is_file()}
+        unexpected_generated_files = sorted(actual_generated_files - expected_generated_file_set)
+        for extra_name in unexpected_generated_files:
+            issues.append(
+                make_issue(
+                    (
+                        f"unexpected generated artifact: {extra_name}; generated/ must only contain "
+                        "the canonical artifact set declared in implementation_config.toml"
+                    ),
+                    (actual_generated_dir / extra_name).relative_to(REPO_ROOT).as_posix(),
+                    1,
+                    code="PROJECT_GENERATED_EXTRA_FILE",
+                    related=[
+                        {
+                            "message": "Project implementation config",
+                            "file": rel_implementation_config_file,
+                            "line": 1,
+                            "column": 1,
+                        }
+                    ],
+                )
+            )
+
         try:
             with tempfile.TemporaryDirectory(dir=REPO_ROOT) as temp_dir:
                 temp_generated_dir = Path(temp_dir) / "generated"
-                materialize_registered_project(product_spec_file, output_dir=temp_generated_dir)
+                materialize_knowledge_base_project(product_spec_file, output_dir=temp_generated_dir)
                 for required_name in expected_generated_files:
                     actual_file = actual_generated_dir / required_name
                     expected_file = temp_generated_dir / required_name
@@ -705,8 +743,7 @@ def validate_project_governance(
             continue
 
         try:
-            registration = resolve_project_template_registration(product_spec_file)
-            project = registration.load_project(product_spec_file)
+            project = load_knowledge_base_project(product_spec_file)
         except Exception as exc:
             issues.append(
                 make_issue(
@@ -2095,6 +2132,7 @@ def validate_registry_structure(
     issues.extend(level_issues)
 
     tree = registry.get("tree")
+    expected_tree = build_standards_tree()
     if not isinstance(tree, dict):
         issues.append(
             make_issue(
@@ -2104,10 +2142,26 @@ def validate_registry_structure(
                 code="REGISTRY_TREE_TYPE",
             )
         )
-        return issues, None
+        tree = expected_tree
+    else:
+        if json.dumps(tree, ensure_ascii=False, sort_keys=True) != json.dumps(
+            expected_tree,
+            ensure_ascii=False,
+            sort_keys=True,
+        ):
+            issues.append(
+                make_issue(
+                    (
+                        "mapping_registry.json: tree is out of sync with the canonical standards tree; "
+                        "run `uv run python scripts/sync_mapping_registry.py`"
+                    ),
+                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
+                    find_line(registry_text, '"tree"'),
+                    code="REGISTRY_TREE_STALE",
+                )
+            )
 
-    level_files, tree_issues = walk_tree_and_collect(tree, registry_text, level_order)
-    issues.extend(tree_issues)
+    level_files = level_files_from_tree(expected_tree)
 
     for level in level_order:
         if not level_files.get(level):

@@ -191,7 +191,12 @@
     ]
   },
   "validation": {
-    "level_order": ["L0", "L1", "L2", "L3"],
+    "level_order": [
+      "L0",
+      "L1",
+      "L2",
+      "L3"
+    ],
     "reverse_validation_command": "uv run python scripts/validate_strict_mapping.py --check-changes"
   },
   "mappings": [
@@ -209,7 +214,7 @@
           "symbol": "class Capability"
         },
         {
-          "file": "src/shelf_reference_pipeline.py",
+          "file": "src/examples/legacy_shelf/reference_pipeline.py",
           "symbol": "capabilities = ["
         }
       ]
@@ -256,7 +261,7 @@
           "symbol": "class Base"
         },
         {
-          "file": "src/shelf_reference_pipeline.py",
+          "file": "src/examples/legacy_shelf/reference_pipeline.py",
           "symbol": "bases = ["
         }
       ]
@@ -330,7 +335,7 @@
           "symbol": "def verify("
         },
         {
-          "file": "src/shelf_reference_pipeline.py",
+          "file": "src/examples/legacy_shelf/reference_pipeline.py",
           "symbol": "verification_result = verify("
         }
       ]

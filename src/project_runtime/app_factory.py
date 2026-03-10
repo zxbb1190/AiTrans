@@ -5,14 +5,13 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from project_runtime.template_registry import (
-    get_default_project_template_registration,
-    materialize_registered_project,
-    resolve_project_template_registration,
+from project_runtime.knowledge_base import (
+    DEFAULT_KNOWLEDGE_BASE_PRODUCT_SPEC_FILE,
+    build_knowledge_base_runtime_app_from_spec,
 )
 
 PRODUCT_SPEC_FILE_ENV = "SHELF_PRODUCT_SPEC_FILE"
-DEFAULT_PRODUCT_SPEC_FILE = get_default_project_template_registration().default_product_spec_file
+DEFAULT_PRODUCT_SPEC_FILE = DEFAULT_KNOWLEDGE_BASE_PRODUCT_SPEC_FILE
 
 
 def build_project_app(product_spec_file: str | Path | None = None) -> FastAPI:
@@ -21,9 +20,7 @@ def build_project_app(product_spec_file: str | Path | None = None) -> FastAPI:
         or os.environ.get(PRODUCT_SPEC_FILE_ENV)
         or DEFAULT_PRODUCT_SPEC_FILE
     )
-    project_config = materialize_registered_project(resolved_file)
-    registration = resolve_project_template_registration(resolved_file)
-    return registration.build_app(project_config)
+    return build_knowledge_base_runtime_app_from_spec(resolved_file)
 
 
 app = build_project_app()

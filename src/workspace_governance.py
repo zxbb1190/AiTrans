@@ -5,8 +5,9 @@ from pathlib import Path
 import re
 from typing import Any, cast
 
-from project_runtime import load_registered_project
+from project_runtime import load_knowledge_base_project
 from project_runtime.governance import build_governance_tree
+from standards_tree import build_standards_tree
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -80,10 +81,7 @@ def _node_description(parts: dict[str, Any]) -> str:
 
 
 def _mapping_tree_to_hierarchy_nodes() -> tuple[list[dict[str, Any]], list[dict[str, Any]], str]:
-    registry = _read_json(MAPPING_REGISTRY_PATH)
-    raw_tree = registry.get("tree")
-    if not isinstance(raw_tree, dict):
-        raise ValueError("mapping_registry.json: tree must be an object")
+    raw_tree = build_standards_tree()
 
     standards_root_id = "workspace:shelf:standards"
     nodes: list[dict[str, Any]] = [
@@ -397,7 +395,7 @@ def build_workspace_governance_payload(
     project_roots: dict[str, str] = {}
 
     for product_spec_file in requested_product_spec_files:
-        project = load_registered_project(product_spec_file)
+        project = load_knowledge_base_project(product_spec_file)
         project_tree = build_governance_tree(project)
         project_id = str(project_tree.get("project_id") or project.metadata.project_id)
         rel_product_spec_file = _relative(product_spec_file)

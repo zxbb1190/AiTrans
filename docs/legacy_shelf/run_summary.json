@@ -155,28 +155,28 @@
   },
   "visualization_artifacts": [
     {
-      "interactive_html": "docs/examples/valid_1.html",
-      "obj_fallback": "docs/examples/valid_1.obj"
+      "interactive_html": "docs/legacy_shelf/examples/valid_1.html",
+      "obj_fallback": "docs/legacy_shelf/examples/valid_1.obj"
     },
     {
-      "interactive_html": "docs/examples/valid_2.html",
-      "obj_fallback": "docs/examples/valid_2.obj"
+      "interactive_html": "docs/legacy_shelf/examples/valid_2.html",
+      "obj_fallback": "docs/legacy_shelf/examples/valid_2.obj"
     },
     {
-      "interactive_html": "docs/examples/valid_3.html",
-      "obj_fallback": "docs/examples/valid_3.obj"
+      "interactive_html": "docs/legacy_shelf/examples/valid_3.html",
+      "obj_fallback": "docs/legacy_shelf/examples/valid_3.obj"
     },
     {
-      "interactive_html": "docs/examples/invalid_1.html",
-      "obj_fallback": "docs/examples/invalid_1.obj"
+      "interactive_html": "docs/legacy_shelf/examples/invalid_1.html",
+      "obj_fallback": "docs/legacy_shelf/examples/invalid_1.obj"
     },
     {
-      "interactive_html": "docs/examples/invalid_2.html",
-      "obj_fallback": "docs/examples/invalid_2.obj"
+      "interactive_html": "docs/legacy_shelf/examples/invalid_2.html",
+      "obj_fallback": "docs/legacy_shelf/examples/invalid_2.obj"
     },
     {
-      "interactive_html": "docs/examples/invalid_3.html",
-      "obj_fallback": "docs/examples/invalid_3.obj"
+      "interactive_html": "docs/legacy_shelf/examples/invalid_3.html",
+      "obj_fallback": "docs/legacy_shelf/examples/invalid_3.obj"
     }
   ]
 }

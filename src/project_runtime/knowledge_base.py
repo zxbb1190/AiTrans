@@ -10,12 +10,8 @@ import tomllib
 from typing import Any
 
 from framework_ir import FrameworkModuleIR, load_framework_registry, parse_framework_module
+from project_runtime.config_layout import config_layout
 from project_runtime.governance import build_governance_manifest, build_governance_tree
-from project_runtime.template_registry import (
-    ProjectTemplateRegistration,
-    config_layout,
-    register_project_template,
-)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_KNOWLEDGE_BASE_PRODUCT_SPEC_FILE = REPO_ROOT / "projects/knowledge_base_basic/product_spec.toml"
@@ -49,6 +45,29 @@ KNOWLEDGE_BASE_IMPLEMENTATION_CONFIG_LAYOUT = config_layout(
     {"frontend", "backend", "evidence", "artifacts"},
     {},
 )
+LEGACY_GENERATED_ARTIFACT_NAMES = frozenset({"project_bundle.py", "workbench_spec.json"})
+
+
+def detect_project_template_id(product_spec_file: str | Path) -> str:
+    product_spec_path = Path(product_spec_file)
+    with product_spec_path.open("rb") as fh:
+        data = tomllib.load(fh)
+    if not isinstance(data, dict):
+        raise ValueError(f"project config must decode into object: {product_spec_path}")
+    project_table = data.get("project")
+    if not isinstance(project_table, dict):
+        raise ValueError(f"missing required table: project in {product_spec_path}")
+    template_id = project_table.get("template")
+    if not isinstance(template_id, str) or not template_id.strip():
+        raise ValueError(f"missing required string: project.template in {product_spec_path}")
+    return template_id.strip()
+
+
+def assert_supported_project_template(product_spec_file: str | Path) -> str:
+    template_id = detect_project_template_id(product_spec_file)
+    if template_id != KNOWLEDGE_BASE_TEMPLATE_ID:
+        raise ValueError(f"unsupported project template: {template_id}")
+    return template_id
 
 SURFACE_PRESETS: dict[str, dict[str, str]] = {
     "sand": {
@@ -145,6 +164,19 @@ def _normalize_project_path(project_file: str | Path) -> Path:
 
 def _implementation_config_path_for(product_spec_path: Path) -> Path:
     return product_spec_path.parent / "implementation_config.toml"
+
+
+def _cleanup_generated_output_dir(output_path: Path, expected_file_names: set[str]) -> None:
+    # generated/ is a compiler-owned evidence directory. Remove stale top-level files so
+    # old artifact names cannot coexist with the current artifact contract.
+    removable_names = expected_file_names | LEGACY_GENERATED_ARTIFACT_NAMES
+    for child in output_path.iterdir():
+        if not child.is_file():
+            continue
+        if child.name in expected_file_names:
+            continue
+        if child.name in removable_names or child.suffix.lower() in {".json", ".py"}:
+            child.unlink()
 
 
 def _require_table(parent: dict[str, Any], key: str) -> dict[str, Any]:
@@ -1747,6 +1779,7 @@ def load_knowledge_base_project(
     product_spec_file: str | Path = DEFAULT_KNOWLEDGE_BASE_PRODUCT_SPEC_FILE,
 ) -> KnowledgeBaseProject:
     product_spec_path = _normalize_project_path(product_spec_file)
+    assert_supported_project_template(product_spec_path)
     implementation_config_path = _implementation_config_path_for(product_spec_path)
     product_spec = _load_product_spec(product_spec_path)
     implementation = _load_implementation_config(implementation_config_path)
@@ -1758,12 +1791,22 @@ def materialize_knowledge_base_project(
     output_dir: str | Path | None = None,
 ) -> KnowledgeBaseProject:
     product_spec_path = _normalize_project_path(product_spec_file)
+    assert_supported_project_template(product_spec_path)
     project = load_knowledge_base_project(product_spec_path)
     generated_dir = product_spec_path.parent / "generated"
     output_path = _normalize_project_path(output_dir) if output_dir is not None else generated_dir
     output_path.mkdir(parents=True, exist_ok=True)
 
     artifact_names = project.implementation.artifacts
+    expected_file_names = {
+        artifact_names.framework_ir_json,
+        artifact_names.product_spec_json,
+        artifact_names.implementation_bundle_py,
+        artifact_names.generation_manifest_json,
+        artifact_names.governance_manifest_json,
+        artifact_names.governance_tree_json,
+    }
+    _cleanup_generated_output_dir(output_path, expected_file_names)
     framework_ir_path = output_path / artifact_names.framework_ir_json
     product_spec_path_json = output_path / artifact_names.product_spec_json
     implementation_bundle_path = output_path / artifact_names.implementation_bundle_py
@@ -1797,21 +1840,10 @@ def materialize_knowledge_base_project(
     return project
 
 
-def register_knowledge_base_template() -> ProjectTemplateRegistration:
-    def _build_runtime_app(project: KnowledgeBaseProject) -> Any:
-        from knowledge_base_runtime.app import build_knowledge_base_runtime_app
+def build_knowledge_base_runtime_app_from_spec(
+    product_spec_file: str | Path = DEFAULT_KNOWLEDGE_BASE_PRODUCT_SPEC_FILE,
+) -> Any:
+    from knowledge_base_runtime.app import build_knowledge_base_runtime_app
 
-        return build_knowledge_base_runtime_app(project)
-
-    return register_project_template(
-        ProjectTemplateRegistration(
-            template_id=KNOWLEDGE_BASE_TEMPLATE_ID,
-            default_product_spec_file=DEFAULT_KNOWLEDGE_BASE_PRODUCT_SPEC_FILE,
-            product_spec_layout=KNOWLEDGE_BASE_PRODUCT_SPEC_LAYOUT,
-            implementation_config_layout=KNOWLEDGE_BASE_IMPLEMENTATION_CONFIG_LAYOUT,
-            load_project=load_knowledge_base_project,
-            materialize_project=materialize_knowledge_base_project,
-            build_app=_build_runtime_app,
-        ),
-        default=True,
-    )
+    project = materialize_knowledge_base_project(product_spec_file)
+    return build_knowledge_base_runtime_app(project)

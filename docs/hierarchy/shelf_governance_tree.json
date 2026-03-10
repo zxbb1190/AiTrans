@@ -402,7 +402,7 @@
         "level": 4,
         "description": "kind=code_symbol | layer=Code | project_id=knowledge_base_basic | file=src/project_runtime/knowledge_base.py | locator=function:_build_backend_spec | symbol_id=kb.backend.surface_spec",
         "source_file": "src/project_runtime/knowledge_base.py",
-        "source_line": 1380,
+        "source_line": 1412,
         "node_kind": "code_symbol",
         "layer": "Code",
         "project_id": "knowledge_base_basic",
@@ -490,7 +490,7 @@
         "level": 4,
         "description": "kind=code_symbol | layer=Code | project_id=knowledge_base_basic | file=src/project_runtime/knowledge_base.py | locator=function:_build_ui_spec | symbol_id=kb.ui.surface_spec",
         "source_file": "src/project_runtime/knowledge_base.py",
-        "source_line": 1195,
+        "source_line": 1227,
         "node_kind": "code_symbol",
         "layer": "Code",
         "project_id": "knowledge_base_basic",
@@ -2158,7 +2158,7 @@
                 "file": "src/project_runtime/knowledge_base.py",
                 "locator": "function:_build_backend_spec",
                 "annotation": "governed_symbol",
-                "line": 1380
+                "line": 1412
               }
             ],
             "derived_from": [
@@ -2529,7 +2529,7 @@
                 "file": "src/project_runtime/knowledge_base.py",
                 "locator": "function:_build_ui_spec",
                 "annotation": "governed_symbol",
-                "line": 1195
+                "line": 1227
               }
             ],
             "derived_from": [

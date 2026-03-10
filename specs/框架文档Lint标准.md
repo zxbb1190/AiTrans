@@ -125,6 +125,7 @@
 ### 3.6 注册树与映射 lint
 
 - `mapping/mapping_registry.json` 必须包含合法的 `level_order` 与 `tree`。
+- `tree` 必须与仓库规范标准集自动推导出的 canonical 标准树保持一致；若失配，应通过 `uv run python scripts/sync_mapping_registry.py` 同步，而不是手动局部修补。
 - 树节点 `id` 必须唯一。
 - 树节点 `kind` 只能是 `layer` 或 `file`。
 - 树节点 `level` 必须在已声明层级中。
