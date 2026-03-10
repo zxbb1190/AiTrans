@@ -3,7 +3,9 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](./pyproject.toml)
 [![uv](https://img.shields.io/badge/deps-uv-6A5ACD)](https://github.com/astral-sh/uv)
 [![VSCode](https://img.shields.io/badge/VSCode-ArchSync-007ACC?logo=visualstudiocode&logoColor=white)](./tools/vscode/archsync)
-[![GitHub stars](https://img.shields.io/github/stars/xueyu888/framework?style=social)](https://github.com/xueyu888/framework/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/xueyu888/shelf?style=social)](https://github.com/xueyu888/shelf/stargazers)
+[![Strict Mapping Gate](https://github.com/xueyu888/shelf/actions/workflows/strict-mapping-gate.yml/badge.svg)](https://github.com/xueyu888/shelf/actions/workflows/strict-mapping-gate.yml)
+[![Latest Release](https://img.shields.io/github/v/release/xueyu888/shelf?display_name=tag)](https://github.com/xueyu888/shelf/releases)
 
 **Structure-first AI coding framework.**
 
@@ -20,6 +22,29 @@ Instead of asking AI to "just write code", Shelf gives AI a real structure to wo
 中文一句话：**Shelf 不是 prompt-first 的 AI 编程工具，而是把设计先写成结构语言，再让 AI 在这个结构里写代码。**
 
 > If you think design is the real bottleneck in AI coding, Shelf is built for that problem.
+
+## Contents
+
+- [Why Shelf Exists](#why-shelf-exists)
+- [The Core Model](#the-core-model)
+- [See The System, Not Just The Pitch](#see-the-system-not-just-the-pitch)
+- [Quick Start](#quick-start)
+- [Start Here](#start-here)
+- [Reference Demo: Knowledge Base Workbench](#reference-demo-knowledge-base-workbench)
+- [ArchSync VS Code Extension](#archsync-vs-code-extension)
+- [Contributing](#contributing)
+- [GitHub Launch Kit](#github-launch-kit)
+
+## Choose Your Path
+
+- Want the core philosophy first?
+  - Read [框架设计核心标准.md](./specs/框架设计核心标准.md)
+- Want the runnable proof first?
+  - Jump to [Quick Start](#quick-start)
+- Want the framework source example first?
+  - Open [L1-M0-知识库界面骨架模块.md](./framework/knowledge_base/L1-M0-知识库界面骨架模块.md)
+- Want the public-positioning kit first?
+  - Open [docs/github-launch-kit.md](./docs/github-launch-kit.md)
 
 ## Why Shelf Exists
 
@@ -110,6 +135,13 @@ It is derived from the same chain described in this README:
 
 Shelf is meant to be inspectable proof, not just a design manifesto.
 
+## Proof Points
+
+- The demo app is runnable from this repository today.
+- The generated artifacts are materialized into `projects/<project_id>/generated/*`.
+- The repo has a CI workflow for strict mapping validation.
+- The ArchSync VS Code extension has release automation in `.github/workflows/publish-archsync.yml`.
+
 ## Who Shelf Is For
 
 - Teams exploring **AI-assisted software engineering** beyond prompt engineering
@@ -124,6 +156,8 @@ Shelf is meant to be inspectable proof, not just a design manifesto.
 ```bash
 uv sync
 ```
+
+If you are using WSL, run the commands in the WSL shell. For VS Code integration, use a VS Code window attached to the WSL workspace.
 
 ### 2. Enable the required git hook
 
@@ -239,10 +273,16 @@ bash tools/vscode/archsync/install_local.sh
 
 The local install script rebuilds the VSIX from the current source version and force-installs it into local VS Code.
 
+WSL note:
+
+- run the install command inside WSL
+- make sure the VS Code CLI is available in WSL as `code` or set `CODE_BIN`
+- if you use VS Code Remote - WSL, install from the same WSL-connected workspace
+
 More:
 
 - [ArchSync README](./tools/vscode/archsync/README.md)
-- [GitHub Releases](https://github.com/xueyu888/framework/releases)
+- [GitHub Releases](https://github.com/xueyu888/shelf/releases)
 
 Main commands:
 
@@ -250,6 +290,17 @@ Main commands:
 - `ArchSync: Refresh Framework Tree`
 - `ArchSync: Validate Mapping Now`
 - `ArchSync: Show Mapping Issues`
+
+## Contributing
+
+If you want to contribute, start here:
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [Repository structure and top-level rules](./specs/规范总纲与树形结构.md)
+- [Core framework design standard](./specs/框架设计核心标准.md)
+- [Project layer guide](./projects/README.md)
+
+Shelf is strict by design. Framework, product truth, implementation choices, code, and evidence should not be mixed casually.
 
 ## Repository Layout
 
@@ -293,6 +344,13 @@ Public-facing pieces already in the repo:
 - strict mapping validation in local workflows and CI
 - a companion VS Code extension with release automation
 - framework, product, implementation, and evidence layers in one repository model
+
+## GitHub Launch Kit
+
+To tighten the public repository presentation itself, use:
+
+- [docs/github-launch-kit.md](./docs/github-launch-kit.md)
+- [docs/repo-rename-checklist.md](./docs/repo-rename-checklist.md)
 
 ## Why This Matters
 

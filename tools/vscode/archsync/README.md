@@ -29,6 +29,7 @@
 3. If your VSCode CLI is not `code`, set it explicitly:
    `CODE_BIN=code-insiders bash tools/vscode/archsync/install_local.sh`
 4. Reload VSCode window if the sidebar icon does not appear immediately.
+5. If you are using WSL, run the script from WSL and make sure the target VS Code window is attached to the same WSL workspace.
 
 ## Public Distribution
 - GitHub Packages is not a VSCode extension gallery, so VSCode cannot install this extension from a GitHub package registry entry.

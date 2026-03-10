@@ -7,9 +7,9 @@ Use the content below directly in the GitHub repository settings UI and launch p
 ## Recommended repo identity
 
 - Brand name: `Shelf`
-- Best repo rename if available: `shelf`
-- Safe fallback repo rename: `shelf-framework`
-- Avoid as the long-term public name: `framework`
+- Target GitHub repo name: `shelf`
+- Safe fallback only if `shelf` is unavailable: `shelf-framework`
+- Avoid as the public repo name: `framework`
 
 Reason:
 
@@ -51,7 +51,8 @@ Use 8 to 12 of these in the GitHub Topics field:
 
 Recommended temporary image:
 
-- `docs/verification/knowledge-base-workbench.png`
+- `docs/github-social-preview.png`
+- `docs/github-social-preview.svg` as the editable source file
 
 Recommended headline:
 
@@ -64,6 +65,12 @@ Recommended subheadline:
 Recommended support line:
 
 - `Turn design into a verifiable engineering system.`
+
+Suggested export:
+
+- use `docs/github-social-preview.png` directly
+- if you want to edit the composition first, update `docs/github-social-preview.svg`
+- upload the PNG in the GitHub repository social preview settings
 
 ## One-sentence positioning
 
@@ -95,7 +102,7 @@ Recommended:
 
 `It includes strict mapping validation, project materialization, a runnable reference app, and a VS Code companion.`
 
-`Repo: https://github.com/xueyu888/framework`
+`Repo: https://github.com/xueyu888/shelf`
 
 ## Hacker News title options
 
@@ -114,9 +121,12 @@ Recommended:
 - set the About field
 - add Topics
 - upload a Social Preview image
+- preferred file: `docs/github-social-preview.png`
 - pin the strongest screenshot or short demo GIF near the top of the README
 - enable Discussions if you want public architecture questions instead of scattered issues
-- rename the repo from `framework` to `shelf` or `shelf-framework` when ready
+- rename the repo to `shelf`
+- if `shelf` is unavailable, use `shelf-framework`
+- after renaming, follow [repo-rename-checklist.md](./repo-rename-checklist.md)
 
 ## What not to do
 
