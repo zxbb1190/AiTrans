@@ -3,8 +3,8 @@
 ## What It Does
 - Adds an Activity Bar icon entry (`Shelf AI`) for direct plugin access from the sidebar.
 - Sidebar home view provides one-click actions: open tree, refresh tree, run validation, show issues.
-- Opens framework tree structure HTML in Webview (`docs/hierarchy/shelf_framework_tree.html`).
-- Refreshes framework tree artifacts by running the generator script.
+- Opens governance tree structure HTML in Webview (`docs/hierarchy/shelf_governance_tree.html`).
+- Refreshes governance tree artifacts by running the generator script.
 - Supports node-to-source jump: click a node, then use `打开源文件` in detail panel to jump to the mapped markdown line.
 - Supports `Go to Definition` / `Ctrl/Cmd+Click` inside framework markdown for `B/C/R/V`, boundary ids, `Lx.My`, `framework.Lx.My`, and bracketed module-rule refs like `frontend.L1.M2[R1,R2]`.
 - Boundary navigation is not limited to explicitly exposed top-level sections. Direct boundaries such as `CHAT` / `SURFACE` and derived boundaries such as `CITATION` / `TURN` / `SCOPE` can jump to the owning or related `projects/*/product_spec.toml` section, so every effective boundary stays traceable into project product specs.
@@ -23,7 +23,7 @@
 - Status bar (`Shelf AI issues`) is clickable and opens an issue picker for direct file/line jump.
 - Disabled status text no longer shows `n/a`.
 - Auto-fail notification provides buttons: `Open Problems` / `Open Log`.
-- Provides manual commands for validation and framework tree viewing.
+- Provides manual commands for validation and governance tree viewing.
 - Provides a direct fallback command to insert the standard `@framework` module template even when editor snippet suggestions are not showing.
 - Uses the VSCode output channel for recent command output only; it does not create persistent log files in the repository.
 
@@ -65,8 +65,8 @@
 ## Commands
 - `Shelf: Insert Framework Module Template`
 - `Shelf: Install Git Hooks`
-- `Shelf: Open Framework Tree`
-- `Shelf: Refresh Framework Tree`
+- `Shelf: Open Governance Tree`
+- `Shelf: Refresh Governance Tree`
 - `Shelf: Validate Mapping Now`
 - `Shelf: Show Mapping Issues`
 
@@ -109,8 +109,9 @@
 - `shelf.promptInstallGitHooks`
 - `shelf.changeValidationCommand`
 - `shelf.fullValidationCommand`
-- `shelf.frameworkTreeHtmlPath`
-- `shelf.frameworkTreeGenerateCommand`
+- `shelf.governanceTreeJsonPath`
+- `shelf.governanceTreeHtmlPath`
+- `shelf.governanceTreeGenerateCommand`
 - `shelf.materializeCommand`
 - `shelf.typeCheckCommand`
 
@@ -128,28 +129,18 @@ Guard behavior:
 - `shelf.runMypyOnPythonChanges = true`: Python-only checks are scoped to relevant source changes so routine Markdown work does not trigger mypy.
 - `shelf.promptInstallGitHooks = true`: prompt once per session if `core.hooksPath` is not set to the repository `.githooks`.
 
-Default framework tree generation command:
-- `uv run python scripts/generate_framework_tree_hierarchy.py --source framework --framework-dir framework --output-json docs/hierarchy/shelf_framework_tree.json --output-html docs/hierarchy/shelf_framework_tree.html`
+Default governance tree generation command:
+- `uv run python scripts/generate_governance_tree_hierarchy.py --output-json docs/hierarchy/shelf_governance_tree.json --output-html docs/hierarchy/shelf_governance_tree.html`
 
 Tree generation behavior:
-- Source defaults to framework files: `framework/<module>/Lx-Mn-*.md`.
-- Legacy `Lx-*.md` (without `-Mn`) files are ignored.
-- Preferred derivation: file-level module mode (`Lx-Mn-*.md` -> node `Lx.Mn`).
-- Framework-source trees use `framework columns` layout: each framework directory is rendered as its own group, and each group keeps its own local `L0/L1/L2...` bands.
-- Each framework group can now be collapsed / expanded from its header, dragged as one box inside the graph, and restored to the default compact dependency-aware layout with `恢复布局`.
-- Interaction contract for the generated framework tree:
+- Workspace governance tree combines:
+  - standards tree from `mapping/mapping_registry.json`
+  - project governance trees derived from `Framework -> Product Spec -> Implementation Config -> Code -> Evidence`
+- Governance tree HTML is regenerated from `docs/hierarchy/shelf_governance_tree.json`.
+- Interaction contract for the generated governance tree:
   - Left-drag on background scrolls / pans the whole graph canvas.
   - Clicking a node or edge must keep selection and relationship-detail inspection working.
   - `Ctrl/⌘ + click` on a node or edge must keep source-file jump working.
-  - Framework header drag and collapse / expand controls must not steal node / edge selection.
-  - These interactions are repository-side regression constraints and are guarded by the framework-tree HTML generator tests.
-- In file-level mode, growth edges are parsed from base lines that directly reference upstream modules, for example:
-  - ``- `B3` ...：L0.M0[R2,R3] + L0.M1[R2,R3]。来源：`...`。``
-- Framework root modules may also declare explicit external refs, for example:
-  - ``- `B1` ...：frontend.L1.M0[R1,R2]。来源：`...`。``
-- Growth edges follow explicit module refs. Local refs must point to lower local layers, but can skip intermediate labels when the dependency graph and framework plan justify it.
-- Framework groups are ordered by stable topological sort of cross-framework refs, so a dependency like `frontend -> knowledge_base` renders `frontend` before `knowledge_base`.
-- Cross-framework edges are rendered from the explicit refs as written. The target module's `Lx` label is treated as planning context rather than the primary legality test.
-- Strict validator treats the reference graph as the hard constraint: refs must exist, local refs must point downward inside the current framework, and the overall inline-ref graph must stay acyclic.
-- Module nodes jump to the module header; growth edges keep their source `B*` line for precise trace-back.
-- Each node and growth edge carries `source_file` and `source_line` metadata for line-level jump.
+  - These interactions are repository-side regression constraints and are guarded by the hierarchy HTML generator tests.
+- Governance tree nodes carry `source_file` and `source_line` metadata for line-level jump.
+- Shelf sidebar also shows the most recent touched / affected governance node closure after each validation run.

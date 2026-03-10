@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+from importlib import import_module
 import json
 import re
 import subprocess
@@ -11,6 +12,14 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+try:
+    _hierarchy_module = import_module("scripts.generate_module_hierarchy_html")
+except ModuleNotFoundError:
+    _hierarchy_module = import_module("generate_module_hierarchy_html")
+
+load_hierarchy_graph = _hierarchy_module.load_hierarchy
+render_hierarchy_html = _hierarchy_module.render_html
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = REPO_ROOT / "src"
@@ -26,6 +35,13 @@ from project_runtime.governance import (
     compare_project_to_tree,
     parse_governance_tree,
     validate_tree_closure,
+)
+from workspace_governance import (
+    DEFAULT_WORKSPACE_GOVERNANCE_HTML,
+    DEFAULT_WORKSPACE_GOVERNANCE_JSON,
+    build_workspace_governance_payload,
+    parse_workspace_governance_payload,
+    resolve_workspace_change_context,
 )
 
 REGISTRY_PATH = REPO_ROOT / "mapping/mapping_registry.json"
@@ -713,6 +729,85 @@ def validate_project_governance(
                 if key in finding:
                     issue[key] = finding[key]
             issues.append(issue)
+
+    return issues
+
+
+def validate_workspace_governance_artifacts() -> list[Issue]:
+    issues: list[Issue] = []
+    rel_json = DEFAULT_WORKSPACE_GOVERNANCE_JSON.relative_to(REPO_ROOT).as_posix()
+    rel_html = DEFAULT_WORKSPACE_GOVERNANCE_HTML.relative_to(REPO_ROOT).as_posix()
+
+    if not DEFAULT_WORKSPACE_GOVERNANCE_JSON.exists():
+        issues.append(
+            make_issue(
+                "missing workspace governance tree JSON; run `uv run python scripts/materialize_project.py`",
+                rel_json,
+                1,
+                code="WORKSPACE_GOVERNANCE_MISSING",
+            )
+        )
+        return issues
+
+    if not DEFAULT_WORKSPACE_GOVERNANCE_HTML.exists():
+        issues.append(
+            make_issue(
+                "missing workspace governance tree HTML; run `uv run python scripts/materialize_project.py`",
+                rel_html,
+                1,
+                code="WORKSPACE_GOVERNANCE_MISSING",
+            )
+        )
+        return issues
+
+    try:
+        parse_workspace_governance_payload(DEFAULT_WORKSPACE_GOVERNANCE_JSON)
+    except Exception as exc:
+        issues.append(
+            make_issue(
+                f"invalid workspace governance tree JSON: {exc}",
+                rel_json,
+                1,
+                code="WORKSPACE_GOVERNANCE_INVALID",
+            )
+        )
+        return issues
+
+    try:
+        fresh_payload = build_workspace_governance_payload()
+        with tempfile.TemporaryDirectory(dir=REPO_ROOT) as temp_dir:
+            temp_json = Path(temp_dir) / "shelf_governance_tree.json"
+            temp_html = Path(temp_dir) / "shelf_governance_tree.html"
+            temp_json.write_text(json.dumps(fresh_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            graph = load_hierarchy_graph(temp_json)
+            render_hierarchy_html(graph, temp_html, width=1680, height=1080)
+            if _read_file_bytes(DEFAULT_WORKSPACE_GOVERNANCE_JSON) != _read_file_bytes(temp_json):
+                issues.append(
+                    make_issue(
+                        "workspace governance tree JSON is stale or manually edited; re-materialize the workspace tree",
+                        rel_json,
+                        1,
+                        code="WORKSPACE_GOVERNANCE_OUT_OF_SYNC",
+                    )
+                )
+            if _read_file_bytes(DEFAULT_WORKSPACE_GOVERNANCE_HTML) != _read_file_bytes(temp_html):
+                issues.append(
+                    make_issue(
+                        "workspace governance tree HTML is stale or manually edited; re-materialize the workspace tree",
+                        rel_html,
+                        1,
+                        code="WORKSPACE_GOVERNANCE_OUT_OF_SYNC",
+                    )
+                )
+    except Exception as exc:
+        issues.append(
+            make_issue(
+                f"failed to rebuild workspace governance tree: {exc}",
+                rel_json,
+                1,
+                code="WORKSPACE_GOVERNANCE_BUILD_FAILED",
+            )
+        )
 
     return issues
 
@@ -2232,61 +2327,47 @@ def python_assign_call_exists(tree: ast.AST, target_name: str, func_name: str) -
     return False
 
 
-def validate_change_propagation(
-    registry_text: str,
-    parsed_registry: ParsedRegistry,
-    changed_files: set[str],
-) -> list[Issue]:
+def validate_change_propagation(change_context: dict[str, Any], changed_files: set[str]) -> list[Issue]:
     issues: list[Issue] = []
+    touched_nodes = list(change_context.get("touched_nodes", []))
+    affected_nodes = list(change_context.get("affected_nodes", []))
 
-    level_order = parsed_registry.level_order
-    level_files = parsed_registry.level_files
-    impl_files = parsed_registry.impl_files
-    framework_layer_files = parsed_registry.framework_layer_files
-    level_index = {level: idx for idx, level in enumerate(level_order)}
-
-    def touched(level: str) -> bool:
-        candidates = set(level_files.get(level, set()))
-        if level == "L2":
-            candidates.update(framework_layer_files)
-        if level == "L3":
-            candidates.update(impl_files)
-        return bool(changed_files.intersection(candidates))
-
-    for src_level in level_order:
-        if src_level == "L3":
-            continue
-        if not touched(src_level):
-            continue
-
-        src_idx = level_index[src_level]
-        for target_level in level_order[src_idx + 1 :]:
-            target_candidates = set(level_files.get(target_level, set()))
-            if target_level == "L3":
-                target_candidates.update(impl_files)
-            if not target_candidates:
-                continue
-            if touched(target_level):
-                continue
-
-            missing_target = sorted(target_candidates)[0]
-            issues.append(
-                make_issue(
-                    f"change propagation violation: {src_level} changed but {target_level} not updated",
-                    REGISTRY_PATH.relative_to(REPO_ROOT).as_posix(),
-                    find_level_order_line(registry_text, src_level),
-                    code="PROPAGATION_MISSING_TARGET",
-                    related=[
-                        {
-                            "message": f"Expected changed file in {target_level}",
-                            "file": missing_target,
-                            "line": 1,
-                            "column": 1,
-                        }
-                    ],
-                )
+    governed_prefixes = ("framework/", "specs/", "mapping/", "projects/", "src/")
+    ignored_governance_artifacts = {
+        DEFAULT_WORKSPACE_GOVERNANCE_JSON.relative_to(REPO_ROOT).as_posix(),
+        DEFAULT_WORKSPACE_GOVERNANCE_HTML.relative_to(REPO_ROOT).as_posix(),
+    }
+    governed_changed_files = sorted(
+        path
+        for path in changed_files
+        if path.startswith(governed_prefixes) and path not in ignored_governance_artifacts
+    )
+    if governed_changed_files and not touched_nodes:
+        issues.append(
+            make_issue(
+                "changed governed files do not map to any workspace governance node; regenerate the governance tree and verify node coverage",
+                DEFAULT_WORKSPACE_GOVERNANCE_JSON.relative_to(REPO_ROOT).as_posix(),
+                1,
+                code="PROPAGATION_NODE_UNRESOLVED",
+                related=[
+                    {
+                        "message": "First unresolved governed file",
+                        "file": governed_changed_files[0],
+                        "line": 1,
+                        "column": 1,
+                    }
+                ],
             )
-
+        )
+    if touched_nodes and not affected_nodes:
+        issues.append(
+            make_issue(
+                "workspace governance tree resolved touched nodes but produced no affected closure",
+                DEFAULT_WORKSPACE_GOVERNANCE_JSON.relative_to(REPO_ROOT).as_posix(),
+                1,
+                code="PROPAGATION_CLOSURE_EMPTY",
+            )
+        )
     return issues
 
 
@@ -2328,6 +2409,30 @@ def main() -> int:
         return 1
 
     issues: list[Issue] = []
+    changed: set[str] = set()
+    change_context: dict[str, Any] | None = None
+    scoped_project_spec_files: list[Path] | None = None
+
+    if args.check_changes:
+        changed = collect_changed_files()
+        try:
+            workspace_payload = build_workspace_governance_payload()
+            change_context = resolve_workspace_change_context(workspace_payload, changed)
+            affected_files = [
+                (REPO_ROOT / item).resolve() if not Path(item).is_absolute() else Path(item).resolve()
+                for item in list(change_context.get("affected_project_spec_files", []))
+            ]
+            if affected_files:
+                scoped_project_spec_files = affected_files
+        except Exception as exc:
+            issues.append(
+                make_issue(
+                    f"failed to resolve workspace governance change context: {exc}",
+                    DEFAULT_WORKSPACE_GOVERNANCE_JSON.relative_to(REPO_ROOT).as_posix(),
+                    1,
+                    code="WORKSPACE_GOVERNANCE_CONTEXT_FAILED",
+                )
+            )
     structure_issues, parsed_registry = validate_registry_structure(registry, registry_text)
     issues.extend(structure_issues)
 
@@ -2345,14 +2450,16 @@ def main() -> int:
             )
 
     if not issues:
-        issues.extend(validate_project_generation_discipline())
+        issues.extend(validate_project_generation_discipline(scoped_project_spec_files))
 
     if not issues:
-        issues.extend(validate_project_governance())
+        issues.extend(validate_project_governance(scoped_project_spec_files))
 
-    if args.check_changes and parsed_registry is not None:
-        changed = collect_changed_files()
-        issues.extend(validate_change_propagation(registry_text, parsed_registry, changed))
+    if not issues:
+        issues.extend(validate_workspace_governance_artifacts())
+
+    if args.check_changes and change_context is not None:
+        issues.extend(validate_change_propagation(change_context, changed))
 
     passed = len(issues) == 0
     result_payload = {
@@ -2360,6 +2467,8 @@ def main() -> int:
         "checked_changes": args.check_changes,
         "errors": issues,
     }
+    if change_context is not None:
+        result_payload["change_context"] = change_context
 
     if args.json:
         print(json.dumps(result_payload, ensure_ascii=False))

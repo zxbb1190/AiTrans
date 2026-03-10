@@ -57,6 +57,9 @@ function main() {
     "shelf.runMypyOnPythonChanges",
     "shelf.protectGeneratedFiles",
     "shelf.promptInstallGitHooks",
+    "shelf.governanceTreeJsonPath",
+    "shelf.governanceTreeHtmlPath",
+    "shelf.governanceTreeGenerateCommand",
     "shelf.materializeCommand",
     "shelf.typeCheckCommand",
   ]) {
@@ -108,6 +111,14 @@ function main() {
   assert(
     readme.includes("Shelf: Install Git Hooks"),
     "README must document the git hooks install command"
+  );
+  assert(
+    readme.includes("Shelf: Open Governance Tree"),
+    "README must document the governance tree open command"
+  );
+  assert(
+    readme.includes("shelf.governanceTreeJsonPath"),
+    "README must document the governance tree JSON path setting"
   );
   assert(
     readme.includes("The `@framework` template entry is a repository-side hard authoring contract"),

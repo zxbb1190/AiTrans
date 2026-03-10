@@ -19,6 +19,7 @@ function main() {
   assert(!isWatchedPath("../outside.txt"));
 
   assert(isProtectedGeneratedPath("projects/knowledge_base_basic/generated/product_spec.json"));
+  assert(isProtectedGeneratedPath("docs/hierarchy/shelf_governance_tree.json"));
   assert(!isProtectedGeneratedPath("projects/knowledge_base_basic/product_spec.toml"));
 
   assert(shouldRunMypyForRelPath("src/project_runtime/knowledge_base.py"));
@@ -60,6 +61,9 @@ backend = "framework/backend/L2-M0-知识库接口框架标准模块.md"
   const generatedPlan = classifyWorkspaceChanges(repoRoot, ["projects/knowledge_base_basic/generated/product_spec.json"]);
   assert.strictEqual(generatedPlan.protectedGeneratedPaths.length, 1);
   assert.strictEqual(generatedPlan.materializeProjects.length, 0);
+
+  const workspaceTreePlan = classifyWorkspaceChanges(repoRoot, ["docs/hierarchy/shelf_governance_tree.json"]);
+  assert.strictEqual(workspaceTreePlan.protectedGeneratedPaths.length, 1);
 }
 
 main();

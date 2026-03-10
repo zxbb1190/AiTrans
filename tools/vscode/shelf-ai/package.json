@@ -1,7 +1,7 @@
 {
   "name": "shelf-ai",
   "displayName": "Shelf AI",
-  "description": "Shelf AI: structure-first framework tree workspace and strict mapping guard.",
+  "description": "Shelf AI: governance-tree-first workspace and strict mapping guard.",
   "version": "0.0.39",
   "publisher": "rdshr",
   "license": "SEE LICENSE IN LICENSE.txt",
@@ -22,6 +22,7 @@
     "README.md",
     "extension.js",
     "guarding.js",
+    "governance_tree.js",
     "framework_completion.js",
     "framework_navigation.js",
     "media/**",
@@ -67,11 +68,11 @@
       },
       {
         "command": "shelf.openFrameworkTree",
-        "title": "Shelf: Open Framework Tree"
+        "title": "Shelf: Open Governance Tree"
       },
       {
         "command": "shelf.refreshFrameworkTree",
-        "title": "Shelf: Refresh Framework Tree"
+        "title": "Shelf: Refresh Governance Tree"
       }
     ],
     "icons": {
@@ -177,15 +178,20 @@
           "default": "uv run python scripts/validate_strict_mapping.py --json",
           "description": "Command used for manual full validation."
         },
-        "shelf.frameworkTreeHtmlPath": {
+        "shelf.governanceTreeJsonPath": {
           "type": "string",
-          "default": "docs/hierarchy/shelf_framework_tree.html",
-          "description": "Workspace-relative path of generated framework tree HTML."
+          "default": "docs/hierarchy/shelf_governance_tree.json",
+          "description": "Workspace-relative path of generated governance tree JSON."
         },
-        "shelf.frameworkTreeGenerateCommand": {
+        "shelf.governanceTreeHtmlPath": {
           "type": "string",
-          "default": "uv run python scripts/generate_framework_tree_hierarchy.py --source framework --framework-dir framework --output-json docs/hierarchy/shelf_framework_tree.json --output-html docs/hierarchy/shelf_framework_tree.html",
-          "description": "Command used by 'Refresh Framework Tree'."
+          "default": "docs/hierarchy/shelf_governance_tree.html",
+          "description": "Workspace-relative path of generated governance tree HTML."
+        },
+        "shelf.governanceTreeGenerateCommand": {
+          "type": "string",
+          "default": "uv run python scripts/generate_governance_tree_hierarchy.py --output-json docs/hierarchy/shelf_governance_tree.json --output-html docs/hierarchy/shelf_governance_tree.html",
+          "description": "Command used by 'Refresh Governance Tree'."
         },
         "shelf.materializeCommand": {
           "type": "string",

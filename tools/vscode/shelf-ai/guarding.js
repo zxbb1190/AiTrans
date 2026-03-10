@@ -24,6 +24,10 @@ const WATCH_FILES = new Set([
 const PRODUCT_SPEC_PATTERN = /^projects\/([^/]+)\/product_spec\.toml$/;
 const IMPLEMENTATION_CONFIG_PATTERN = /^projects\/([^/]+)\/implementation_config\.toml$/;
 const GENERATED_PATTERN = /^projects\/([^/]+)\/generated(?:\/(.+))?$/;
+const WORKSPACE_GOVERNANCE_ARTIFACTS = new Set([
+  "docs/hierarchy/shelf_governance_tree.json",
+  "docs/hierarchy/shelf_governance_tree.html",
+]);
 
 function normalizeRelPath(relPath) {
   if (typeof relPath !== "string") {
@@ -100,7 +104,12 @@ function resolveProjectProductSpecPath(repoRoot, relPath) {
 }
 
 function isProtectedGeneratedPath(relPath) {
-  return GENERATED_PATTERN.test(normalizeRelPath(relPath));
+  const normalized = normalizeRelPath(relPath);
+  return GENERATED_PATTERN.test(normalized) || WORKSPACE_GOVERNANCE_ARTIFACTS.has(normalized);
+}
+
+function isWorkspaceGovernanceArtifact(relPath) {
+  return WORKSPACE_GOVERNANCE_ARTIFACTS.has(normalizeRelPath(relPath));
 }
 
 function shouldRunMypyForRelPath(relPath) {
@@ -194,6 +203,7 @@ module.exports = {
   discoverProductSpecFiles,
   inferConfiguredFrameworks,
   isProtectedGeneratedPath,
+  isWorkspaceGovernanceArtifact,
   isWatchedPath,
   isWatchedUri,
   normalizeRelPath,

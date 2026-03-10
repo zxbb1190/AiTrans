@@ -4,14 +4,16 @@ const path = require("path");
 const vscode = require("vscode");
 const frameworkNavigation = require("./framework_navigation");
 const frameworkCompletion = require("./framework_completion");
+const governanceTree = require("./governance_tree");
 const workspaceGuard = require("./guarding");
 
 const STANDARDS_TREE_FILE = path.join("specs", "规范总纲与树形结构.md");
 const REGISTRY_FILE = path.join("mapping", "mapping_registry.json");
-const DEFAULT_FRAMEWORK_TREE_HTML = path.join("docs", "hierarchy", "shelf_framework_tree.html");
+const DEFAULT_GOVERNANCE_TREE_JSON = path.join("docs", "hierarchy", "shelf_governance_tree.json");
+const DEFAULT_GOVERNANCE_TREE_HTML = path.join("docs", "hierarchy", "shelf_governance_tree.html");
 const SIDEBAR_VIEW_ID = "shelf.sidebarHome";
-const DEFAULT_FRAMEWORK_TREE_GENERATE_COMMAND =
-  "uv run python scripts/generate_framework_tree_hierarchy.py --source framework --framework-dir framework --output-json docs/hierarchy/shelf_framework_tree.json --output-html docs/hierarchy/shelf_framework_tree.html";
+const DEFAULT_GOVERNANCE_TREE_GENERATE_COMMAND =
+  "uv run python scripts/generate_governance_tree_hierarchy.py --output-json docs/hierarchy/shelf_governance_tree.json --output-html docs/hierarchy/shelf_governance_tree.html";
 const DEFAULT_MATERIALIZE_COMMAND = "uv run python scripts/materialize_project.py";
 const DEFAULT_TYPE_CHECK_COMMAND = "uv run mypy";
 const DEFAULT_INSTALL_GIT_HOOKS_COMMAND = "bash scripts/install_git_hooks.sh";
@@ -65,10 +67,13 @@ function activate(context) {
   let lastValidationAt = "";
   let lastValidationMode = "change";
   let lastValidationPassed = null;
+  let lastChangeContext = null;
+  let lastChangeSummary = null;
   let gitHooksReady = null;
   let gitHooksDetail = "Not checked in this session";
   let gitHooksPrompted = false;
   const suppressedGeneratedDirectories = new Map();
+  const suppressedArtifactPaths = new Map();
   const VALIDATION_SOURCE_PRIORITY = {
     auto: 1,
     save: 2,
@@ -133,6 +138,11 @@ function activate(context) {
         suppressedGeneratedDirectories.delete(generatedDir);
       }
     }
+    for (const [artifactPath, expiresAt] of suppressedArtifactPaths.entries()) {
+      if (expiresAt <= now) {
+        suppressedArtifactPaths.delete(artifactPath);
+      }
+    }
   };
 
   const isSuppressedGeneratedPath = (relPath) => {
@@ -143,7 +153,7 @@ function activate(context) {
         return true;
       }
     }
-    return false;
+    return suppressedArtifactPaths.has(normalized);
   };
 
   const suppressGeneratedEventsForProjectSpecs = (repoRoot, productSpecFiles) => {
@@ -153,6 +163,16 @@ function activate(context) {
       const generatedRel = workspaceGuard.normalizeRelPath(path.relative(repoRoot, generatedDir));
       if (generatedRel) {
         suppressedGeneratedDirectories.set(generatedRel, expiresAt);
+      }
+    }
+  };
+
+  const suppressArtifactEvents = (relPaths) => {
+    const expiresAt = Date.now() + GENERATED_EVENT_SUPPRESSION_MS;
+    for (const relPath of relPaths || []) {
+      const normalized = workspaceGuard.normalizeRelPath(relPath);
+      if (normalized) {
+        suppressedArtifactPaths.set(normalized, expiresAt);
       }
     }
   };
@@ -218,6 +238,7 @@ function activate(context) {
       lastFailureSignature = "";
       lastValidationAt = "";
       lastValidationPassed = null;
+      lastChangeSummary = null;
       diagnostics.clear();
       setStatusDisabled(status, repoRoot);
       refreshSidebarHome();
@@ -248,13 +269,61 @@ function activate(context) {
       .map((uri) => workspaceGuard.normalizeRelPath(path.relative(repoRoot, uri.fsPath)))
       .filter(Boolean)
       .filter((relPath) => !isSuppressedGeneratedPath(relPath));
-    const changePlan = workspaceGuard.classifyWorkspaceChanges(repoRoot, relPaths);
+    const governanceJsonPath = resolveGovernanceTreeJsonPath(
+      repoRoot,
+      config.get("governanceTreeJsonPath") || config.get("frameworkTreeJsonPath")
+    );
+    const governanceGenerateCommand = String(
+      config.get("governanceTreeGenerateCommand")
+      || config.get("frameworkTreeGenerateCommand")
+      || DEFAULT_GOVERNANCE_TREE_GENERATE_COMMAND
+    );
+    if (!fs.existsSync(governanceJsonPath)) {
+      await generateFrameworkTree(repoRoot, governanceGenerateCommand, output);
+    }
 
     const combinedIssues = [];
+    let governancePayload = null;
+    let changePlan = workspaceGuard.classifyWorkspaceChanges(repoRoot, relPaths);
+    try {
+      governancePayload = governanceTree.readGovernanceTree(repoRoot, path.relative(repoRoot, governanceJsonPath));
+      changePlan = governanceTree.classifyWorkspaceChanges(repoRoot, relPaths, governancePayload);
+    } catch (error) {
+      combinedIssues.push(normalizeIssue({
+        message: `Shelf could not load governance tree: ${String(error)}`,
+        file: path.relative(repoRoot, governanceJsonPath),
+        line: 1,
+        column: 1,
+        code: "SHELF_GOVERNANCE_TREE",
+      }));
+    }
+    let changeSummary = null;
+    if (changePlan.changeContext && governancePayload) {
+      changeSummary = governanceTree.summarizeChangeContext(governancePayload, changePlan.changeContext, 4);
+    } else if (changePlan.changeContext) {
+      changeSummary = {
+        touchedCount: Array.isArray(changePlan.changeContext.touchedNodes) ? changePlan.changeContext.touchedNodes.length : 0,
+        affectedCount: Array.isArray(changePlan.changeContext.affectedNodes) ? changePlan.changeContext.affectedNodes.length : 0,
+        touched: (changePlan.changeContext.touchedNodes || []).slice(0, 4).map((nodeId) => ({
+          id: String(nodeId),
+          label: String(nodeId),
+          layer: "",
+          file: "",
+        })),
+        affected: (changePlan.changeContext.affectedNodes || []).slice(0, 4).map((nodeId) => ({
+          id: String(nodeId),
+          label: String(nodeId),
+          layer: "",
+          file: "",
+        })),
+      };
+    }
+
     const materializedProjectSpecs = new Set();
 
     if (config.get("protectGeneratedFiles") && changePlan.protectedGeneratedPaths.length) {
       const guardMode = config.get("guardMode") === "strict" ? "strict" : "normal";
+      const protectedWorkspaceArtifacts = changePlan.protectedWorkspaceArtifacts || [];
       if (guardMode === "strict") {
         if (changePlan.protectedProjectSpecs.length) {
           const restoreCommand = buildMaterializeCommand(
@@ -281,25 +350,50 @@ function activate(context) {
           } else {
             combinedIssues.push(...restoreResult.errors);
           }
-        } else {
-          for (const relPath of changePlan.protectedGeneratedPaths) {
-            combinedIssues.push(normalizeIssue({
-              message: "Generated artifacts were edited directly and Shelf could not determine which project to restore.",
-              file: relPath,
-              line: 1,
-              column: 1,
-              code: "SHELF_GENERATED_PROTECT",
-            }));
+        }
+        if (protectedWorkspaceArtifacts.length) {
+          const restoreResult = await runParsedCommand(
+            "governance-tree",
+            governanceGenerateCommand,
+            repoRoot,
+            (stdout, stderr, code) => parseStageFailure(
+              "SHELF_GOVERNANCE_TREE_PROTECT",
+              "Workspace governance tree artifacts were edited directly and Shelf could not restore them.",
+              stdout,
+              stderr,
+              code
+            )
+          );
+          if (!restoreResult.passed) {
+            combinedIssues.push(...restoreResult.errors);
+          } else {
+            suppressArtifactEvents(protectedWorkspaceArtifacts);
           }
         }
-      } else {
-        for (const relPath of changePlan.protectedGeneratedPaths) {
+        const unresolvedProtectedPaths = changePlan.protectedGeneratedPaths.filter(
+          (relPath) => !protectedWorkspaceArtifacts.includes(relPath)
+            && !workspaceGuard.resolveProjectProductSpecPath(repoRoot, relPath)
+        );
+        for (const relPath of unresolvedProtectedPaths) {
           combinedIssues.push(normalizeIssue({
-            message: "Direct edits under projects/*/generated/* are forbidden. Change framework/product spec/implementation config and re-materialize instead.",
+            message: "Generated artifacts were edited directly and Shelf could not determine how to restore them.",
             file: relPath,
             line: 1,
             column: 1,
-            code: "SHELF_GENERATED_EDIT",
+            code: "SHELF_GENERATED_PROTECT",
+          }));
+        }
+      } else {
+        for (const relPath of changePlan.protectedGeneratedPaths) {
+          const isWorkspaceArtifact = protectedWorkspaceArtifacts.includes(relPath);
+          combinedIssues.push(normalizeIssue({
+            message: isWorkspaceArtifact
+              ? "Workspace governance tree artifacts are derived evidence. Refresh the governance tree instead of editing them directly."
+              : "Direct edits under projects/*/generated/* are forbidden. Change framework/product spec/implementation config and re-materialize instead.",
+            file: relPath,
+            line: 1,
+            column: 1,
+            code: isWorkspaceArtifact ? "SHELF_GOVERNANCE_TREE_EDIT" : "SHELF_GENERATED_EDIT",
           }));
         }
       }
@@ -354,8 +448,14 @@ function activate(context) {
     lastValidationAt = new Date().toISOString();
     lastValidationMode = task.mode;
     lastValidationPassed = combined.passed;
+    lastChangeContext = changePlan.changeContext || null;
+    lastChangeSummary = changeSummary;
     applyDiagnostics(combined, diagnostics, repoRoot, task.triggerUris[0] || null);
     output.appendLine(`[result] passed=${combined.passed} errors=${combined.errors.length}`);
+    if (lastChangeContext && lastChangeContext.touchedNodes?.length) {
+      output.appendLine(`[governance] touched=${lastChangeContext.touchedNodes.join(", ")}`);
+      output.appendLine(`[governance] affected=${(lastChangeContext.affectedNodes || []).join(", ")}`);
+    }
 
     if (combined.passed) {
       status.text = "$(check) Shelf OK";
@@ -443,7 +543,7 @@ function activate(context) {
     if (!frameworkTreePanel) {
       frameworkTreePanel = vscode.window.createWebviewPanel(
         "shelfFrameworkTree",
-        "Shelf · Framework Tree",
+        "Shelf · Governance Tree",
         vscode.ViewColumn.Active,
         {
           enableScripts: true,
@@ -480,10 +580,15 @@ function activate(context) {
     const repoRoot = folder.uri.fsPath;
     frameworkTreeRepoRoot = repoRoot;
     const config = vscode.workspace.getConfiguration("shelf");
-    const htmlPath = resolveFrameworkTreeHtmlPath(repoRoot, config.get("frameworkTreeHtmlPath"));
+    const htmlPath = resolveGovernanceTreeHtmlPath(
+      repoRoot,
+      config.get("governanceTreeHtmlPath") || config.get("frameworkTreeHtmlPath")
+    );
 
     if (options.regenerateIfMissing && !fs.existsSync(htmlPath)) {
-      const generateCommand = config.get("frameworkTreeGenerateCommand") || DEFAULT_FRAMEWORK_TREE_GENERATE_COMMAND;
+      const generateCommand = config.get("governanceTreeGenerateCommand")
+        || config.get("frameworkTreeGenerateCommand")
+        || DEFAULT_GOVERNANCE_TREE_GENERATE_COMMAND;
       await generateFrameworkTree(repoRoot, String(generateCommand), output);
     }
 
@@ -494,7 +599,7 @@ function activate(context) {
 
     if (!fs.existsSync(htmlPath)) {
       panel.webview.html = buildFrameworkTreeFallbackHtml(
-        `Framework tree HTML not found: ${toWorkspaceRelative(htmlPath, repoRoot)}`
+        `Governance tree HTML not found: ${toWorkspaceRelative(htmlPath, repoRoot)}`
       );
       return;
     }
@@ -503,7 +608,7 @@ function activate(context) {
       panel.webview.html = fs.readFileSync(htmlPath, "utf8");
     } catch (error) {
       panel.webview.html = buildFrameworkTreeFallbackHtml(
-        `Failed to read framework tree HTML: ${String(error)}`
+        `Failed to read governance tree HTML: ${String(error)}`
       );
     }
   };
@@ -512,14 +617,14 @@ function activate(context) {
     const defaultActionItems = [
       {
         action: "openTree",
-        label: "打开框架树",
-        description: "直接查看树图，并保留节点跳转能力。",
+        label: "打开治理树",
+        description: "直接查看统一治理树，并保留节点跳转能力。",
         tone: "primary"
       },
       {
         action: "refreshTree",
-        label: "刷新树图产物",
-        description: "重新生成 docs/hierarchy 下的树图 HTML。",
+        label: "刷新治理树产物",
+        description: "重新生成 docs/hierarchy 下的治理树 HTML。",
         tone: "ghost"
       },
       {
@@ -548,8 +653,8 @@ function activate(context) {
         workspace: "No workspace",
         heroTone: "unknown",
         heroStatus: "等待工作区",
-        heroSummary: "打开仓库后，这里会显示框架树、严格映射校验和问题跳转入口。",
-        treePath: DEFAULT_FRAMEWORK_TREE_HTML,
+        heroSummary: "打开仓库后，这里会显示治理树、严格校验和问题跳转入口。",
+        treePath: DEFAULT_GOVERNANCE_TREE_HTML,
         mappingStatus: "Unavailable",
         issueSummary: "No workspace",
         treeStatus: "Unknown",
@@ -564,10 +669,10 @@ function activate(context) {
             note: STANDARDS_TREE_FILE
           },
           {
-            label: "框架树产物",
+            label: "治理树产物",
             value: "未知",
             tone: "unknown",
-            note: DEFAULT_FRAMEWORK_TREE_HTML
+            note: DEFAULT_GOVERNANCE_TREE_HTML
           },
           {
             label: "守卫模式",
@@ -597,6 +702,9 @@ function activate(context) {
         issueItems: [],
         issueEmptyText: "打开工作区后，这里会显示校验问题预览和快速跳转入口。",
         issueOverflow: 0,
+        changeItems: [],
+        changeEmptyText: "打开工作区后，这里会显示最近一次变更命中的治理树节点闭包。",
+        changeOverflow: 0,
         calloutTone: "unknown",
         calloutTitle: "从工作区开始",
         calloutBody: "Shelf 侧边栏不是占位区。打开仓库后，它会变成树图入口、校验面板和问题导航工作台。"
@@ -605,7 +713,10 @@ function activate(context) {
 
     const repoRoot = folder.uri.fsPath;
     const config = vscode.workspace.getConfiguration("shelf");
-    const treePath = resolveFrameworkTreeHtmlPath(repoRoot, config.get("frameworkTreeHtmlPath"));
+    const treePath = resolveGovernanceTreeHtmlPath(
+      repoRoot,
+      config.get("governanceTreeHtmlPath") || config.get("frameworkTreeHtmlPath")
+    );
     const standardsExists = hasStandardsTree(repoRoot);
     const validationEnabled = standardsExists && mappingValidationActive;
     const treeExists = fs.existsSync(treePath);
@@ -629,6 +740,26 @@ function activate(context) {
           : `line ${Number(issue.line || 1)}`
       };
     });
+    const touchedChangeItems = (lastChangeSummary?.touched || []).map((item) => ({
+      kind: "Touched",
+      label: item.label || item.id,
+      detail: item.layer || "",
+      location: item.file || item.id || "",
+    }));
+    const affectedChangeItems = (lastChangeSummary?.affected || []).map((item) => ({
+      kind: "Affected",
+      label: item.label || item.id,
+      detail: item.layer || "",
+      location: item.file || item.id || "",
+    }));
+    const changeItems = [...touchedChangeItems, ...affectedChangeItems].slice(0, 6);
+    const changeOverflow = Math.max(
+      0,
+      (lastChangeSummary?.touchedCount || 0) + (lastChangeSummary?.affectedCount || 0) - changeItems.length
+    );
+    const changeSummary = lastChangeSummary
+      ? `${lastChangeSummary.touchedCount || 0} touched / ${lastChangeSummary.affectedCount || 0} affected`
+      : "No recent node closure";
 
     let heroTone = "unknown";
     let heroStatus = "等待首次校验";
@@ -654,8 +785,8 @@ function activate(context) {
       };
     } else if (!treeExists) {
       heroStatus = "树图产物缺失";
-      heroSummary = "侧边栏已经可用，但框架树 HTML 还没准备好，下一步应该生成并打开树图。";
-      calloutTitle = "生成并打开树图";
+      heroSummary = "侧边栏已经可用，但治理树 HTML 还没准备好，下一步应该生成并打开树图。";
+      calloutTitle = "生成并打开治理树";
       calloutBody = `目标产物位于 ${toWorkspaceRelative(treePath, repoRoot)}。使用 Shelf 可以直接生成并打开。`;
       calloutAction = {
         action: "openTree",
@@ -677,11 +808,11 @@ function activate(context) {
       heroStatus = "工作区状态正常";
       heroSummary = "树图产物和严格映射校验都已接通，侧边栏现在就是你的快速入口。";
       calloutTone = "ok";
-      calloutTitle = "继续查看框架树";
-      calloutBody = "可以直接打开树图检查结构，或在改动后随时手动刷新与复核。";
+      calloutTitle = "继续查看治理树";
+      calloutBody = "可以直接打开统一治理树检查结构，或在改动后随时手动刷新与复核。";
       calloutAction = {
         action: "openTree",
-        label: "打开框架树"
+        label: "打开治理树"
       };
     }
 
@@ -703,7 +834,7 @@ function activate(context) {
         note: STANDARDS_TREE_FILE
       },
       {
-        label: "框架树产物",
+        label: "治理树产物",
         value: treeExists ? "就绪" : "缺失",
         tone: treeExists ? "ok" : "error",
         note: treeExists
@@ -789,6 +920,10 @@ function activate(context) {
       issueItems,
       issueEmptyText,
       issueOverflow: Math.max(0, lastRunIssues.length - issueItems.length),
+      changeItems,
+      changeEmptyText: "本会话还没有可展示的节点闭包。执行一次校验后，这里会显示最近变更命中的治理树节点。",
+      changeOverflow,
+      changeSummary,
       calloutTone,
       calloutTitle,
       calloutBody,
@@ -1147,12 +1282,14 @@ function activate(context) {
     const repoRoot = folder.uri.fsPath;
     const config = vscode.workspace.getConfiguration("shelf");
     const generateCommand = String(
-      config.get("frameworkTreeGenerateCommand") || DEFAULT_FRAMEWORK_TREE_GENERATE_COMMAND
+      config.get("governanceTreeGenerateCommand")
+      || config.get("frameworkTreeGenerateCommand")
+      || DEFAULT_GOVERNANCE_TREE_GENERATE_COMMAND
     );
 
     const ok = await generateFrameworkTree(repoRoot, generateCommand, output);
     if (!ok) {
-      await vscode.window.showErrorMessage("Shelf: failed to refresh framework tree.", "Open Log").then((action) => {
+      await vscode.window.showErrorMessage("Shelf: failed to refresh governance tree.", "Open Log").then((action) => {
         if (action === "Open Log") {
           output.show(true);
         }
@@ -1160,6 +1297,10 @@ function activate(context) {
       return;
     }
 
+    suppressArtifactEvents([
+      path.relative(repoRoot, resolveGovernanceTreeJsonPath(repoRoot, config.get("governanceTreeJsonPath") || config.get("frameworkTreeJsonPath"))),
+      path.relative(repoRoot, resolveGovernanceTreeHtmlPath(repoRoot, config.get("governanceTreeHtmlPath") || config.get("frameworkTreeHtmlPath"))),
+    ]);
     await openFrameworkTree({ regenerateIfMissing: false });
   });
 
@@ -1533,9 +1674,19 @@ function resolveIssueFile(file, repoRoot) {
   return path.join(repoRoot, file);
 }
 
-function resolveFrameworkTreeHtmlPath(repoRoot, configuredPath) {
+function resolveGovernanceTreeHtmlPath(repoRoot, configuredPath) {
   if (typeof configuredPath !== "string" || !configuredPath.trim()) {
-    return path.join(repoRoot, DEFAULT_FRAMEWORK_TREE_HTML);
+    return path.join(repoRoot, DEFAULT_GOVERNANCE_TREE_HTML);
+  }
+  if (path.isAbsolute(configuredPath)) {
+    return configuredPath;
+  }
+  return path.join(repoRoot, configuredPath);
+}
+
+function resolveGovernanceTreeJsonPath(repoRoot, configuredPath) {
+  if (typeof configuredPath !== "string" || !configuredPath.trim()) {
+    return path.join(repoRoot, DEFAULT_GOVERNANCE_TREE_JSON);
   }
   if (path.isAbsolute(configuredPath)) {
     return configuredPath;
@@ -1559,7 +1710,7 @@ function buildFrameworkTreeFallbackHtml(message) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Shelf · Framework Tree</title>
+  <title>Shelf · Governance Tree</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -1642,7 +1793,7 @@ function buildFrameworkTreeFallbackHtml(message) {
   <div class="card">
     <h1>Shelf</h1>
     <p class="message">${escaped}</p>
-    <p class="next-step">使用 <code>Shelf: Refresh Framework Tree</code> 重新生成树图。</p>
+    <p class="next-step">使用 <code>Shelf: Refresh Governance Tree</code> 重新生成树图。</p>
   </div>
 </body>
 </html>`;
@@ -1670,6 +1821,10 @@ function buildSidebarHomeHtml(model) {
   const lastValidationTone = escapeHtml(model.lastValidationTone || "unknown");
   const issueItems = Array.isArray(model.issueItems) ? model.issueItems : [];
   const issueEmptyText = escapeHtml(model.issueEmptyText || "当前没有可展示的问题。");
+  const changeItems = Array.isArray(model.changeItems) ? model.changeItems : [];
+  const changeEmptyText = escapeHtml(model.changeEmptyText || "当前没有可展示的节点闭包。");
+  const changeOverflow = Number(model.changeOverflow || 0);
+  const changeSummary = escapeHtml(model.changeSummary || "No recent node closure");
   const actionItems = Array.isArray(model.actionItems) ? model.actionItems : [];
   const healthItems = Array.isArray(model.healthItems) ? model.healthItems : [];
   const calloutTone = escapeHtml(model.calloutTone || "unknown");
@@ -1683,7 +1838,7 @@ function buildSidebarHomeHtml(model) {
     : null;
   const summaryTiles = [
     { label: "规范总纲", value: standardsStatus },
-    { label: "框架树", value: treeStatus },
+    { label: "治理树", value: treeStatus },
     { label: "严格校验", value: mappingStatus },
     { label: "问题", value: issueSummary }
   ];
@@ -1750,6 +1905,20 @@ function buildSidebarHomeHtml(model) {
     : `<div class="empty-state">${issueEmptyText}</div>`;
   const overflowHtml = issueOverflow > 0
     ? `<p class="section-note">还有 ${issueOverflow} 个问题，点击“查看问题”打开完整列表。</p>`
+    : "";
+  const changeItemsHtml = changeItems.length
+    ? changeItems.map((item) => `
+        <div class="change-item">
+          <div class="issue-head">
+            <span class="issue-code">${escapeHtml(item.kind || "Node")}</span>
+            ${item.detail ? `<span class="issue-hint">${escapeHtml(item.detail)}</span>` : ""}
+          </div>
+          <span class="issue-message">${escapeHtml(item.label || "")}</span>
+          <span class="issue-location">${escapeHtml(item.location || "")}</span>
+        </div>`).join("")
+    : `<div class="empty-state">${changeEmptyText}</div>`;
+  const changeOverflowHtml = changeOverflow > 0
+    ? `<p class="section-note">还有 ${changeOverflow} 个节点未展开，打开治理树可查看完整闭包。</p>`
     : "";
   const calloutActionHtml = calloutAction && calloutAction.action && calloutAction.label
     ? `<button type="button" class="note-action" data-action="${calloutAction.action}">${calloutAction.label}</button>`
@@ -2103,6 +2272,16 @@ function buildSidebarHomeHtml(model) {
       color: var(--text);
     }
 
+    .change-item {
+      display: grid;
+      gap: 6px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent), transparent;
+      color: var(--text);
+    }
+
     .issue-item:hover {
       background: var(--surface-hover);
     }
@@ -2194,6 +2373,17 @@ function buildSidebarHomeHtml(model) {
       </div>
       <div class="stack">
         ${healthItemsHtml}
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">节点闭包</h2>
+        <span class="section-meta">${changeSummary}</span>
+      </div>
+      <div class="stack">
+        ${changeItemsHtml}
+        ${changeOverflowHtml}
       </div>
     </section>
 
