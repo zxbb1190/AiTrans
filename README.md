@@ -1,49 +1,121 @@
 # Shelf
 
-**AI coding framework for executable architecture, strict mapping, and project materialization.**
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](./pyproject.toml)
+[![uv](https://img.shields.io/badge/deps-uv-6A5ACD)](https://github.com/astral-sh/uv)
+[![VSCode](https://img.shields.io/badge/VSCode-ArchSync-007ACC?logo=visualstudiocode&logoColor=white)](./tools/vscode/archsync)
+[![GitHub stars](https://img.shields.io/github/stars/xueyu888/framework?style=social)](https://github.com/xueyu888/framework/stargazers)
 
-Shelf 是一个面向 **AI 编程 / AI-assisted software engineering** 的框架仓库。它把框架文档、边界定义、项目配置、生成产物、严格校验、VSCode 导航放进同一条链路，让 AI 写代码时不是只靠 prompt，而是基于可执行规范、可追溯关系和可验证结果协作。
+**Structure-first AI coding framework.**
 
-In short: **Shelf helps teams turn framework docs into a real engineering system**. You define the structure in Markdown, validate it with code, materialize project artifacts, and inspect the whole graph in VSCode.
+Shelf turns design into an executable engineering system.
 
-## Why Shelf
+Instead of asking AI to "just write code", Shelf gives AI a real structure to work inside:
 
-很多 AI 编程项目都卡在同一个问题上：
+- `framework/*.md` defines reusable framework structure
+- `projects/<project_id>/product_spec.toml` fixes product truth
+- `projects/<project_id>/implementation_config.toml` fixes one implementation path
+- `scripts/materialize_project.py` materializes artifacts
+- `scripts/validate_strict_mapping.py` checks whether the chain is still consistent
 
-- 文档、配置、代码、生成产物彼此脱节
-- AI 能快速生成代码，但很难持续遵守边界和结构约束
-- 项目越大，越难回答“这个模块为什么存在、来源是什么、改动会影响哪里”
+中文一句话：**Shelf 不是 prompt-first 的 AI 编程工具，而是把设计先写成结构语言，再让 AI 在这个结构里写代码。**
 
-Shelf 的目标不是做一个“会写代码的聊天界面”，而是提供一套 **AI-native engineering workflow**：
+> If you think design is the real bottleneck in AI coding, Shelf is built for that problem.
 
-- 用 `framework/*.md` 作为框架级事实来源
-- 用 `projects/<project_id>/product_spec.toml` 固化产品真相
-- 用 `projects/<project_id>/implementation_config.toml` 固化实现细化
-- 用脚本把规范物化为项目产物
-- 用严格映射验证保证结构一致性
-- 用 VSCode 插件把模块树、跳转、问题定位接到日常开发里
+## Why Shelf Exists
 
-## Core Capabilities
+Most AI coding tools are good at speeding up implementation.
+
+They are much worse at preserving:
+
+- architectural boundaries
+- product truth
+- implementation traceability
+- evidence that the generated result still matches the original design
+
+Shelf is opinionated about that gap.
+
+It treats AI coding as a convergence chain:
+
+`Framework -> Product Spec -> Implementation Config -> Code -> Evidence`
+
+That is the core idea of this repository.
+
+## What Makes Shelf Different
+
+| Typical AI coding repo | Shelf |
+| --- | --- |
+| Prompt-first | Structure-first |
+| Specs as helper docs | Framework docs as first-class source |
+| Product and implementation often mixed together | `Product Spec` and `Implementation Config` are explicitly separated |
+| Code becomes the default truth | Code is downstream from framework and config |
+| Validation is optional | Strict mapping validation is built in |
+| Generated output is the end | Generated output is evidence, not the source of truth |
+
+Shelf is not trying to be another chat wrapper, prompt pack, or generic agent shell.
+
+It is trying to be a **framework-native language for AI coding**.
+
+## The Core Model
+
+```mermaid
+flowchart LR
+    A[Framework Markdown] --> B[Product Spec]
+    B --> C[Implementation Config]
+    C --> D[Code]
+    D --> E[Evidence]
+    A --> F[Strict Mapping Validation]
+    B --> F
+    C --> F
+    D --> F
+    F --> E
+```
+
+This repository is organized around that flow:
+
+- **Framework**
+  - reusable structure, boundaries, bases, rules, verification
+- **Product Spec**
+  - what the product finally is
+- **Implementation Config**
+  - how that product lands in one technical realization path
+- **Code**
+  - runtime templates, generator core, validators
+- **Evidence**
+  - generated artifacts, validation outputs, runnable examples
+
+## What You Get
 
 - **Executable framework specs**
-  - 在 `framework/<module>/Lx-Mn-*.md` 中定义能力、边界、基、规则与验证。
+  - Define capability, boundary, base, combination rule, and verification in `framework/<module>/Lx-Mn-*.md`.
 - **Strict mapping validation**
-  - 通过 `scripts/validate_strict_mapping.py` 检查规范、代码、配置和产物是否一致。
+  - Check whether framework docs, project configs, generated artifacts, and runtime code still align.
 - **Project materialization**
-  - 通过 `scripts/materialize_project.py` 从框架和实例配置生成项目产物。
-- **AI-friendly traceability**
-  - 模块、规则、边界、实例 section、生成产物都能被追踪和跳转。
-- **ArchSync VSCode extension**
-  - 在 VSCode 里直接查看框架树、运行校验、定位问题、跳转文档。
-- **Runnable reference app**
-  - 仓库内置一个知识库 demo，可直接启动验证整条链路。
+  - Materialize project artifacts from framework docs plus instance configs.
+- **Framework-aware VS Code tooling**
+  - Use ArchSync to inspect framework trees, jump across mappings, and run validation from the editor.
+- **Runnable reference application**
+  - Run a knowledge-base demo compiled from framework markdown, product spec, and implementation config.
 
-## Who This Is For
+## See The System, Not Just The Pitch
 
-- 想做 **spec-driven AI coding** 的团队
-- 想把“AI 生成代码”升级成“AI 在结构约束下协作开发”的工程团队
-- 想做知识库、内部工作台、框架化前后端产品的人
-- 想把文档、配置、生成器、运行时放进一个可维护系统的人
+<p align="center">
+  <img src="./docs/verification/knowledge-base-workbench.png" alt="Shelf-generated knowledge base workbench demo" width="880" />
+</p>
+
+The screenshot above is a real reference app from this repository.
+
+It is derived from the same chain described in this README:
+
+`framework/*.md -> product_spec.toml -> implementation_config.toml -> generated/* -> runtime app`
+
+Shelf is meant to be inspectable proof, not just a design manifesto.
+
+## Who Shelf Is For
+
+- Teams exploring **AI-assisted software engineering** beyond prompt engineering
+- Builders who believe **design should survive implementation**
+- People doing **spec-driven development**, but who want stronger structure and validation
+- Teams building internal tools, knowledge apps, or framework-heavy products that need traceability
 
 ## Quick Start
 
@@ -76,179 +148,160 @@ uv run python scripts/materialize_project.py
 ### 5. Start the demo app
 
 ```bash
-uv run uvicorn --app-dir src project_runtime.app_factory:app --reload
+uv run python src/main.py
 ```
 
-默认入口：
+For local development with reload:
 
-- Page: `http://127.0.0.1:8000/knowledge-base`
-- Product spec: `http://127.0.0.1:8000/api/knowledge/product-spec`
-- API: `http://127.0.0.1:8000/api/knowledge/documents`
+```bash
+uv run python src/main.py --reload
+```
 
-## How The Workflow Fits Together
+Default entry points:
 
-1. **Define the framework**
-   - 在 `framework/` 里写模块标准，例如能力声明、边界定义、最小可行基、组合规则。
-2. **Define the product and implementation**
-   - 在 `projects/<project_id>/product_spec.toml` 里填写产品边界、内容和路由。
-   - 在 `projects/<project_id>/implementation_config.toml` 里填写技术细化、证据接口和产物命名。
-3. **Materialize the project**
-   - 由框架和实例配置生成 `projects/<project_id>/generated/*`。
-4. **Validate changes**
-   - 校验规范、代码和配置是否仍然满足严格映射。
-5. **Inspect and navigate**
-   - 在 ArchSync 中查看模块结构图、节点关系和问题定位。
+- App: `http://127.0.0.1:8000/knowledge-base`
+- Product Spec API: `http://127.0.0.1:8000/api/knowledge/product-spec`
+- Documents API: `http://127.0.0.1:8000/api/knowledge/documents`
 
-## Repository Map
+Legacy shelf reference output is still available:
 
-- `specs/`
-  - 规范总纲、框架设计核心标准、代码规范目录
-- `framework/`
-  - 框架级模块定义，按领域拆分
-- `projects/`
-  - 项目实例配置与物化产物
-- `mapping/`
-  - 映射注册表与结构关系
-- `scripts/`
-  - 生成、物化、校验、发布辅助脚本
-- `src/`
-  - 运行时模板、生成器内核、参考实现
-- `tools/vscode/archsync/`
-  - VSCode 插件源码
+```bash
+uv run python src/main.py reference-shelf
+```
 
-## Important Entry Points
+## Start Here
 
-### Specs and standards
+If you only read three things, read these first:
 
-- 规范总纲：`specs/规范总纲与树形结构.md`
-- 框架设计核心标准：`specs/框架设计核心标准.md`
-- 代码规范目录：`specs/code/`
-- 工程执行规范：`AGENTS.md`
+- [Repository structure and top-level rules](./specs/规范总纲与树形结构.md)
+- [Core framework design standard](./specs/框架设计核心标准.md)
+- [Knowledge-base product spec example](./projects/knowledge_base_basic/product_spec.toml)
 
-### Frameworks
+If you want to inspect a concrete framework module:
 
-- 置物架领域：`framework/shelf/Lx-M0-*.md`
-- 前端通用框架：`framework/frontend/Lx-Mn-*.md`
-- 知识库领域框架：`framework/knowledge_base/Lx-Mn-*.md`
-- 知识库接口：`framework/backend/Lx-M0-*.md`
+- [Knowledge-base UI skeleton](./framework/knowledge_base/L1-M0-知识库界面骨架模块.md)
+- [Shelf domain framework standard](./framework/shelf/L2-M0-置物架框架标准模块.md)
 
-### Projects
+## How A Project Compiles Inside Shelf
 
-- 实例层说明：`projects/README.md`
-- 当前样板：`projects/knowledge_base_basic/product_spec.toml`
-- 当前实现配置：`projects/knowledge_base_basic/implementation_config.toml`
+1. **Write framework modules**
+   - Use framework markdown to declare reusable structure, boundaries, bases, rules, and verification.
+2. **Fix product truth**
+   - Use `projects/<project_id>/product_spec.toml` to declare what the product is.
+3. **Choose one implementation path**
+   - Use `projects/<project_id>/implementation_config.toml` to refine the product into a concrete technical realization.
+4. **Materialize artifacts**
+   - Generate `projects/<project_id>/generated/*` from framework plus config inputs.
+5. **Validate the chain**
+   - Run strict mapping checks to catch structural drift.
+6. **Run and inspect**
+   - Launch the demo app and inspect the framework graph in ArchSync.
 
-## ArchSync VSCode Extension
+## Reference Demo: Knowledge Base Workbench
 
-ArchSync 是这个仓库配套的 VSCode 插件，目标不是做一个泛用聊天助手，而是做一个 **framework-aware AI coding companion**。
+This repository includes a runnable demo that shows the full chain:
 
-它提供：
+`framework/*.md + product_spec.toml + implementation_config.toml -> generated/* -> runtime app`
 
-- 侧边栏主页：一键打开框架树、刷新树图、运行映射校验、查看问题列表
-- 结构图 Webview：模块树、层级关系、节点详情、缩放、拖拽、侧栏收起
-- 文档导航：从模块引用、边界引用、规则引用直接跳到对应 Markdown 或实例配置
-- 保存即校验：相关文件变更后自动运行严格映射验证，并同步到 Problems 面板
+Useful entry points:
 
-本地安装：
+- [Project layer guide](./projects/README.md)
+- [Product Spec](./projects/knowledge_base_basic/product_spec.toml)
+- [Implementation Config](./projects/knowledge_base_basic/implementation_config.toml)
+- [Generated artifacts](./projects/knowledge_base_basic/generated/)
+- [Runtime templates](./src/knowledge_base_runtime/)
+
+Manual materialization for the current project:
+
+```bash
+uv run python scripts/materialize_project.py --project projects/knowledge_base_basic/product_spec.toml
+```
+
+## ArchSync VS Code Extension
+
+ArchSync is the companion extension for Shelf.
+
+It is not a generic chat assistant. It is a **framework-aware AI coding companion** for this repository model.
+
+It provides:
+
+- framework tree browsing
+- mapping-aware navigation
+- validation commands inside VS Code
+- issue surfacing in the Problems panel
+- a template entrypoint for framework authoring
+
+Local install:
 
 ```bash
 bash tools/vscode/archsync/install_local.sh
 ```
 
-这个脚本会按当前源码版本自动重新打包 VSIX，并覆盖安装到本机 VSCode。
+The local install script rebuilds the VSIX from the current source version and force-installs it into local VS Code.
 
-公开安装：
+More:
 
-- GitHub Releases: https://github.com/xueyu888/framework/releases
-- 插件源码说明：`tools/vscode/archsync/README.md`
+- [ArchSync README](./tools/vscode/archsync/README.md)
+- [GitHub Releases](https://github.com/xueyu888/framework/releases)
 
-主要命令：
+Main commands:
 
 - `ArchSync: Open Framework Tree`
 - `ArchSync: Refresh Framework Tree`
 - `ArchSync: Validate Mapping Now`
 - `ArchSync: Show Mapping Issues`
 
-## Knowledge Base Demo
+## Repository Layout
 
-仓库内置了一个“产品规格 + 实现配置驱动”的知识库 demo，用来演示：
-
-- 前端框架 + 领域框架 + 后端接口如何组合
-- `framework/*.md + product_spec.toml + implementation_config.toml -> generated/*` 的物化链路
-- 运行时模板如何从产品规格和实现配置构建出真实应用
-
-相关入口：
-
-- Product Spec：`projects/knowledge_base_basic/product_spec.toml`
-- Implementation Config：`projects/knowledge_base_basic/implementation_config.toml`
-- 运行时模板：`src/knowledge_base_demo/`
-- 物化产物：`projects/knowledge_base_basic/generated/`
-
-手动物化：
-
-```bash
-uv run python scripts/materialize_project.py --project projects/knowledge_base_basic/product_spec.toml
-```
-
-## Framework Tree and Visual Outputs
-
-框架树总入口：
-
-- `docs/hierarchy/shelf_framework_tree.html`
-
-重新生成框架树：
-
-```bash
-uv run python scripts/generate_framework_tree_hierarchy.py \
-  --source framework \
-  --framework-dir framework \
-  --output-json docs/hierarchy/shelf_framework_tree.json \
-  --output-html docs/hierarchy/shelf_framework_tree.html
-```
-
-其他可视化示例：
-
-- 双族分型子页面：`docs/examples/type_subpages_valid_2x2x2_dualfamily/index.html`
-- 旧版单族分型子页面：`docs/examples/type_subpages_valid_2x2x2/index.html`
-- 3D 分型总览墙：`docs/examples/type_gallery_3d_valid_2x2x2.html`
+- `specs/`
+  - top-level standards and code quality rules
+- `framework/`
+  - reusable framework modules by domain
+- `projects/`
+  - product specs, implementation configs, generated outputs
+- `mapping/`
+  - machine-readable mapping registry
+- `scripts/`
+  - materialization, validation, release, and support scripts
+- `src/`
+  - runtime templates, generator core, validators
+- `tools/vscode/archsync/`
+  - the companion VS Code extension
 
 ## Engineering Rules
 
-这个仓库有几条铁律：
+This repository is strict on purpose:
 
-- 必须使用 `uv` 管理 Python 环境和依赖
-- 不直接修改 `projects/<project_id>/generated/*`
-- 项目行为变更先改 `framework/*.md`、`projects/<project_id>/product_spec.toml` 或 `projects/<project_id>/implementation_config.toml`
-- 推送前必须通过严格映射验证
-- 公开发布必须遵守 `specs/code/发布与版本说明标准.md`
+- use `uv` for Python environment and dependencies
+- do not manually edit `projects/<project_id>/generated/*`
+- change framework or project source files first, then materialize artifacts
+- pass strict mapping validation before pushing
+- follow the release standard in [发布与版本说明标准.md](./specs/code/发布与版本说明标准.md)
 
-对应守卫：
+Guard rails:
 
-- 本地 `pre-push` hook：`.githooks/pre-push`
-- GitHub 工作流：`.github/workflows/strict-mapping-gate.yml`
-
-## Search-Friendly Summary
-
-如果你是在找这些方向，这个仓库就是相关的：
-
-- AI coding framework
-- AI programming workflow
-- AI-native software architecture
-- executable specification
-- spec-driven development
-- strict mapping validation
-- Markdown-driven architecture
-- VSCode extension for framework navigation
-- knowledge base app scaffold
-- traceable project generation
+- local pre-push hook: `.githooks/pre-push`
+- CI gate: `.github/workflows/strict-mapping-gate.yml`
 
 ## Project Status
 
-当前仓库更接近 **active framework repository + executable reference implementation**，适合继续扩展为：
+Shelf is currently an **active framework repository with a runnable reference app**.
 
-- 更完整的 AI-native app framework
-- 更强的生成器与验证器
-- 更成熟的 VSCode / Marketplace 体验
-- 更标准的对外模板与公开示例
+Public-facing pieces already in the repo:
 
-如果你希望在 AI 编程里得到的不只是“更快写代码”，而是“让结构、文档、配置、生成产物和运行时保持一致”，Shelf 的重点就在这里。
+- a runnable knowledge-base workbench demo
+- strict mapping validation in local workflows and CI
+- a companion VS Code extension with release automation
+- framework, product, implementation, and evidence layers in one repository model
+
+## Why This Matters
+
+AI coding gets easier every month.
+
+Keeping structure, design intent, implementation boundaries, and generated evidence aligned does not.
+
+Shelf is built for teams that want AI to operate inside a **real engineering language**, not just inside a longer prompt.
+
+If that matches how you think about software, start with the core standard:
+
+- [框架设计核心标准.md](./specs/框架设计核心标准.md)
