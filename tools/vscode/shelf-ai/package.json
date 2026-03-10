@@ -7,12 +7,12 @@
   "license": "SEE LICENSE IN LICENSE.txt",
   "repository": {
     "type": "git",
-    "url": "https://github.com/xueyu888/framework.git"
+    "url": "https://github.com/xueyu888/shelf.git"
   },
   "bugs": {
-    "url": "https://github.com/xueyu888/framework/issues"
+    "url": "https://github.com/xueyu888/shelf/issues"
   },
-  "homepage": "https://github.com/xueyu888/framework/tree/main/tools/vscode/shelf-ai",
+  "homepage": "https://github.com/xueyu888/shelf/tree/main/tools/vscode/shelf-ai",
   "engines": {
     "vscode": "^1.85.0"
   },
