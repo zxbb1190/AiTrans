@@ -1,7 +1,15 @@
 {
   "meta": {
-    "updated_at": "2026-03-09",
+    "updated_at": "2026-03-10",
     "l3_sync_notes": [
+      {
+        "id": "SYNC-20260310-aitrans-global-compression",
+        "note": "Compress the aitrans L3-L0 graph around fewer real structural choices: merge host+capture at L3, compress non-recognition L2 domains, collapse repeated L1 session/event/security/build split axes, and physically merge duplicated L0 leaf families into fewer reusable structure leaves."
+      },
+      {
+        "id": "SYNC-20260310-aitrans-pipeline-convergence",
+        "note": "Converge the aitrans recognition-translation path around four structures: task intake, provider execution, recovery execution, and result contract; compress duplicated L1 bases in orchestration and provider adapters accordingly."
+      },
       {
         "id": "SYNC-20260309-structure-definition-section",
         "note": "Promote 'structure' into a dedicated core-standard section, clarifying that structure is the primary abstract organization unit, that it can be either module-local minimal units or higher-layer composed units, and that it must be distinguished from capabilities, boundaries, modules, and implementation details."
