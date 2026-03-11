@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -47,11 +48,19 @@ def discover_l2_standard_files() -> list[tuple[str, str]]:
     return [*ordered_preferred, *ordered_extras]
 
 
-def _l2_node_id(module_name: str) -> str:
-    return "NODE-L2-" + module_name.upper().replace("_", "-")
+def _l2_node_id(module_name: str, rel_file: str, *, needs_suffix: bool) -> str:
+    base = "NODE-L2-" + module_name.upper().replace("_", "-")
+    if not needs_suffix:
+        return base
+    stem_parts = Path(rel_file).stem.split("-")
+    module_token = stem_parts[1].upper() if len(stem_parts) > 1 and stem_parts[1] else "M0"
+    return f"{base}-{module_token}"
 
 
 def build_standards_tree() -> dict[str, Any]:
+    l2_standard_files = discover_l2_standard_files()
+    l2_module_counts = Counter(module_name for module_name, _ in l2_standard_files)
+
     l1_children: list[dict[str, Any]] = [
         {
             "id": node_id,
@@ -65,13 +74,17 @@ def build_standards_tree() -> dict[str, Any]:
 
     l2_children: list[dict[str, Any]] = [
         {
-            "id": _l2_node_id(module_name),
+            "id": _l2_node_id(
+                module_name,
+                file_name,
+                needs_suffix=l2_module_counts[module_name] > 1,
+            ),
             "kind": "file",
             "level": "L2",
             "file": file_name,
             "children": [],
         }
-        for module_name, file_name in discover_l2_standard_files()
+        for module_name, file_name in l2_standard_files
     ]
     l2_children.append(
         {

@@ -183,35 +183,35 @@
                 "children": []
               },
               {
-                "id": "NODE-L2-AITRANS-SHELL",
+                "id": "NODE-L2-AITRANS-M0",
                 "kind": "file",
                 "level": "L2",
                 "file": "framework/aitrans/L2-M0-桌面宿主层.md",
                 "children": []
               },
               {
-                "id": "NODE-L2-AITRANS-CAPTURE",
+                "id": "NODE-L2-AITRANS-M1",
                 "kind": "file",
                 "level": "L2",
                 "file": "framework/aitrans/L2-M1-截图交互层.md",
                 "children": []
               },
               {
-                "id": "NODE-L2-AITRANS-OCR-TRANS",
+                "id": "NODE-L2-AITRANS-M2",
                 "kind": "file",
                 "level": "L2",
                 "file": "framework/aitrans/L2-M2-识别翻译层.md",
                 "children": []
               },
               {
-                "id": "NODE-L2-AITRANS-PRESENTATION",
+                "id": "NODE-L2-AITRANS-M3",
                 "kind": "file",
                 "level": "L2",
                 "file": "framework/aitrans/L2-M3-结果展示层.md",
                 "children": []
               },
               {
-                "id": "NODE-L2-AITRANS-GOVERNANCE",
+                "id": "NODE-L2-AITRANS-M4",
                 "kind": "file",
                 "level": "L2",
                 "file": "framework/aitrans/L2-M4-运行治理层.md",

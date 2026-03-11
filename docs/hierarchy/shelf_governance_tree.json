@@ -247,6 +247,66 @@
         "raw_node_id": "NODE-L2-KNOWLEDGE-BASE"
       },
       {
+        "id": "standards:NODE-L2-AITRANS-M0",
+        "label": "L2-M0-桌面宿主层",
+        "level": 5,
+        "description": "kind=file | layer=Standards | file=framework/aitrans/L2-M0-桌面宿主层.md",
+        "source_file": "framework/aitrans/L2-M0-桌面宿主层.md",
+        "source_line": 1,
+        "node_kind": "file",
+        "layer": "Standards",
+        "registry_level": "L2",
+        "raw_node_id": "NODE-L2-AITRANS-M0"
+      },
+      {
+        "id": "standards:NODE-L2-AITRANS-M1",
+        "label": "L2-M1-截图交互层",
+        "level": 5,
+        "description": "kind=file | layer=Standards | file=framework/aitrans/L2-M1-截图交互层.md",
+        "source_file": "framework/aitrans/L2-M1-截图交互层.md",
+        "source_line": 1,
+        "node_kind": "file",
+        "layer": "Standards",
+        "registry_level": "L2",
+        "raw_node_id": "NODE-L2-AITRANS-M1"
+      },
+      {
+        "id": "standards:NODE-L2-AITRANS-M2",
+        "label": "L2-M2-识别翻译层",
+        "level": 5,
+        "description": "kind=file | layer=Standards | file=framework/aitrans/L2-M2-识别翻译层.md",
+        "source_file": "framework/aitrans/L2-M2-识别翻译层.md",
+        "source_line": 1,
+        "node_kind": "file",
+        "layer": "Standards",
+        "registry_level": "L2",
+        "raw_node_id": "NODE-L2-AITRANS-M2"
+      },
+      {
+        "id": "standards:NODE-L2-AITRANS-M3",
+        "label": "L2-M3-结果展示层",
+        "level": 5,
+        "description": "kind=file | layer=Standards | file=framework/aitrans/L2-M3-结果展示层.md",
+        "source_file": "framework/aitrans/L2-M3-结果展示层.md",
+        "source_line": 1,
+        "node_kind": "file",
+        "layer": "Standards",
+        "registry_level": "L2",
+        "raw_node_id": "NODE-L2-AITRANS-M3"
+      },
+      {
+        "id": "standards:NODE-L2-AITRANS-M4",
+        "label": "L2-M4-运行治理层",
+        "level": 5,
+        "description": "kind=file | layer=Standards | file=framework/aitrans/L2-M4-运行治理层.md",
+        "source_file": "framework/aitrans/L2-M4-运行治理层.md",
+        "source_line": 1,
+        "node_kind": "file",
+        "layer": "Standards",
+        "registry_level": "L2",
+        "raw_node_id": "NODE-L2-AITRANS-M4"
+      },
+      {
         "id": "standards:NODE-L3-LAYER",
         "label": "NODE-L3-LAYER",
         "level": 5,
@@ -269,6 +329,386 @@
         "layer": "Standards",
         "registry_level": "L3",
         "raw_node_id": "NODE-L3-REGISTRY"
+      },
+      {
+        "id": "project:desktop_screenshot_translate",
+        "label": "ArchSync 截图翻译",
+        "level": 2,
+        "description": "kind=project_root | layer=Project | project_id=desktop_screenshot_translate | file=projects/desktop_screenshot_translate/product_spec.toml",
+        "source_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "source_line": 1,
+        "node_kind": "project_root",
+        "layer": "Project",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": null,
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:code",
+        "label": "Code",
+        "level": 3,
+        "description": "kind=code_root | layer=Code | project_id=desktop_screenshot_translate | file=projects/desktop_screenshot_translate/implementation_config.toml",
+        "source_file": "projects/desktop_screenshot_translate/implementation_config.toml",
+        "source_line": 1,
+        "node_kind": "code_root",
+        "layer": "Code",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:evidence",
+        "label": "Evidence",
+        "level": 3,
+        "description": "kind=evidence_root | layer=Evidence | project_id=desktop_screenshot_translate | file=projects/desktop_screenshot_translate/product_spec.toml",
+        "source_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "source_line": 1,
+        "node_kind": "evidence_root",
+        "layer": "Evidence",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:framework",
+        "label": "Framework",
+        "level": 3,
+        "description": "kind=framework_root | layer=Framework | project_id=desktop_screenshot_translate | file=projects/desktop_screenshot_translate/product_spec.toml",
+        "source_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "source_line": 1,
+        "node_kind": "framework_root",
+        "layer": "Framework",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:framework:module:aitrans.L3.M0",
+        "label": "桌面截图翻译框架",
+        "level": 4,
+        "description": "kind=framework_module | layer=Framework | project_id=desktop_screenshot_translate | file=framework/aitrans/L3-M0-桌面截图翻译框架.md",
+        "source_file": "framework/aitrans/L3-M0-桌面截图翻译框架.md",
+        "source_line": 1,
+        "node_kind": "framework_module",
+        "layer": "Framework",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate:framework",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:framework:module:frontend.L0.M0",
+        "label": "前端承载与绑定原子模块",
+        "level": 4,
+        "description": "kind=framework_module | layer=Framework | project_id=desktop_screenshot_translate | file=framework/frontend/L0-M0-承载与绑定原子模块.md",
+        "source_file": "framework/frontend/L0-M0-承载与绑定原子模块.md",
+        "source_line": 1,
+        "node_kind": "framework_module",
+        "layer": "Framework",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate:framework",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:framework:module:frontend.L0.M1",
+        "label": "前端状态与交互原子模块",
+        "level": 4,
+        "description": "kind=framework_module | layer=Framework | project_id=desktop_screenshot_translate | file=framework/frontend/L0-M1-状态与交互原子模块.md",
+        "source_file": "framework/frontend/L0-M1-状态与交互原子模块.md",
+        "source_line": 1,
+        "node_kind": "framework_module",
+        "layer": "Framework",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate:framework",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:framework:module:frontend.L0.M2",
+        "label": "前端视觉语义原子模块",
+        "level": 4,
+        "description": "kind=framework_module | layer=Framework | project_id=desktop_screenshot_translate | file=framework/frontend/L0-M2-视觉语义原子模块.md",
+        "source_file": "framework/frontend/L0-M2-视觉语义原子模块.md",
+        "source_line": 1,
+        "node_kind": "framework_module",
+        "layer": "Framework",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate:framework",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:framework:module:frontend.L1.M0",
+        "label": "前端触发与选择原子模块",
+        "level": 4,
+        "description": "kind=framework_module | layer=Framework | project_id=desktop_screenshot_translate | file=framework/frontend/L1-M0-触发与选择原子模块.md",
+        "source_file": "framework/frontend/L1-M0-触发与选择原子模块.md",
+        "source_line": 1,
+        "node_kind": "framework_module",
+        "layer": "Framework",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate:framework",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:framework:module:frontend.L1.M1",
+        "label": "前端文本输入原子模块",
+        "level": 4,
+        "description": "kind=framework_module | layer=Framework | project_id=desktop_screenshot_translate | file=framework/frontend/L1-M1-文本输入原子模块.md",
+        "source_file": "framework/frontend/L1-M1-文本输入原子模块.md",
+        "source_line": 1,
+        "node_kind": "framework_module",
+        "layer": "Framework",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate:framework",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:framework:module:frontend.L1.M2",
+        "label": "前端展示与容器原子模块",
+        "level": 4,
+        "description": "kind=framework_module | layer=Framework | project_id=desktop_screenshot_translate | file=framework/frontend/L1-M2-展示与容器原子模块.md",
+        "source_file": "framework/frontend/L1-M2-展示与容器原子模块.md",
+        "source_line": 1,
+        "node_kind": "framework_module",
+        "layer": "Framework",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate:framework",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:framework:module:frontend.L1.M3",
+        "label": "前端集合与导航原子模块",
+        "level": 4,
+        "description": "kind=framework_module | layer=Framework | project_id=desktop_screenshot_translate | file=framework/frontend/L1-M3-集合与导航原子模块.md",
+        "source_file": "framework/frontend/L1-M3-集合与导航原子模块.md",
+        "source_line": 1,
+        "node_kind": "framework_module",
+        "layer": "Framework",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate:framework",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:framework:module:frontend.L1.M4",
+        "label": "前端标记与反馈原子模块",
+        "level": 4,
+        "description": "kind=framework_module | layer=Framework | project_id=desktop_screenshot_translate | file=framework/frontend/L1-M4-标记与反馈原子模块.md",
+        "source_file": "framework/frontend/L1-M4-标记与反馈原子模块.md",
+        "source_line": 1,
+        "node_kind": "framework_module",
+        "layer": "Framework",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate:framework",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:framework:module:frontend.L2.M0",
+        "label": "前端框架标准模块",
+        "level": 4,
+        "description": "kind=framework_module | layer=Framework | project_id=desktop_screenshot_translate | file=framework/frontend/L2-M0-前端框架标准模块.md",
+        "source_file": "framework/frontend/L2-M0-前端框架标准模块.md",
+        "source_line": 1,
+        "node_kind": "framework_module",
+        "layer": "Framework",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate:framework",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:framework:module:runtime_env.L0.M0",
+        "label": "运行环境识别模块",
+        "level": 4,
+        "description": "kind=framework_module | layer=Framework | project_id=desktop_screenshot_translate | file=framework/runtime_env/L0-M0-运行环境识别模块.md",
+        "source_file": "framework/runtime_env/L0-M0-运行环境识别模块.md",
+        "source_line": 1,
+        "node_kind": "framework_module",
+        "layer": "Framework",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate:framework",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:implementation_config",
+        "label": "Implementation Config",
+        "level": 3,
+        "description": "kind=implementation_root | layer=Implementation Config | project_id=desktop_screenshot_translate | file=projects/desktop_screenshot_translate/implementation_config.toml",
+        "source_file": "projects/desktop_screenshot_translate/implementation_config.toml",
+        "source_line": 1,
+        "node_kind": "implementation_root",
+        "layer": "Implementation Config",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:implementation_config:file",
+        "label": "implementation_config.toml",
+        "level": 4,
+        "description": "kind=implementation_config_file | layer=Implementation Config | project_id=desktop_screenshot_translate | file=projects/desktop_screenshot_translate/implementation_config.toml",
+        "source_file": "projects/desktop_screenshot_translate/implementation_config.toml",
+        "source_line": 1,
+        "node_kind": "implementation_config_file",
+        "layer": "Implementation Config",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate:implementation_config",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:product_spec",
+        "label": "Product Spec",
+        "level": 3,
+        "description": "kind=product_root | layer=Product Spec | project_id=desktop_screenshot_translate | file=projects/desktop_screenshot_translate/product_spec.toml",
+        "source_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "source_line": 1,
+        "node_kind": "product_root",
+        "layer": "Product Spec",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
+      },
+      {
+        "id": "project:desktop_screenshot_translate:product_spec:file",
+        "label": "product_spec.toml",
+        "level": 4,
+        "description": "kind=product_spec_file | layer=Product Spec | project_id=desktop_screenshot_translate | file=projects/desktop_screenshot_translate/product_spec.toml",
+        "source_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "source_line": 1,
+        "node_kind": "product_spec_file",
+        "layer": "Product Spec",
+        "project_id": "desktop_screenshot_translate",
+        "project_product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "parent_node_id": "project:desktop_screenshot_translate:product_spec",
+        "derived_from": [],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null
       },
       {
         "id": "project:knowledge_base_basic",
@@ -1386,12 +1826,132 @@
       },
       {
         "from": "standards:NODE-L2-LAYER",
+        "to": "standards:NODE-L2-AITRANS-M0",
+        "relation": "tree_child"
+      },
+      {
+        "from": "standards:NODE-L2-LAYER",
+        "to": "standards:NODE-L2-AITRANS-M1",
+        "relation": "tree_child"
+      },
+      {
+        "from": "standards:NODE-L2-LAYER",
+        "to": "standards:NODE-L2-AITRANS-M2",
+        "relation": "tree_child"
+      },
+      {
+        "from": "standards:NODE-L2-LAYER",
+        "to": "standards:NODE-L2-AITRANS-M3",
+        "relation": "tree_child"
+      },
+      {
+        "from": "standards:NODE-L2-LAYER",
+        "to": "standards:NODE-L2-AITRANS-M4",
+        "relation": "tree_child"
+      },
+      {
+        "from": "standards:NODE-L2-LAYER",
         "to": "standards:NODE-L3-LAYER",
         "relation": "tree_child"
       },
       {
         "from": "standards:NODE-L3-LAYER",
         "to": "standards:NODE-L3-REGISTRY",
+        "relation": "tree_child"
+      },
+      {
+        "from": "workspace:shelf:projects",
+        "to": "project:desktop_screenshot_translate",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate",
+        "to": "project:desktop_screenshot_translate:code",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate",
+        "to": "project:desktop_screenshot_translate:evidence",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate",
+        "to": "project:desktop_screenshot_translate:framework",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate:framework",
+        "to": "project:desktop_screenshot_translate:framework:module:aitrans.L3.M0",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate:framework",
+        "to": "project:desktop_screenshot_translate:framework:module:frontend.L0.M0",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate:framework",
+        "to": "project:desktop_screenshot_translate:framework:module:frontend.L0.M1",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate:framework",
+        "to": "project:desktop_screenshot_translate:framework:module:frontend.L0.M2",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate:framework",
+        "to": "project:desktop_screenshot_translate:framework:module:frontend.L1.M0",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate:framework",
+        "to": "project:desktop_screenshot_translate:framework:module:frontend.L1.M1",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate:framework",
+        "to": "project:desktop_screenshot_translate:framework:module:frontend.L1.M2",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate:framework",
+        "to": "project:desktop_screenshot_translate:framework:module:frontend.L1.M3",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate:framework",
+        "to": "project:desktop_screenshot_translate:framework:module:frontend.L1.M4",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate:framework",
+        "to": "project:desktop_screenshot_translate:framework:module:frontend.L2.M0",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate:framework",
+        "to": "project:desktop_screenshot_translate:framework:module:runtime_env.L0.M0",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate",
+        "to": "project:desktop_screenshot_translate:implementation_config",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate:implementation_config",
+        "to": "project:desktop_screenshot_translate:implementation_config:file",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate",
+        "to": "project:desktop_screenshot_translate:product_spec",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:desktop_screenshot_translate:product_spec",
+        "to": "project:desktop_screenshot_translate:product_spec:file",
         "relation": "tree_child"
       },
       {
@@ -1637,9 +2197,168 @@
     "standards_root_id": "workspace:shelf:standards",
     "projects_root_id": "workspace:shelf:projects",
     "project_roots": {
+      "desktop_screenshot_translate": "project:desktop_screenshot_translate",
       "knowledge_base_basic": "project:knowledge_base_basic"
     },
     "project_trees": {
+      "desktop_screenshot_translate": {
+        "project_id": "desktop_screenshot_translate",
+        "root_node_id": "project:desktop_screenshot_translate",
+        "nodes": [
+          {
+            "node_id": "project:desktop_screenshot_translate",
+            "parent": null,
+            "kind": "project_root",
+            "layer": "Project",
+            "title": "ArchSync 截图翻译",
+            "file": "projects/desktop_screenshot_translate/product_spec.toml"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:framework",
+            "parent": "project:desktop_screenshot_translate",
+            "kind": "framework_root",
+            "layer": "Framework",
+            "title": "Framework",
+            "file": "projects/desktop_screenshot_translate/product_spec.toml"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:product_spec",
+            "parent": "project:desktop_screenshot_translate",
+            "kind": "product_root",
+            "layer": "Product Spec",
+            "title": "Product Spec",
+            "file": "projects/desktop_screenshot_translate/product_spec.toml"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:implementation_config",
+            "parent": "project:desktop_screenshot_translate",
+            "kind": "implementation_root",
+            "layer": "Implementation Config",
+            "title": "Implementation Config",
+            "file": "projects/desktop_screenshot_translate/implementation_config.toml"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:code",
+            "parent": "project:desktop_screenshot_translate",
+            "kind": "code_root",
+            "layer": "Code",
+            "title": "Code",
+            "file": "projects/desktop_screenshot_translate/implementation_config.toml"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:evidence",
+            "parent": "project:desktop_screenshot_translate",
+            "kind": "evidence_root",
+            "layer": "Evidence",
+            "title": "Evidence",
+            "file": "projects/desktop_screenshot_translate/product_spec.toml"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:product_spec:file",
+            "parent": "project:desktop_screenshot_translate:product_spec",
+            "kind": "product_spec_file",
+            "layer": "Product Spec",
+            "title": "product_spec.toml",
+            "file": "projects/desktop_screenshot_translate/product_spec.toml"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:implementation_config:file",
+            "parent": "project:desktop_screenshot_translate:implementation_config",
+            "kind": "implementation_config_file",
+            "layer": "Implementation Config",
+            "title": "implementation_config.toml",
+            "file": "projects/desktop_screenshot_translate/implementation_config.toml"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:framework:module:aitrans.L3.M0",
+            "parent": "project:desktop_screenshot_translate:framework",
+            "kind": "framework_module",
+            "layer": "Framework",
+            "title": "桌面截图翻译框架",
+            "file": "framework/aitrans/L3-M0-桌面截图翻译框架.md"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:framework:module:frontend.L0.M0",
+            "parent": "project:desktop_screenshot_translate:framework",
+            "kind": "framework_module",
+            "layer": "Framework",
+            "title": "前端承载与绑定原子模块",
+            "file": "framework/frontend/L0-M0-承载与绑定原子模块.md"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:framework:module:frontend.L0.M1",
+            "parent": "project:desktop_screenshot_translate:framework",
+            "kind": "framework_module",
+            "layer": "Framework",
+            "title": "前端状态与交互原子模块",
+            "file": "framework/frontend/L0-M1-状态与交互原子模块.md"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:framework:module:frontend.L0.M2",
+            "parent": "project:desktop_screenshot_translate:framework",
+            "kind": "framework_module",
+            "layer": "Framework",
+            "title": "前端视觉语义原子模块",
+            "file": "framework/frontend/L0-M2-视觉语义原子模块.md"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:framework:module:frontend.L1.M0",
+            "parent": "project:desktop_screenshot_translate:framework",
+            "kind": "framework_module",
+            "layer": "Framework",
+            "title": "前端触发与选择原子模块",
+            "file": "framework/frontend/L1-M0-触发与选择原子模块.md"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:framework:module:frontend.L1.M1",
+            "parent": "project:desktop_screenshot_translate:framework",
+            "kind": "framework_module",
+            "layer": "Framework",
+            "title": "前端文本输入原子模块",
+            "file": "framework/frontend/L1-M1-文本输入原子模块.md"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:framework:module:frontend.L1.M2",
+            "parent": "project:desktop_screenshot_translate:framework",
+            "kind": "framework_module",
+            "layer": "Framework",
+            "title": "前端展示与容器原子模块",
+            "file": "framework/frontend/L1-M2-展示与容器原子模块.md"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:framework:module:frontend.L1.M3",
+            "parent": "project:desktop_screenshot_translate:framework",
+            "kind": "framework_module",
+            "layer": "Framework",
+            "title": "前端集合与导航原子模块",
+            "file": "framework/frontend/L1-M3-集合与导航原子模块.md"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:framework:module:frontend.L1.M4",
+            "parent": "project:desktop_screenshot_translate:framework",
+            "kind": "framework_module",
+            "layer": "Framework",
+            "title": "前端标记与反馈原子模块",
+            "file": "framework/frontend/L1-M4-标记与反馈原子模块.md"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:framework:module:frontend.L2.M0",
+            "parent": "project:desktop_screenshot_translate:framework",
+            "kind": "framework_module",
+            "layer": "Framework",
+            "title": "前端框架标准模块",
+            "file": "framework/frontend/L2-M0-前端框架标准模块.md"
+          },
+          {
+            "node_id": "project:desktop_screenshot_translate:framework:module:runtime_env.L0.M0",
+            "parent": "project:desktop_screenshot_translate:framework",
+            "kind": "framework_module",
+            "layer": "Framework",
+            "title": "运行环境识别模块",
+            "file": "framework/runtime_env/L0-M0-运行环境识别模块.md"
+          }
+        ]
+      },
       "knowledge_base_basic": {
         "tree_version": "governance-tree/v1",
         "project_id": "knowledge_base_basic",
@@ -3277,6 +3996,24 @@
         "workspace:shelf:evidence",
         "workspace:shelf:evidence:artifact:governance_tree_json"
       ],
+      "framework/aitrans/L2-M0-桌面宿主层.md": [
+        "standards:NODE-L2-AITRANS-M0"
+      ],
+      "framework/aitrans/L2-M1-截图交互层.md": [
+        "standards:NODE-L2-AITRANS-M1"
+      ],
+      "framework/aitrans/L2-M2-识别翻译层.md": [
+        "standards:NODE-L2-AITRANS-M2"
+      ],
+      "framework/aitrans/L2-M3-结果展示层.md": [
+        "standards:NODE-L2-AITRANS-M3"
+      ],
+      "framework/aitrans/L2-M4-运行治理层.md": [
+        "standards:NODE-L2-AITRANS-M4"
+      ],
+      "framework/aitrans/L3-M0-桌面截图翻译框架.md": [
+        "project:desktop_screenshot_translate:framework:module:aitrans.L3.M0"
+      ],
       "framework/backend/L2-M0-知识库接口框架标准模块.md": [
         "project:knowledge_base_basic:framework:module:backend.L2.M0",
         "project:knowledge_base_basic:framework:module:backend.L2.M0:rule:R1",
@@ -3288,7 +4025,32 @@
       "framework/curtain/L2-M0-窗帘框架标准模块.md": [
         "standards:NODE-L2-CURTAIN"
       ],
+      "framework/frontend/L0-M0-承载与绑定原子模块.md": [
+        "project:desktop_screenshot_translate:framework:module:frontend.L0.M0"
+      ],
+      "framework/frontend/L0-M1-状态与交互原子模块.md": [
+        "project:desktop_screenshot_translate:framework:module:frontend.L0.M1"
+      ],
+      "framework/frontend/L0-M2-视觉语义原子模块.md": [
+        "project:desktop_screenshot_translate:framework:module:frontend.L0.M2"
+      ],
+      "framework/frontend/L1-M0-触发与选择原子模块.md": [
+        "project:desktop_screenshot_translate:framework:module:frontend.L1.M0"
+      ],
+      "framework/frontend/L1-M1-文本输入原子模块.md": [
+        "project:desktop_screenshot_translate:framework:module:frontend.L1.M1"
+      ],
+      "framework/frontend/L1-M2-展示与容器原子模块.md": [
+        "project:desktop_screenshot_translate:framework:module:frontend.L1.M2"
+      ],
+      "framework/frontend/L1-M3-集合与导航原子模块.md": [
+        "project:desktop_screenshot_translate:framework:module:frontend.L1.M3"
+      ],
+      "framework/frontend/L1-M4-标记与反馈原子模块.md": [
+        "project:desktop_screenshot_translate:framework:module:frontend.L1.M4"
+      ],
       "framework/frontend/L2-M0-前端框架标准模块.md": [
+        "project:desktop_screenshot_translate:framework:module:frontend.L2.M0",
         "project:knowledge_base_basic:framework:module:frontend.L2.M0",
         "project:knowledge_base_basic:framework:module:frontend.L2.M0:rule:R1",
         "project:knowledge_base_basic:framework:module:frontend.L2.M0:rule:R2",
@@ -3303,6 +4065,9 @@
         "project:knowledge_base_basic:framework:module:knowledge_base.L2.M0:rule:R4",
         "standards:NODE-L2-KNOWLEDGE-BASE"
       ],
+      "framework/runtime_env/L0-M0-运行环境识别模块.md": [
+        "project:desktop_screenshot_translate:framework:module:runtime_env.L0.M0"
+      ],
       "framework/shelf/L2-M0-置物架框架标准模块.md": [
         "standards:NODE-L2-SHELF"
       ],
@@ -3315,6 +4080,18 @@
       ],
       "projects": [
         "workspace:shelf:projects"
+      ],
+      "projects/desktop_screenshot_translate/implementation_config.toml": [
+        "project:desktop_screenshot_translate:code",
+        "project:desktop_screenshot_translate:implementation_config",
+        "project:desktop_screenshot_translate:implementation_config:file"
+      ],
+      "projects/desktop_screenshot_translate/product_spec.toml": [
+        "project:desktop_screenshot_translate",
+        "project:desktop_screenshot_translate:evidence",
+        "project:desktop_screenshot_translate:framework",
+        "project:desktop_screenshot_translate:product_spec",
+        "project:desktop_screenshot_translate:product_spec:file"
       ],
       "projects/knowledge_base_basic/generated/framework_ir.json": [
         "project:knowledge_base_basic:evidence:artifact:framework_ir_json"
@@ -3414,8 +4191,32 @@
       "standards:NODE-L2-BACKEND": null,
       "standards:NODE-L2-FRONTEND": null,
       "standards:NODE-L2-KNOWLEDGE-BASE": null,
+      "standards:NODE-L2-AITRANS-M0": null,
+      "standards:NODE-L2-AITRANS-M1": null,
+      "standards:NODE-L2-AITRANS-M2": null,
+      "standards:NODE-L2-AITRANS-M3": null,
+      "standards:NODE-L2-AITRANS-M4": null,
       "standards:NODE-L3-LAYER": null,
       "standards:NODE-L3-REGISTRY": null,
+      "project:desktop_screenshot_translate": "workspace:shelf:projects",
+      "project:desktop_screenshot_translate:code": "project:desktop_screenshot_translate",
+      "project:desktop_screenshot_translate:evidence": "project:desktop_screenshot_translate",
+      "project:desktop_screenshot_translate:framework": "project:desktop_screenshot_translate",
+      "project:desktop_screenshot_translate:framework:module:aitrans.L3.M0": "project:desktop_screenshot_translate:framework",
+      "project:desktop_screenshot_translate:framework:module:frontend.L0.M0": "project:desktop_screenshot_translate:framework",
+      "project:desktop_screenshot_translate:framework:module:frontend.L0.M1": "project:desktop_screenshot_translate:framework",
+      "project:desktop_screenshot_translate:framework:module:frontend.L0.M2": "project:desktop_screenshot_translate:framework",
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M0": "project:desktop_screenshot_translate:framework",
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M1": "project:desktop_screenshot_translate:framework",
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M2": "project:desktop_screenshot_translate:framework",
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M3": "project:desktop_screenshot_translate:framework",
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M4": "project:desktop_screenshot_translate:framework",
+      "project:desktop_screenshot_translate:framework:module:frontend.L2.M0": "project:desktop_screenshot_translate:framework",
+      "project:desktop_screenshot_translate:framework:module:runtime_env.L0.M0": "project:desktop_screenshot_translate:framework",
+      "project:desktop_screenshot_translate:implementation_config": "project:desktop_screenshot_translate",
+      "project:desktop_screenshot_translate:implementation_config:file": "project:desktop_screenshot_translate:implementation_config",
+      "project:desktop_screenshot_translate:product_spec": "project:desktop_screenshot_translate",
+      "project:desktop_screenshot_translate:product_spec:file": "project:desktop_screenshot_translate:product_spec",
       "project:knowledge_base_basic": "workspace:shelf:projects",
       "project:knowledge_base_basic:code": "project:knowledge_base_basic",
       "project:knowledge_base_basic:code:symbol:kb.answer.behavior": "project:knowledge_base_basic:code",
@@ -3465,6 +4266,47 @@
       "project:knowledge_base_basic:product_spec:file:projects/knowledge_base_basic/product_spec.toml:section:surface": "project:knowledge_base_basic:product_spec:file:projects/knowledge_base_basic/product_spec.toml"
     },
     "children_index": {
+      "project:desktop_screenshot_translate": [
+        "project:desktop_screenshot_translate:code",
+        "project:desktop_screenshot_translate:evidence",
+        "project:desktop_screenshot_translate:framework",
+        "project:desktop_screenshot_translate:implementation_config",
+        "project:desktop_screenshot_translate:product_spec"
+      ],
+      "project:desktop_screenshot_translate:code": [],
+      "project:desktop_screenshot_translate:evidence": [],
+      "project:desktop_screenshot_translate:framework": [
+        "project:desktop_screenshot_translate:framework:module:aitrans.L3.M0",
+        "project:desktop_screenshot_translate:framework:module:frontend.L0.M0",
+        "project:desktop_screenshot_translate:framework:module:frontend.L0.M1",
+        "project:desktop_screenshot_translate:framework:module:frontend.L0.M2",
+        "project:desktop_screenshot_translate:framework:module:frontend.L1.M0",
+        "project:desktop_screenshot_translate:framework:module:frontend.L1.M1",
+        "project:desktop_screenshot_translate:framework:module:frontend.L1.M2",
+        "project:desktop_screenshot_translate:framework:module:frontend.L1.M3",
+        "project:desktop_screenshot_translate:framework:module:frontend.L1.M4",
+        "project:desktop_screenshot_translate:framework:module:frontend.L2.M0",
+        "project:desktop_screenshot_translate:framework:module:runtime_env.L0.M0"
+      ],
+      "project:desktop_screenshot_translate:framework:module:aitrans.L3.M0": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L0.M0": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L0.M1": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L0.M2": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M0": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M1": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M2": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M3": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M4": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L2.M0": [],
+      "project:desktop_screenshot_translate:framework:module:runtime_env.L0.M0": [],
+      "project:desktop_screenshot_translate:implementation_config": [
+        "project:desktop_screenshot_translate:implementation_config:file"
+      ],
+      "project:desktop_screenshot_translate:implementation_config:file": [],
+      "project:desktop_screenshot_translate:product_spec": [
+        "project:desktop_screenshot_translate:product_spec:file"
+      ],
+      "project:desktop_screenshot_translate:product_spec:file": [],
       "project:knowledge_base_basic": [
         "project:knowledge_base_basic:code",
         "project:knowledge_base_basic:evidence",
@@ -3576,6 +4418,11 @@
       "standards:NODE-L1-LINT": [],
       "standards:NODE-L1-REDUCIBILITY": [],
       "standards:NODE-L1-TRACEABILITY": [],
+      "standards:NODE-L2-AITRANS-M0": [],
+      "standards:NODE-L2-AITRANS-M1": [],
+      "standards:NODE-L2-AITRANS-M2": [],
+      "standards:NODE-L2-AITRANS-M3": [],
+      "standards:NODE-L2-AITRANS-M4": [],
       "standards:NODE-L2-BACKEND": [],
       "standards:NODE-L2-CURTAIN": [],
       "standards:NODE-L2-FRONTEND": [],
@@ -3595,11 +4442,31 @@
       "workspace:shelf:evidence:artifact:governance_tree_html": [],
       "workspace:shelf:evidence:artifact:governance_tree_json": [],
       "workspace:shelf:projects": [
+        "project:desktop_screenshot_translate",
         "project:knowledge_base_basic"
       ],
       "workspace:shelf:standards": []
     },
     "derived_index": {
+      "project:desktop_screenshot_translate": [],
+      "project:desktop_screenshot_translate:code": [],
+      "project:desktop_screenshot_translate:evidence": [],
+      "project:desktop_screenshot_translate:framework": [],
+      "project:desktop_screenshot_translate:framework:module:aitrans.L3.M0": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L0.M0": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L0.M1": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L0.M2": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M0": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M1": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M2": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M3": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L1.M4": [],
+      "project:desktop_screenshot_translate:framework:module:frontend.L2.M0": [],
+      "project:desktop_screenshot_translate:framework:module:runtime_env.L0.M0": [],
+      "project:desktop_screenshot_translate:implementation_config": [],
+      "project:desktop_screenshot_translate:implementation_config:file": [],
+      "project:desktop_screenshot_translate:product_spec": [],
+      "project:desktop_screenshot_translate:product_spec:file": [],
       "project:knowledge_base_basic": [],
       "project:knowledge_base_basic:code": [],
       "project:knowledge_base_basic:code:symbol:kb.answer.behavior": [
@@ -3746,6 +4613,11 @@
       "standards:NODE-L1-LINT": [],
       "standards:NODE-L1-REDUCIBILITY": [],
       "standards:NODE-L1-TRACEABILITY": [],
+      "standards:NODE-L2-AITRANS-M0": [],
+      "standards:NODE-L2-AITRANS-M1": [],
+      "standards:NODE-L2-AITRANS-M2": [],
+      "standards:NODE-L2-AITRANS-M3": [],
+      "standards:NODE-L2-AITRANS-M4": [],
       "standards:NODE-L2-BACKEND": [],
       "standards:NODE-L2-CURTAIN": [],
       "standards:NODE-L2-FRONTEND": [],
@@ -3916,6 +4788,32 @@
       ]
     },
     "project_index": {
+      "desktop_screenshot_translate": {
+        "root_node_id": "project:desktop_screenshot_translate",
+        "product_spec_file": "projects/desktop_screenshot_translate/product_spec.toml",
+        "node_ids": [
+          "project:desktop_screenshot_translate",
+          "project:desktop_screenshot_translate:code",
+          "project:desktop_screenshot_translate:evidence",
+          "project:desktop_screenshot_translate:framework",
+          "project:desktop_screenshot_translate:framework:module:aitrans.L3.M0",
+          "project:desktop_screenshot_translate:framework:module:frontend.L0.M0",
+          "project:desktop_screenshot_translate:framework:module:frontend.L0.M1",
+          "project:desktop_screenshot_translate:framework:module:frontend.L0.M2",
+          "project:desktop_screenshot_translate:framework:module:frontend.L1.M0",
+          "project:desktop_screenshot_translate:framework:module:frontend.L1.M1",
+          "project:desktop_screenshot_translate:framework:module:frontend.L1.M2",
+          "project:desktop_screenshot_translate:framework:module:frontend.L1.M3",
+          "project:desktop_screenshot_translate:framework:module:frontend.L1.M4",
+          "project:desktop_screenshot_translate:framework:module:frontend.L2.M0",
+          "project:desktop_screenshot_translate:framework:module:runtime_env.L0.M0",
+          "project:desktop_screenshot_translate:implementation_config",
+          "project:desktop_screenshot_translate:implementation_config:file",
+          "project:desktop_screenshot_translate:product_spec",
+          "project:desktop_screenshot_translate:product_spec:file"
+        ],
+        "evidence_root_id": "project:desktop_screenshot_translate:evidence"
+      },
       "knowledge_base_basic": {
         "root_node_id": "project:knowledge_base_basic",
         "product_spec_file": "projects/knowledge_base_basic/product_spec.toml",

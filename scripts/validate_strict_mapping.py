@@ -32,7 +32,9 @@ from project_runtime import (
     KNOWLEDGE_BASE_TEMPLATE_ID,
     build_implementation_effect_manifest,
     detect_project_template_id,
+    load_project,
     load_knowledge_base_project,
+    materialize_project,
     materialize_knowledge_base_project,
 )
 from project_runtime.governance import (
@@ -145,6 +147,7 @@ KNOWLEDGE_BASE_PRODUCT_SPEC_SCHEMA = ProjectTomlSchema(
         "surface",
         "visual",
         "route",
+        "showcase_page",
         "a11y",
         "library",
         "preview",
@@ -159,6 +162,7 @@ KNOWLEDGE_BASE_PRODUCT_SPEC_SCHEMA = ProjectTomlSchema(
         "surface",
         "visual",
         "route",
+        "showcase_page",
         "a11y",
         "library",
         "preview",
@@ -249,6 +253,22 @@ PROJECT_TEMPLATE_SCHEMAS: dict[str, dict[str, ProjectTomlSchema]] = {
         "product_spec": AITRANS_PRODUCT_SPEC_SCHEMA,
         "implementation_config": AITRANS_IMPLEMENTATION_SCHEMA,
     },
+}
+PROJECT_TEMPLATE_ARTIFACT_KEYS: dict[str, tuple[str, ...]] = {
+    "knowledge_base_workbench": (
+        "framework_ir_json",
+        "product_spec_json",
+        "implementation_bundle_py",
+        "generation_manifest_json",
+        "governance_manifest_json",
+        "governance_tree_json",
+    ),
+    "desktop_screenshot_translate": (
+        "framework_ir_json",
+        "product_spec_json",
+        "implementation_bundle_py",
+        "generation_manifest_json",
+    ),
 }
 
 
@@ -390,18 +410,15 @@ def implementation_config_path_for(product_spec_file: Path) -> Path:
 def expected_generated_files_for(product_spec_file: Path) -> tuple[str, ...]:
     implementation_config_file = implementation_config_path_for(product_spec_file)
     _, data = _load_toml_text_and_data(implementation_config_file)
+    template_id = detect_project_template_id(product_spec_file)
+    artifact_keys = PROJECT_TEMPLATE_ARTIFACT_KEYS.get(template_id)
+    if artifact_keys is None:
+        raise ValueError(f"unsupported project template: {template_id}")
     artifacts = data.get("artifacts")
     if not isinstance(artifacts, dict):
         raise ValueError("implementation_config.toml must define [artifacts]")
     names: list[str] = []
-    for key in (
-        "framework_ir_json",
-        "product_spec_json",
-        "implementation_bundle_py",
-        "generation_manifest_json",
-        "governance_manifest_json",
-        "governance_tree_json",
-    ):
+    for key in artifact_keys:
         value = artifacts.get(key)
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"implementation_config.toml missing artifacts.{key}")
@@ -636,9 +653,10 @@ def validate_project_configuration_layout(product_spec_files: list[Path] | None 
                     code="PROJECT_TEMPLATE_UNSUPPORTED",
                 )
             )
-            template_id = KNOWLEDGE_BASE_TEMPLATE_ID
+            continue
 
-        if template_id != KNOWLEDGE_BASE_TEMPLATE_ID:
+        schema_bundle = PROJECT_TEMPLATE_SCHEMAS.get(template_id)
+        if schema_bundle is None:
             rel_product_spec_file = product_spec_file.relative_to(REPO_ROOT).as_posix()
             issues.append(
                 make_issue(
@@ -648,8 +666,9 @@ def validate_project_configuration_layout(product_spec_files: list[Path] | None 
                     code="PROJECT_TEMPLATE_UNSUPPORTED",
                 )
             )
+            continue
 
-        product_spec_layout = KNOWLEDGE_BASE_PRODUCT_SPEC_LAYOUT
+        product_spec_layout = schema_bundle["product_spec"]
         issues.extend(
             _validate_project_toml_layout(
                 product_spec_file,
@@ -688,7 +707,7 @@ def validate_project_configuration_layout(product_spec_files: list[Path] | None 
                 )
             )
             continue
-        implementation_layout = KNOWLEDGE_BASE_IMPLEMENTATION_CONFIG_LAYOUT
+        implementation_layout = schema_bundle["implementation_config"]
         issues.extend(
             _validate_project_toml_layout(
                 implementation_config_file,
@@ -722,7 +741,7 @@ def validate_project_generation_discipline(
     issues.extend(validate_project_configuration_layout(project_product_spec_files))
 
     try:
-        materialize_knowledge_base_project
+        materialize_project
     except Exception as exc:
         issues.append(
             make_issue(
@@ -900,6 +919,9 @@ def validate_implementation_config_effects(
     issues: list[Issue] = []
     project_product_spec_files = product_spec_files or discover_project_product_spec_files()
     for product_spec_file in project_product_spec_files:
+        template_id = detect_project_template_id(product_spec_file)
+        if template_id != KNOWLEDGE_BASE_TEMPLATE_ID:
+            continue
         rel_product_spec_file = product_spec_file.relative_to(REPO_ROOT).as_posix()
         implementation_config_file = implementation_config_path_for(product_spec_file)
         rel_implementation_config_file = implementation_config_file.relative_to(REPO_ROOT).as_posix()
@@ -1075,6 +1097,9 @@ def validate_project_governance(
     issues: list[Issue] = []
     project_product_spec_files = product_spec_files or discover_project_product_spec_files()
     for product_spec_file in project_product_spec_files:
+        template_id = detect_project_template_id(product_spec_file)
+        if template_id != KNOWLEDGE_BASE_TEMPLATE_ID:
+            continue
         rel_product_spec_file = product_spec_file.relative_to(REPO_ROOT).as_posix()
         implementation_config_file = implementation_config_path_for(product_spec_file)
         rel_implementation_config_file = implementation_config_file.relative_to(REPO_ROOT).as_posix()

@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 from typing import Any, cast
 
-from project_runtime import load_knowledge_base_project
+from project_runtime import KNOWLEDGE_BASE_TEMPLATE_ID, load_project
 from project_runtime.governance import build_governance_tree
 from standards_tree import build_standards_tree
 
@@ -156,6 +156,114 @@ def _project_node_source_line(node: dict[str, Any]) -> int:
     if kind == "implementation_section":
         return _toml_section_line(file_path, str(node.get("ref_id") or ""))
     return _first_heading_line(file_path)
+
+
+def _build_fallback_project_tree(project: Any) -> dict[str, Any]:
+    project_id = str(project.metadata.project_id)
+    project_root_id = f"project:{project_id}"
+    framework_root_id = f"{project_root_id}:framework"
+    product_root_id = f"{project_root_id}:product_spec"
+    implementation_root_id = f"{project_root_id}:implementation_config"
+    code_root_id = f"{project_root_id}:code"
+    evidence_root_id = f"{project_root_id}:evidence"
+
+    nodes: list[dict[str, Any]] = [
+        {
+            "node_id": project_root_id,
+            "parent": None,
+            "kind": "project_root",
+            "layer": "Project",
+            "title": str(project.metadata.display_name),
+            "file": _relative(project.product_spec_file),
+        },
+        {
+            "node_id": framework_root_id,
+            "parent": project_root_id,
+            "kind": "framework_root",
+            "layer": "Framework",
+            "title": "Framework",
+            "file": _relative(project.product_spec_file),
+        },
+        {
+            "node_id": product_root_id,
+            "parent": project_root_id,
+            "kind": "product_root",
+            "layer": "Product Spec",
+            "title": "Product Spec",
+            "file": _relative(project.product_spec_file),
+        },
+        {
+            "node_id": implementation_root_id,
+            "parent": project_root_id,
+            "kind": "implementation_root",
+            "layer": "Implementation Config",
+            "title": "Implementation Config",
+            "file": _relative(project.implementation_config_file),
+        },
+        {
+            "node_id": code_root_id,
+            "parent": project_root_id,
+            "kind": "code_root",
+            "layer": "Code",
+            "title": "Code",
+            "file": _relative(project.implementation_config_file),
+        },
+        {
+            "node_id": evidence_root_id,
+            "parent": project_root_id,
+            "kind": "evidence_root",
+            "layer": "Evidence",
+            "title": "Evidence",
+            "file": _relative(project.product_spec_file),
+        },
+        {
+            "node_id": f"{product_root_id}:file",
+            "parent": product_root_id,
+            "kind": "product_spec_file",
+            "layer": "Product Spec",
+            "title": Path(str(project.product_spec_file)).name,
+            "file": _relative(project.product_spec_file),
+        },
+        {
+            "node_id": f"{implementation_root_id}:file",
+            "parent": implementation_root_id,
+            "kind": "implementation_config_file",
+            "layer": "Implementation Config",
+            "title": Path(str(project.implementation_config_file)).name,
+            "file": _relative(project.implementation_config_file),
+        },
+    ]
+
+    framework_nodes: dict[str, dict[str, Any]] = {}
+    module_candidates = []
+    for attr in ("frontend_ir", "domain_ir", "runtime_ir"):
+        module = getattr(project, attr, None)
+        if module is not None:
+            module_candidates.append(module)
+    module_candidates.extend(list(getattr(project, "resolved_modules", ()) or ()))
+
+    for module in module_candidates:
+        module_id = str(getattr(module, "module_id", "")).strip()
+        module_path = str(getattr(module, "path", "")).strip()
+        if not module_id or not module_path:
+            continue
+        node_id = f"{framework_root_id}:module:{module_id}"
+        framework_nodes[node_id] = {
+            "node_id": node_id,
+            "parent": framework_root_id,
+            "kind": "framework_module",
+            "layer": "Framework",
+            "title": str(getattr(module, "title_cn", "") or module_id),
+            "file": _relative(module_path),
+        }
+
+    nodes.extend(sorted(framework_nodes.values(), key=lambda item: str(item["node_id"])))
+
+    return {
+        "project_id": project_id,
+        "root_node_id": project_root_id,
+        "nodes": nodes,
+    }
 
 
 def _project_tree_to_hierarchy_nodes(
@@ -395,8 +503,11 @@ def build_workspace_governance_payload(
     project_roots: dict[str, str] = {}
 
     for product_spec_file in requested_product_spec_files:
-        project = load_knowledge_base_project(product_spec_file)
-        project_tree = build_governance_tree(project)
+        project = load_project(product_spec_file)
+        if str(project.metadata.template) == KNOWLEDGE_BASE_TEMPLATE_ID:
+            project_tree = build_governance_tree(project)
+        else:
+            project_tree = _build_fallback_project_tree(project)
         project_id = str(project_tree.get("project_id") or project.metadata.project_id)
         rel_product_spec_file = _relative(product_spec_file)
         project_trees[project_id] = project_tree

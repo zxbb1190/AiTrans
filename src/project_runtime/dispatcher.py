@@ -10,7 +10,7 @@ from project_runtime.aitrans import (
     materialize_aitrans_project,
 )
 from project_runtime.knowledge_base import (
-    SUPPORTED_PROJECT_TEMPLATE as KNOWLEDGE_BASE_TEMPLATE,
+    KNOWLEDGE_BASE_TEMPLATE_ID as KNOWLEDGE_BASE_TEMPLATE,
     load_knowledge_base_project,
     materialize_knowledge_base_project,
 )

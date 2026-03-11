@@ -11,7 +11,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from generate_module_hierarchy_html import load_hierarchy, render_html
-from project_runtime import materialize_knowledge_base_project
+from project_runtime import materialize_project
 from workspace_governance import (
     DEFAULT_WORKSPACE_GOVERNANCE_HTML,
     DEFAULT_WORKSPACE_GOVERNANCE_JSON,
