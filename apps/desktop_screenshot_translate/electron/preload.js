@@ -28,6 +28,9 @@ contextBridge.exposeInMainWorld('aitransDesktop', {
   recapture() {
     return ipcRenderer.invoke('panel:recapture');
   },
+  retryTranslation() {
+    return ipcRenderer.invoke('panel:retry-translation');
+  },
   getProjectSummary() {
     return ipcRenderer.invoke('panel:get-project-summary');
   },

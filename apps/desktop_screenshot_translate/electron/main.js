@@ -12,21 +12,15 @@ let tray = null;
 let overlayWindow = null;
 let panelWindow = null;
 let lastSelection = null;
+let lastPipelineState = null;
 
 function createTrayImage() {
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-      <rect x="4" y="4" width="24" height="24" rx="7" fill="#0f766e" />
-      <path d="M10 11h12v2H10zm0 4h7v2h-7zm0 4h12v2H10z" fill="#f8fafc" />
-    </svg>
-  `;
-  const vectorImage = nativeImage.createFromDataURL(
-    `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
-  );
-  const rasterImage = nativeImage.createFromBuffer(
-    vectorImage.resize({ width: 16, height: 16, quality: 'best' }).toPNG(),
-  );
-  return rasterImage.isEmpty() ? vectorImage : rasterImage;
+  const iconPath = path.join(__dirname, 'assets', 'tray-icon@2x.png');
+  const image = nativeImage.createFromPath(iconPath);
+  if (image.isEmpty()) {
+    return nativeImage.createEmpty();
+  }
+  return image.resize({ width: 16, height: 16, quality: 'best' });
 }
 
 function getOverlayDisplay() {
@@ -186,6 +180,24 @@ function showPanel(result) {
   }
 }
 
+function rememberPipelineState(selection, capture, ocrResult, translatedText, translationDiagnostics) {
+  lastPipelineState = {
+    selection,
+    sourceText: ocrResult?.text?.trim() || '',
+    capturePreviewDataUrl: capture?.dataUrl || null,
+    captureMeta: {
+      width: capture?.size?.width || null,
+      height: capture?.size?.height || null,
+      targetLanguage: config.productSpec.pipeline.target_language,
+      ocrProvider: ocrResult?.provider || null,
+      translationProvider: translationDiagnostics?.provider || null,
+      ocrDiagnostics: ocrResult?.diagnostics || null,
+      translationDiagnostics: translationDiagnostics?.diagnostics || null,
+    },
+    translatedText: translatedText || '',
+  };
+}
+
 function createTray() {
   tray = new Tray(createTrayImage());
   tray.setToolTip(config.productSpec.project.display_name);
@@ -221,6 +233,7 @@ function registerShortcuts() {
 
 ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
   lastSelection = selection;
+  lastPipelineState = null;
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.hide();
   }
@@ -248,6 +261,7 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
 
     const ocrResult = await recognizeText(capture, config.productSpec, config.implementationConfig);
     const recognizedText = ocrResult.text.trim();
+    rememberPipelineState(selection, capture, ocrResult, '', null);
 
     showPanel(buildStageResult(selection, {
       stageStatus: 'translation_processing',
@@ -269,6 +283,7 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
       config.productSpec,
       config.implementationConfig,
     );
+    rememberPipelineState(selection, capture, ocrResult, translationResult.translatedText, translationResult);
 
     const result = buildStageResult(selection, {
       stageStatus: 'translation_ready',
@@ -289,12 +304,19 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    showPanel({
-      ...buildStubResult(selection),
+    const failureResult = {
+      ...(lastPipelineState
+        ? buildStageResult(lastPipelineState.selection || selection, {
+            sourceText: lastPipelineState.sourceText || '等待本地主链输出结果。',
+            capturePreviewDataUrl: lastPipelineState.capturePreviewDataUrl,
+            captureMeta: lastPipelineState.captureMeta,
+          })
+        : buildStubResult(selection)),
       stageStatus: 'failed',
       translatedText: 'OCR 或翻译主链执行失败，请检查 desktopCapturer、内置或外部 tesseract、OPENAI_API_KEY、AITRANS_OPENAI_BASE_URL 或当前 Windows 权限状态。',
       errorOrigin: message,
-    });
+    };
+    showPanel(failureResult);
     return { ok: false, error: message };
   }
 });
@@ -321,6 +343,67 @@ ipcMain.handle('panel:close', async () => {
 ipcMain.handle('panel:recapture', async () => {
   showOverlay();
   return { ok: true };
+});
+
+ipcMain.handle('panel:retry-translation', async () => {
+  if (!lastPipelineState || !lastPipelineState.sourceText) {
+    return { ok: false, error: 'missing OCR source text for retry' };
+  }
+
+  try {
+    showPanel(buildStageResult(lastPipelineState.selection || getFallbackSelection(), {
+      stageStatus: 'translation_processing',
+      sourceText: lastPipelineState.sourceText,
+      translatedText: '正在重新调用翻译 provider…',
+      capturePreviewDataUrl: lastPipelineState.capturePreviewDataUrl,
+      captureMeta: {
+        ...lastPipelineState.captureMeta,
+        translationProvider: 'pending',
+      },
+    }));
+
+    const translationResult = await translateText(
+      lastPipelineState.sourceText,
+      config.productSpec,
+      config.implementationConfig,
+    );
+
+    rememberPipelineState(
+      lastPipelineState.selection || getFallbackSelection(),
+      { dataUrl: lastPipelineState.capturePreviewDataUrl, size: { width: lastPipelineState.captureMeta?.width, height: lastPipelineState.captureMeta?.height } },
+      {
+        provider: lastPipelineState.captureMeta?.ocrProvider,
+        diagnostics: lastPipelineState.captureMeta?.ocrDiagnostics || null,
+        text: lastPipelineState.sourceText,
+      },
+      translationResult.translatedText,
+      translationResult,
+    );
+
+    showPanel(buildStageResult(lastPipelineState.selection || getFallbackSelection(), {
+      stageStatus: 'translation_ready',
+      sourceText: lastPipelineState.sourceText,
+      translatedText: translationResult.translatedText,
+      capturePreviewDataUrl: lastPipelineState.capturePreviewDataUrl,
+      captureMeta: {
+        ...lastPipelineState.captureMeta,
+        translationProvider: translationResult.provider,
+        translationDiagnostics: translationResult.diagnostics || null,
+      },
+    }));
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    showPanel(buildStageResult(lastPipelineState.selection || getFallbackSelection(), {
+      stageStatus: 'failed',
+      sourceText: lastPipelineState.sourceText,
+      translatedText: config.productSpec.presentation.copy.failure_title,
+      capturePreviewDataUrl: lastPipelineState.capturePreviewDataUrl,
+      captureMeta: lastPipelineState.captureMeta,
+      errorOrigin: message,
+    }));
+    return { ok: false, error: message };
+  }
 });
 
 ipcMain.handle('panel:get-project-summary', async () => {
