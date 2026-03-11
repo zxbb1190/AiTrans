@@ -116,7 +116,7 @@ function main() {
       console.log('[NEXT] place bundled tesseract under electron/vendor/tesseract, or set AITRANS_TESSERACT_PATH in the current session');
     }
     if (failures.includes('missing translation credential')) {
-      console.log('[NEXT] set OPENAI_API_KEY for the official endpoint, or set AITRANS_OPENAI_BASE_URL to a reachable local compatible endpoint');
+      console.log('[NEXT] set OPENAI_API_KEY or AITRANS_OPENAI_API_KEY, or set AITRANS_OPENAI_BASE_URL to a reachable local compatible endpoint');
     }
     process.exitCode = 1;
     return;

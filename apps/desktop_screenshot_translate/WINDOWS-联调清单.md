@@ -63,7 +63,7 @@ npm install
 设置翻译端点所需环境变量：
 
 ```powershell
-$env:OPENAI_API_KEY="你的key"
+$env:AITRANS_OPENAI_API_KEY="你的key"
 ```
 
 如果你要切到局域网里的 OpenAI 兼容端点，再补：
@@ -155,7 +155,7 @@ npm run dev:doctor
 
 大概率是：
 
-- `OPENAI_API_KEY` 无效
+- `OPENAI_API_KEY` / `AITRANS_OPENAI_API_KEY` 无效
 - 局域网兼容端点不可达
 - 目标翻译端点返回错误
 

@@ -32,7 +32,7 @@
    - 正式发布目标是“应用内置 OCR 运行时”，不要求终端用户手工安装 `tesseract`
    - 当前开发联调阶段若 bundling 尚未接入，可临时设置 `AITRANS_TESSERACT_PATH`
    - `openai_translation` 目标端点允许是 OpenAI 官方或局域网内兼容端点
-   - OpenAI 官方端点默认走 `OPENAI_API_KEY`
+   - 官方或兼容端点都可使用 `OPENAI_API_KEY` 或 `AITRANS_OPENAI_API_KEY`
    - 若切到局域网兼容端点，可设置 `AITRANS_OPENAI_BASE_URL`
 4. 在 Windows 侧做一次预检并启动：
    - `npm run doctor`
