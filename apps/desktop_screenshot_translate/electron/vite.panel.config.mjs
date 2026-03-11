@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   root: path.resolve(__dirname, 'renderer', 'panel-src'),
+  base: './',
   plugins: [vue()],
   build: {
     outDir: path.resolve(__dirname, 'renderer', 'panel-dist'),

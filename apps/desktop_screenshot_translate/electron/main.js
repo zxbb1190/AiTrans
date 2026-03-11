@@ -20,7 +20,13 @@ function createTrayImage() {
       <path d="M10 11h12v2H10zm0 4h7v2h-7zm0 4h12v2H10z" fill="#f8fafc" />
     </svg>
   `;
-  return nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`);
+  const vectorImage = nativeImage.createFromDataURL(
+    `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
+  );
+  const rasterImage = nativeImage.createFromBuffer(
+    vectorImage.resize({ width: 16, height: 16, quality: 'best' }).toPNG(),
+  );
+  return rasterImage.isEmpty() ? vectorImage : rasterImage;
 }
 
 function getOverlayDisplay() {
@@ -88,6 +94,12 @@ function createPanelWindow() {
     },
   });
   panelWindow.loadFile(path.join(__dirname, 'renderer', 'panel-dist', 'index.html'));
+  panelWindow.webContents.on('did-fail-load', (_event, code, description, validatedUrl) => {
+    console.error('[panel] load failed', { code, description, validatedUrl });
+  });
+  panelWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[panel] render process gone', details);
+  });
   panelWindow.on('close', (event) => {
     if (!app.isQuitting) {
       event.preventDefault();
