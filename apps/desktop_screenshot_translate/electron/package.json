@@ -88,8 +88,11 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "allowElevation": true,
+      "allowToChangeInstallationDirectory": false,
+      "allowElevation": false,
+      "packElevateHelper": false,
+      "perMachine": false,
+      "selectPerMachineByDefault": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "AiTrans Screenshot Translate",
