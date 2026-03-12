@@ -145,6 +145,9 @@ function ensureRuntimeOverridesTemplate() {
       tesseract_path: '',
       tessdata_dir: '',
     },
+    release: {
+      update_base_url: '',
+    },
   };
   fs.writeFileSync(configPath, JSON.stringify(fallbackTemplate, null, 2), 'utf-8');
   return {
@@ -171,6 +174,10 @@ function writeRuntimeOverrides(nextValues) {
     ocr: {
       ...normalizePlainObject(currentValues.ocr),
       ...normalizePlainObject(incomingValues.ocr),
+    },
+    release: {
+      ...normalizePlainObject(currentValues.release),
+      ...normalizePlainObject(incomingValues.release),
     },
   };
 

@@ -74,6 +74,7 @@ npm run release:win
 这个命令会额外生成：
 
 - `release-manifest-<version>.json`
+- 若自动更新已启用，还应生成 `latest.yml`
 
 ## 4. 产物位置
 
@@ -87,6 +88,7 @@ npm run release:win
 - `desktop-screenshot-translate-<version>-x64-portable.exe`
 - 对应的 `.blockmap`
 - `release-manifest-<version>.json`
+- 若自动更新已启用，还应看到 `latest.yml`
 
 ## 5. 给其他人的运行方式
 
@@ -120,16 +122,37 @@ OCR 运行时已随安装包分发，不应再要求用户手工安装 `tesserac
 6. `win-unpacked` 与安装版都能正常调用 bundled Tesseract
 7. 首次截图若命中空 OCR，不应直接报错给用户，而应由应用内部吸收短时重试
 
-## 7. 当前边界
+## 7. 自动更新发布要求
+
+当前 Windows 自动更新只针对：
+
+- `NSIS` 安装版
+
+不覆盖：
+
+- `portable` 便携版
+
+若要让安装版自动更新真正可用，更新源目录至少需要提供：
+
+- `latest.yml`
+- `desktop-screenshot-translate-<version>-x64.exe`
+- `desktop-screenshot-translate-<version>-x64.exe.blockmap`
+
+应用运行时可通过以下入口获得更新源：
+
+- `AITRANS_UPDATE_BASE_URL`
+- `%APPDATA%\\AiTrans\\runtime-overrides.json` 中的 `release.update_base_url`
+
+## 8. 当前边界
 
 - 当前已能构建 Windows `NSIS` 安装包与 `portable` 产物
 - `NSIS` 目标默认走当前用户安装路径，不应要求管理员权限
 - 当前未完成代码签名
-- 当前未完成自动更新服务接入
-- 当前不应宣称“应用已支持 auto-update”；版本升级仍通过重新分发安装包或便携版完成
+- 当前自动更新仅在更新源真实配置后才会生效
+- 未配置更新源时，版本升级仍通过重新分发安装包或便携版完成
 - 若不提供可达的翻译端点与凭据，应用会退回本地 stub 翻译
 
-## 8. 发布说明要求
+## 9. 发布说明要求
 
 每次对外发布前，必须同时准备：
 

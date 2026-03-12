@@ -28,6 +28,7 @@ const {
   restoreForegroundWindow,
   snapshotForegroundWindow,
 } = require('./lib/windows-focus');
+const { createAutoUpdateRuntime } = require('./lib/update-runtime');
 
 app.setName('AiTrans');
 const stateNamespace = 'AiTrans';
@@ -102,6 +103,7 @@ let lastSelection = null;
 let lastPipelineState = null;
 let runtimeBootstrap = null;
 let currentCaptureShortcut = null;
+let updateRuntime = null;
 const runtimeCapabilities = {
   shortcutAvailable: null,
   shortcutMessage: null,
@@ -402,6 +404,7 @@ function resolveConfiguredCaptureShortcut() {
 }
 
 function buildTrayMenu() {
+  const updateState = updateRuntime ? updateRuntime.getState() : null;
   return Menu.buildFromTemplate([
     { label: '开始截图翻译', click: () => showOverlay() },
     {
@@ -414,6 +417,37 @@ function buildTrayMenu() {
     { label: '显示结果面板', click: () => showPanel(buildStubResult(lastSelection || getFallbackSelection())) },
     { label: '首次配置指引', click: () => showSetupGuide() },
     { label: '打开配置目录', click: () => shell.openPath(path.dirname(getActiveRuntimeOverridePath())) },
+    { type: 'separator' },
+    {
+      label: updateRuntime ? updateRuntime.getTrayStatusLabel() : '自动更新：未初始化',
+      enabled: false,
+    },
+    {
+      label: '检查更新',
+      enabled: Boolean(updateState?.enabled || config.implementationConfig.release.auto_update),
+      click: async () => {
+        if (!updateRuntime) {
+          return;
+        }
+        const outcome = await updateRuntime.checkForUpdates(true);
+        if (!outcome.ok && outcome.error) {
+          dialog.showErrorBox('AiTrans 检查更新失败', outcome.error);
+        }
+      },
+    },
+    {
+      label: '安装已下载更新',
+      enabled: Boolean(updateState?.updateDownloaded),
+      click: () => {
+        if (!updateRuntime) {
+          return;
+        }
+        const outcome = updateRuntime.installDownloadedUpdate();
+        if (!outcome.ok && outcome.error) {
+          dialog.showErrorBox('AiTrans 安装更新失败', outcome.error);
+        }
+      },
+    },
     { type: 'separator' },
     { label: '退出', click: () => { app.isQuitting = true; app.quit(); } },
   ]);
@@ -1093,6 +1127,14 @@ app.whenReady().then(async () => {
   appendStartupLog('app:ready');
   runtimeBootstrap = ensureRuntimeOverridesTemplate();
   appendStartupLog('runtime-overrides:bootstrap', runtimeBootstrap);
+  updateRuntime = createAutoUpdateRuntime({
+    app,
+    appendStartupLog,
+    appendPipelineEvent,
+    refreshTrayMenu,
+    dialog,
+    implementationConfig: config.implementationConfig,
+  });
   createTray();
   createPanelWindow();
   await probeAndStoreScreenCaptureCapability();
@@ -1107,6 +1149,9 @@ app.whenReady().then(async () => {
   if (shouldAutoOpenSetupGuide()) {
     appendStartupLog('setup-guide:auto-open');
     showSetupGuide();
+  }
+  if (updateRuntime) {
+    updateRuntime.scheduleStartupCheck();
   }
 });
 

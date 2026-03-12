@@ -98,13 +98,18 @@ clipboard_bridge = "native_clipboard"
 # - OCR 运行时与项目生成产物会在打包时一并进入安装包资源目录
 # - 翻译端点凭据不应硬编码进安装包，优先通过运行时覆盖文件或环境变量提供
 # - 首次启动应自动生成运行时覆盖文件模板，并在翻译端点缺失时自动打开配置引导
-# - 当前阶段仅承诺“稳定手动发布”，不把 `auto_update` 当成已交付能力
-# - 只有在更新源、发布元数据、下载校验与应用内更新状态机都真实落地后，才应重新打开 `auto_update`
+# - 当前自动更新路径限定为 Windows `NSIS` 安装版，不覆盖 `portable`
+# - 更新源不应硬编码进安装包，可由环境变量或运行时覆盖文件注入
+# - 应用应支持“启动后延迟检查 + 托盘手动检查更新”
+# - 只有在更新源缺失时允许静默降级；若更新源已配置，则检查、下载与安装状态都必须可观测
 [release]
 targets = ["win-x64"]
 package_formats = ["nsis", "portable"]
-auto_update = false
+auto_update = true
 channel = "stable"
+update_driver = "electron_updater_generic"
+update_feed_source = "env_or_runtime_override"
+update_check_trigger = "startup_delayed_and_tray_manual"
 
 # [evidence] 细化实现层证据出口。
 # 这些路径用于调试、验证和自动化消费，不属于产品真相本身。

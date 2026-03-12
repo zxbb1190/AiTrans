@@ -11,5 +11,8 @@
   "ocr": {
     "tesseract_path": "",
     "tessdata_dir": ""
+  },
+  "release": {
+    "update_base_url": ""
   }
 }

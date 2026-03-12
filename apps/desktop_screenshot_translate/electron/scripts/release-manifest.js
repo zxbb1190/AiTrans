@@ -58,10 +58,12 @@ function main() {
   const installerName = `desktop-screenshot-translate-${version}-${arch}.exe`;
   const portableName = `desktop-screenshot-translate-${version}-${arch}-portable.exe`;
   const installerBlockmapName = `${installerName}.blockmap`;
+  const latestYamlName = config.implementationConfig.release.auto_update ? 'latest.yml' : null;
 
   const installer = pickArtifact(files, installerName);
   const portable = pickArtifact(files, portableName);
   const installerBlockmap = pickArtifact(files, installerBlockmapName);
+  const latestYaml = latestYamlName ? pickArtifact(files, latestYamlName) : null;
 
   const failures = [];
   if (!installer) {
@@ -72,6 +74,9 @@ function main() {
   }
   if (!installerBlockmap) {
     failures.push(`missing installer blockmap: ${path.join(distRoot, installerBlockmapName)}`);
+  }
+  if (latestYamlName && !latestYaml) {
+    failures.push(`missing update metadata: ${path.join(distRoot, latestYamlName)}`);
   }
 
   if (failures.length > 0) {
@@ -91,7 +96,12 @@ function main() {
     generated_at: new Date().toISOString(),
     channel: config.implementationConfig.release.channel,
     release_notes: path.relative(config.repoRoot, releaseNotesPath),
-    artifacts: [describeArtifact(installer), describeArtifact(installerBlockmap), describeArtifact(portable)],
+    artifacts: [
+      describeArtifact(installer),
+      describeArtifact(installerBlockmap),
+      ...(latestYaml ? [describeArtifact(latestYaml)] : []),
+      describeArtifact(portable),
+    ],
   };
 
   const outputPath = path.join(distRoot, `release-manifest-${version}.json`);

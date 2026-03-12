@@ -66,8 +66,9 @@ Windows 可发布安装包路径：
 当前发布边界：
 
 - 已支持 Windows `NSIS` 安装包与 `portable` 便携版
-- 当前尚未接入应用内自动更新
-- 版本升级仍通过重新分发新的安装包或便携版完成
+- `NSIS` 安装版已支持应用内自动更新接入
+- `portable` 便携版仍通过重新分发新包完成升级
+- 自动更新只有在提供 `AITRANS_UPDATE_BASE_URL` 或 `release.update_base_url` 后才会生效
 
 面向目标机器的运行时配置：
 

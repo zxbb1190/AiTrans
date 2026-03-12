@@ -387,6 +387,9 @@ class ReleaseConfig:
     package_formats: tuple[str, ...]
     auto_update: bool
     channel: str
+    update_driver: str
+    update_feed_source: str
+    update_check_trigger: str
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -681,6 +684,9 @@ def _load_implementation_config(implementation_config_path: Path) -> AitransImpl
             package_formats=_require_string_tuple(release, "package_formats"),
             auto_update=_require_bool(release, "auto_update"),
             channel=_require_string(release, "channel"),
+            update_driver=_require_string(release, "update_driver"),
+            update_feed_source=_require_string(release, "update_feed_source"),
+            update_check_trigger=_require_string(release, "update_check_trigger"),
         ),
         evidence=EvidenceConfig(
             product_spec_endpoint=_require_string(evidence, "product_spec_endpoint"),
@@ -938,6 +944,18 @@ def _validate_implementation_config(
         raise ValueError("evidence.runtime_bundle_endpoint must be an API path")
     if implementation.release.auto_update and implementation.release.channel != product_spec.governance.update_channel:
         raise ValueError("release.channel must match governance.update_channel when auto_update is enabled")
+    if implementation.release.update_driver not in {"electron_updater_generic", "disabled"}:
+        raise ValueError("release.update_driver must be electron_updater_generic or disabled")
+    if implementation.release.update_feed_source not in {"env_or_runtime_override", "none"}:
+        raise ValueError("release.update_feed_source must be env_or_runtime_override or none")
+    if implementation.release.update_check_trigger not in {"startup_delayed_and_tray_manual", "manual_only", "none"}:
+        raise ValueError(
+            "release.update_check_trigger must be startup_delayed_and_tray_manual, manual_only or none",
+        )
+    if implementation.release.auto_update and "nsis" not in implementation.release.package_formats:
+        raise ValueError("release.package_formats must include nsis when auto_update is enabled")
+    if implementation.release.auto_update and "win-x64" not in implementation.release.targets:
+        raise ValueError("release.targets must include win-x64 when auto_update is enabled")
     if implementation.presentation_runtime.ui_framework not in {"vanilla_html", "vue3"}:
         raise ValueError("presentation_runtime.ui_framework must be vanilla_html or vue3")
     if implementation.presentation_runtime.ui_framework == "vue3" and implementation.presentation_runtime.renderer != "floating_panel_vue_vite_v1":
