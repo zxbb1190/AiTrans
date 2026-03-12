@@ -35,18 +35,30 @@ function render(payload) {
   const displayName = payload?.product?.displayName || state.displayName;
   const guide = payload?.guide || {};
   const configured = Boolean(guide.configured);
+  const capabilities = guide.capabilities || {};
 
   state.displayName = displayName;
   state.configured = configured;
 
   document.getElementById('displayName').textContent = displayName;
   document.getElementById('configPath').textContent = guide.runtimeOverridesPath || '未检测到配置路径';
+  document.getElementById('capabilitySummary').textContent = [
+    `入口模式：${capabilities.entryMode || 'tray_and_shortcut'}`,
+    `快捷键：${capabilities.shortcutAvailable === false ? '不可用' : '可用'}`,
+    `截图能力：${capabilities.screenCaptureAvailable === false ? '不可用' : '可用'}`,
+  ].join(' / ');
 
   syncForm(guide);
 
-  if (configured) {
+  if (capabilities.screenCaptureAvailable === false) {
+    setStatus('当前无法获取屏幕内容，请先处理系统权限、远程桌面限制或显卡采集环境问题', 'error');
+    setHint(capabilities.screenCaptureMessage || '截图主链已降级为引导模式；问题解决前不要继续发起截图。');
+  } else if (capabilities.shortcutAvailable === false) {
+    setStatus('全局快捷键暂不可用，当前已降级为仅托盘入口', 'warning');
+    setHint(capabilities.shortcutMessage || '请在本窗口重新设置快捷键；在此之前仍可通过托盘入口开始截图。');
+  } else if (configured) {
     setStatus('翻译端点已可用，可以直接开始截图', 'success');
-    setHint('保存后立即生效，不需要重新安装。你可以直接回到托盘开始截图。');
+    setHint('保存后立即生效，不需要重新安装。你可以直接回到托盘，拖选区域或使用整屏模式开始截图。');
   } else {
     setStatus('尚未完成翻译端点配置，请先填写并保存 base_url / api_key', 'warning');
     setHint('优先通过本窗口完成配置；只有在高级排障时才需要手动打开配置文件。');

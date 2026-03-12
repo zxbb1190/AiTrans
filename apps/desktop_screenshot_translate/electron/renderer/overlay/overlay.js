@@ -4,6 +4,7 @@ const hintCopy = document.getElementById('hint-copy');
 let activeDisplay = null;
 let dragStart = null;
 let dragCurrent = null;
+let availableModes = [];
 
 function updateSelectionBox() {
   if (!dragStart || !dragCurrent) {
@@ -37,8 +38,24 @@ function buildSelection() {
   };
 }
 
+function supportsMode(mode) {
+  return Array.isArray(availableModes) && availableModes.includes(mode);
+}
+
+function buildFullscreenSelection() {
+  return {
+    displayId: activeDisplay?.id ?? 'unknown',
+    x: activeDisplay?.bounds?.x || 0,
+    y: activeDisplay?.bounds?.y || 0,
+    width: activeDisplay?.bounds?.width || window.innerWidth,
+    height: activeDisplay?.bounds?.height || window.innerHeight,
+    scaleFactor: activeDisplay?.scaleFactor ?? 1,
+  };
+}
+
 window.aitransDesktop.onOverlayStart((payload) => {
   activeDisplay = payload.display;
+  availableModes = Array.isArray(payload.modes) ? payload.modes : [];
   hintCopy.textContent = payload.hint;
   dragStart = null;
   dragCurrent = null;
@@ -83,10 +100,21 @@ window.addEventListener('pointerup', async (event) => {
 window.addEventListener('keydown', async (event) => {
   if (event.key === 'Escape') {
     await window.aitransDesktop.cancelCapture('escape');
+    return;
+  }
+  if (event.key === 'Enter' && supportsMode('fullscreen')) {
+    await window.aitransDesktop.submitSelection(buildFullscreenSelection());
   }
 });
 
 window.addEventListener('contextmenu', async (event) => {
   event.preventDefault();
   await window.aitransDesktop.cancelCapture('right_click');
+});
+
+window.addEventListener('dblclick', async () => {
+  if (!supportsMode('fullscreen')) {
+    return;
+  }
+  await window.aitransDesktop.submitSelection(buildFullscreenSelection());
 });

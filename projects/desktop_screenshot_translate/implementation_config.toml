@@ -28,6 +28,11 @@ window_state_store = "local_json"
 # - 截图前必须先隐藏首次配置窗与结果面板，避免它们残留在合成层里污染首帧截图
 # - 截图触发后需要留出短暂的合成稳定时间，再读取 desktopCapturer 位图
 # - 首次配置完成后的第一次截图必须直接可用，不能要求用户“再截一次才恢复”
+# - `fullscreen` 模式在当前 Electron 实现中由 overlay 直接承接：
+#   - `Enter` 触发当前显示器整屏截图
+#   - 双击 overlay 触发当前显示器整屏截图
+# - 若全局快捷键注册失败，产品应自动降级为“托盘仍可用、快捷键暂不可用”，并引导用户在设置界面重绑快捷键
+# - 若屏幕采集能力不可用，产品不应直接进入失败态，而应打开引导界面说明当前缺失能力与可继续使用的入口
 [capture_runtime]
 frame_source = "desktop_capturer"
 bitmap_pipeline = "native_image_png"

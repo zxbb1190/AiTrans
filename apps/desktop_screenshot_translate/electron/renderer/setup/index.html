@@ -197,6 +197,13 @@
         color: var(--muted);
         line-height: 1.65;
       }
+
+      .capability-summary {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.65;
+      }
     </style>
   </head>
   <body>
@@ -211,6 +218,7 @@
         <div class="title">当前状态</div>
         <div id="status" class="status">正在检查配置…</div>
         <div id="configPath" class="path"></div>
+        <p id="capabilitySummary" class="capability-summary">正在检测运行时能力。</p>
         <p id="hint" class="hint">正在读取当前运行时配置。</p>
       </section>
 
@@ -242,6 +250,7 @@
           <li>如果需要排查端点问题，可手动打开配置文件或配置目录。</li>
           <li>保存后立即生效，不需要重新安装应用。</li>
           <li>本地兼容端点只要可达并返回兼容结果即可。</li>
+          <li>截图遮罩中按 Enter 或双击可直接触发当前显示器整屏截图。</li>
         </ul>
         <div class="actions">
           <button id="openFile" class="secondary">打开配置文件</button>

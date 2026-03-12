@@ -44,7 +44,7 @@ density = "comfortable"
 [surface.copy]
 app_name = "AiTrans 截图翻译"
 tagline = "截一块，立刻看到译文"
-capture_hint = "按下截图快捷键后拖选区域，松开即可开始识别和翻译。"
+capture_hint = "按下截图快捷键后拖选区域，松开即可开始识别和翻译；按 Enter 或双击可直接整屏截图。"
 empty_title = "准备截图"
 empty_copy = "从托盘或全局快捷键开始，拖选一个区域后自动输出译文。"
 processing_title = "正在翻译"

@@ -4,7 +4,12 @@ const path = require('node:path');
 const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, clipboard, screen, shell, dialog } = require('electron');
 
 const { loadProjectConfig } = require('./lib/project-config');
-const { captureSelectionImage, recognizeText, translateText } = require('./lib/local-pipeline');
+const {
+  captureSelectionImage,
+  probeScreenCaptureCapability,
+  recognizeText,
+  translateText,
+} = require('./lib/local-pipeline');
 const {
   ensureRuntimeOverridesTemplate,
   getPrimaryRuntimeOverridePath,
@@ -92,6 +97,13 @@ let lastSelection = null;
 let lastPipelineState = null;
 let runtimeBootstrap = null;
 let currentCaptureShortcut = null;
+const runtimeCapabilities = {
+  shortcutAvailable: null,
+  shortcutMessage: null,
+  screenCaptureAvailable: null,
+  screenCaptureMessage: null,
+  entryMode: 'tray_and_shortcut',
+};
 const CAPTURE_SETTLE_MS = 180;
 const RETRYABLE_OCR_ERROR_FRAGMENT = 'tesseract returned empty OCR text';
 
@@ -232,6 +244,17 @@ function focusBestAvailableWindow() {
   showPanel(buildStubResult(lastSelection || getFallbackSelection()));
 }
 
+function setShortcutCapability(available, message = null) {
+  runtimeCapabilities.shortcutAvailable = available;
+  runtimeCapabilities.shortcutMessage = message;
+  runtimeCapabilities.entryMode = available ? 'tray_and_shortcut' : 'tray_only';
+}
+
+function setScreenCaptureCapability(available, message = null) {
+  runtimeCapabilities.screenCaptureAvailable = available;
+  runtimeCapabilities.screenCaptureMessage = message;
+}
+
 function createSetupWindow() {
   if (setupWindow && !setupWindow.isDestroyed()) {
     return setupWindow;
@@ -304,7 +327,12 @@ function resolveConfiguredCaptureShortcut() {
 function buildTrayMenu() {
   return Menu.buildFromTemplate([
     { label: '开始截图翻译', click: () => showOverlay() },
-    { label: `快捷键：${currentCaptureShortcut || config.shortcut}`, enabled: false },
+    {
+      label: runtimeCapabilities.shortcutAvailable === false
+        ? '快捷键暂不可用，已降级为托盘入口'
+        : `快捷键：${currentCaptureShortcut || config.shortcut}`,
+      enabled: false,
+    },
     { type: 'separator' },
     { label: '显示结果面板', click: () => showPanel(buildStubResult(lastSelection || getFallbackSelection())) },
     { label: '首次配置指引', click: () => showSetupGuide() },
@@ -327,36 +355,59 @@ function applyCaptureShortcut(nextShortcut) {
 
   globalShortcut.unregisterAll();
 
-  let registered = false;
   try {
-    registered = globalShortcut.register(normalized, () => {
+    const registered = globalShortcut.register(normalized, () => {
       showOverlay();
     });
+    if (!registered) {
+      throw new Error('shortcut registration was rejected by the operating system');
+    }
   } catch (error) {
-    globalShortcut.register(previousShortcut, () => {
-      showOverlay();
-    });
-    currentCaptureShortcut = previousShortcut;
-    config.shortcut = previousShortcut;
-    refreshTrayMenu();
     const message = error instanceof Error ? error.message : String(error);
-    return { ok: false, error: `invalid shortcut: ${message}` };
-  }
-
-  if (!registered) {
-    globalShortcut.register(previousShortcut, () => {
-      showOverlay();
-    });
-    currentCaptureShortcut = previousShortcut;
-    config.shortcut = previousShortcut;
+    if (previousShortcut && previousShortcut !== normalized) {
+      try {
+        const fallbackRegistered = globalShortcut.register(previousShortcut, () => {
+          showOverlay();
+        });
+        if (fallbackRegistered) {
+          currentCaptureShortcut = previousShortcut;
+          config.shortcut = previousShortcut;
+          setShortcutCapability(true, null);
+          refreshTrayMenu();
+          return { ok: false, error: `invalid shortcut: ${message}` };
+        }
+      } catch {
+        // fall through to degraded tray-only mode
+      }
+    }
+    currentCaptureShortcut = null;
+    setShortcutCapability(false, message);
     refreshTrayMenu();
-    return { ok: false, error: 'shortcut registration was rejected by the operating system' };
+    return { ok: false, error: `invalid shortcut: ${message}` };
   }
 
   currentCaptureShortcut = normalized;
   config.shortcut = normalized;
+  setShortcutCapability(true, null);
   refreshTrayMenu();
   return { ok: true, shortcut: normalized };
+}
+
+async function probeAndStoreScreenCaptureCapability() {
+  const probe = await probeScreenCaptureCapability();
+  setScreenCaptureCapability(Boolean(probe.available), probe.reason || null);
+  if (!probe.available) {
+    appendStartupLog('capture:probe-failed', { message: probe.reason || 'unknown capture error' });
+  }
+  return probe;
+}
+
+async function ensureScreenCaptureCapability() {
+  if (runtimeCapabilities.screenCaptureAvailable === true) {
+    return true;
+  }
+  const probe = await probeAndStoreScreenCaptureCapability();
+  return Boolean(probe.available);
 }
 
 async function captureAndRecognize(selection) {
@@ -377,7 +428,11 @@ async function captureAndRecognize(selection) {
   }
 }
 
-function showOverlay() {
+async function showOverlay() {
+  if (!(await ensureScreenCaptureCapability())) {
+    showSetupGuide();
+    return;
+  }
   const display = getOverlayDisplay();
   const window = createOverlayWindow();
   hideAuxiliaryWindowsForCapture();
@@ -467,7 +522,23 @@ function getSetupGuideState() {
           ? desktopOverrides.capture_shortcut.trim()
           : currentCaptureShortcut || config.shortcut,
     },
+    capabilities: {
+      shortcutAvailable: runtimeCapabilities.shortcutAvailable !== false,
+      shortcutMessage: runtimeCapabilities.shortcutMessage,
+      screenCaptureAvailable: runtimeCapabilities.screenCaptureAvailable !== false,
+      screenCaptureMessage: runtimeCapabilities.screenCaptureMessage,
+      entryMode: runtimeCapabilities.entryMode,
+    },
   };
+}
+
+function shouldAutoOpenSetupGuide() {
+  const guide = getSetupGuideState();
+  return (
+    !guide.configured
+    || guide.capabilities.shortcutAvailable === false
+    || guide.capabilities.screenCaptureAvailable === false
+  );
 }
 
 function getActiveRuntimeOverridePath() {
@@ -678,6 +749,10 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('no desktop capture source available')) {
+      setScreenCaptureCapability(false, message);
+      showSetupGuide();
+    }
     const failureResult = {
       ...(lastPipelineState
         ? buildStageResult(lastPipelineState.selection || selection, {
@@ -926,12 +1001,13 @@ app.on('second-instance', () => {
   focusBestAvailableWindow();
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   appendStartupLog('app:ready');
   runtimeBootstrap = ensureRuntimeOverridesTemplate();
   appendStartupLog('runtime-overrides:bootstrap', runtimeBootstrap);
   createTray();
   createPanelWindow();
+  await probeAndStoreScreenCaptureCapability();
   try {
     registerShortcuts();
   } catch (error) {
@@ -940,7 +1016,7 @@ app.whenReady().then(() => {
     dialog.showErrorBox('AiTrans 快捷键注册失败', `${message}\n\n请在首次配置窗口中重新设置快捷键。`);
     showSetupGuide();
   }
-  if (!getSetupGuideState().configured) {
+  if (shouldAutoOpenSetupGuide()) {
     appendStartupLog('setup-guide:auto-open');
     showSetupGuide();
   }

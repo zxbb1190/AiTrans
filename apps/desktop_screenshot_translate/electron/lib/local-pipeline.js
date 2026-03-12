@@ -75,8 +75,34 @@ async function captureSelectionImage(selection) {
   };
 }
 
+async function probeScreenCaptureCapability() {
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: 1, height: 1 },
+      fetchWindowIcons: false,
+    });
+    if (!Array.isArray(sources) || sources.length === 0) {
+      return {
+        available: false,
+        reason: 'no desktop capture source available',
+      };
+    }
+    return {
+      available: true,
+      sourceCount: sources.length,
+    };
+  } catch (error) {
+    return {
+      available: false,
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 module.exports = {
   captureSelectionImage,
+  probeScreenCaptureCapability,
   recognizeText,
   translateText,
 };
