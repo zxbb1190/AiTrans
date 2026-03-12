@@ -23,6 +23,11 @@ const {
   resolveOpenAiBaseUrl,
 } = require('./lib/provider-runtime');
 const { createWindowStateStore } = require('./lib/window-state');
+const {
+  isWindowsFocusSupported,
+  restoreForegroundWindow,
+  snapshotForegroundWindow,
+} = require('./lib/windows-focus');
 
 app.setName('AiTrans');
 const stateNamespace = 'AiTrans';
@@ -103,6 +108,10 @@ const runtimeCapabilities = {
   screenCaptureAvailable: null,
   screenCaptureMessage: null,
   entryMode: 'tray_and_shortcut',
+};
+const focusRestoreState = {
+  target: null,
+  preferInactivePanel: false,
 };
 const CAPTURE_SETTLE_MS = 180;
 const RETRYABLE_OCR_ERROR_FRAGMENT = 'tesseract returned empty OCR text';
@@ -227,6 +236,7 @@ function createPanelWindow() {
 }
 
 function focusBestAvailableWindow() {
+  clearFocusRestoreSession();
   if (setupWindow && !setupWindow.isDestroyed()) {
     setupWindow.show();
     setupWindow.focus();
@@ -289,6 +299,73 @@ function savePanelBounds() {
     return;
   }
   stateStore.save('panel', panelWindow.getBounds());
+}
+
+function isFocusRestoreEnabled() {
+  return Boolean(config.productSpec.desktop.focus_restore) && isWindowsFocusSupported();
+}
+
+function clearFocusRestoreSession() {
+  focusRestoreState.target = null;
+  focusRestoreState.preferInactivePanel = false;
+}
+
+async function captureExternalFocusTarget() {
+  if (!isFocusRestoreEnabled()) {
+    clearFocusRestoreSession();
+    return;
+  }
+
+  try {
+    const snapshot = await snapshotForegroundWindow(process.pid);
+    if (!snapshot || snapshot.isCurrentProcess) {
+      clearFocusRestoreSession();
+      appendStartupLog('focus-restore:snapshot-skipped', {
+        reason: snapshot?.isCurrentProcess ? 'foreground_is_aitrans' : 'no_foreground_window',
+      });
+      return;
+    }
+
+    focusRestoreState.target = {
+      hwnd: snapshot.hwnd,
+      pid: snapshot.pid,
+    };
+    focusRestoreState.preferInactivePanel = true;
+    appendStartupLog('focus-restore:snapshot-captured', {
+      hwnd: snapshot.hwnd,
+      pid: snapshot.pid,
+    });
+  } catch (error) {
+    clearFocusRestoreSession();
+    appendStartupLog('focus-restore:snapshot-failed', {
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+async function restoreCapturedFocusTarget(reason) {
+  if (!isFocusRestoreEnabled() || !focusRestoreState.target) {
+    return false;
+  }
+
+  try {
+    const outcome = await restoreForegroundWindow(focusRestoreState.target);
+    appendStartupLog('focus-restore:restore-attempt', {
+      reason,
+      target: focusRestoreState.target,
+      outcome,
+    });
+    if (outcome.ok || outcome.reason === 'missing_window') {
+      focusRestoreState.target = null;
+    }
+    return Boolean(outcome.ok);
+  } catch (error) {
+    appendStartupLog('focus-restore:restore-failed', {
+      reason,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return false;
+  }
 }
 
 function sleep(ms) {
@@ -433,6 +510,7 @@ async function showOverlay() {
     showSetupGuide();
     return;
   }
+  await captureExternalFocusTarget();
   const display = getOverlayDisplay();
   const window = createOverlayWindow();
   hideAuxiliaryWindowsForCapture();
@@ -546,6 +624,7 @@ function getActiveRuntimeOverridePath() {
 }
 
 function showSetupGuide() {
+  clearFocusRestoreSession();
   const window = createSetupWindow();
   const payload = {
     product: {
@@ -580,6 +659,10 @@ function showPanel(result) {
 
   const sendPayload = () => {
     window.webContents.send('panel:set-data', payload);
+    if (focusRestoreState.preferInactivePanel && typeof window.showInactive === 'function') {
+      window.showInactive();
+      return;
+    }
     window.show();
     window.focus();
   };
@@ -646,6 +729,7 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.hide();
   }
+  await restoreCapturedFocusTarget('capture_submitted');
   try {
     appendPipelineEvent('capture_started', audit, {
       resultState: 'capturing',
@@ -782,6 +866,8 @@ ipcMain.handle('overlay:cancel', async () => {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.hide();
   }
+  await restoreCapturedFocusTarget('capture_cancelled');
+  clearFocusRestoreSession();
   return { ok: true };
 });
 
@@ -794,6 +880,8 @@ ipcMain.handle('panel:close', async () => {
   if (panelWindow && !panelWindow.isDestroyed()) {
     panelWindow.hide();
   }
+  await restoreCapturedFocusTarget('panel_closed');
+  clearFocusRestoreSession();
   return { ok: true };
 });
 

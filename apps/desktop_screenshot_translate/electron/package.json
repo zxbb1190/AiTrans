@@ -18,7 +18,7 @@
     "dev:doctor": "npm run doctor && npm run dev",
     "pack:win": "npm run panel:build && npm run release:check && electron-builder --win portable",
     "dist:win": "npm run panel:build && npm run release:check && electron-builder --win nsis",
-    "check": "node --check main.js && node --check preload.js && node --check lib/project-config.js && node --check lib/window-state.js && node --check lib/local-pipeline.js && node --check lib/provider-runtime.js && node --check lib/runtime-overrides.js && node --check lib/ocr-adapters.js && node --check lib/translation-adapters.js && node --check renderer/overlay/overlay.js && node --check renderer/setup/setup.js && node --check scripts/doctor.js && node --check scripts/release-check.js && node --check scripts/stage-tesseract.js && vite build --config vite.panel.config.mjs"
+    "check": "node --check main.js && node --check preload.js && node --check lib/project-config.js && node --check lib/window-state.js && node --check lib/local-pipeline.js && node --check lib/provider-runtime.js && node --check lib/runtime-overrides.js && node --check lib/ocr-adapters.js && node --check lib/translation-adapters.js && node --check lib/windows-focus.js && node --check renderer/overlay/overlay.js && node --check renderer/setup/setup.js && node --check scripts/doctor.js && node --check scripts/release-check.js && node --check scripts/stage-tesseract.js && vite build --config vite.panel.config.mjs"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",
