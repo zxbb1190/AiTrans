@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+- Restored the framework tree as Shelf AI's default visual entry. The sidebar and primary command now open `docs/hierarchy/shelf_framework_tree.html`, while the workspace governance tree stays available as a separate secondary view for closure tracing and guard debugging.
+- Split framework-tree and governance-tree commands, packaged settings, and generated-artifact protection. Both derived tree artifacts are now regenerated and guarded independently instead of being treated as one mixed default view.
 
 ## 0.0.40 - 2026-03-10
 - Switched Shelf AI from a framework-tree-only view to a workspace governance-tree flow. The extension now reads the workspace governance tree, opens the governance-tree view directly, and surfaces the recent touched / affected node closure inside the sidebar.
