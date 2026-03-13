@@ -17,6 +17,7 @@ from project_runtime.project_config_source import (
     load_product_spec_document,
 )
 from project_runtime.project_governance import (
+    FrameworkDrivenProjectRecord,
     ProjectGovernanceClosure,
     RequiredRole,
     SourceRef,
@@ -105,6 +106,63 @@ class SymbolDefinition:
     high_risk_file_checks: tuple[tuple[str, str], ...] = ()
 
 
+@dataclass(frozen=True)
+class GeneratedArtifactPaths:
+    framework_ir_json: str
+    product_spec_json: str
+    implementation_bundle_py: str
+    generation_manifest_json: str
+    governance_manifest_json: str
+    governance_tree_json: str
+    strict_zone_report_json: str
+    object_coverage_report_json: str
+
+    def items(self) -> tuple[tuple[str, str], ...]:
+        return tuple(self.to_dict().items())
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "framework_ir_json": self.framework_ir_json,
+            "product_spec_json": self.product_spec_json,
+            "implementation_bundle_py": self.implementation_bundle_py,
+            "generation_manifest_json": self.generation_manifest_json,
+            "governance_manifest_json": self.governance_manifest_json,
+            "governance_tree_json": self.governance_tree_json,
+            "strict_zone_report_json": self.strict_zone_report_json,
+            "object_coverage_report_json": self.object_coverage_report_json,
+        }
+
+
+@dataclass(frozen=True)
+class GovernanceSnapshotSymbol:
+    symbol_id: str
+    owner: str
+    kind: str
+    risk: str
+    bindings: tuple[dict[str, Any], ...]
+    upstream_refs: tuple[dict[str, Any], ...]
+    extractor: str
+    comparator: str
+    fingerprint: str
+    evidence: dict[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "symbol_id": self.symbol_id,
+            "owner": self.owner,
+            "kind": self.kind,
+            "risk": self.risk,
+            "bindings": list(self.bindings),
+            "upstream_refs": list(self.upstream_refs),
+            "expected": {
+                "extractor": self.extractor,
+                "comparator": self.comparator,
+                "fingerprint": self.fingerprint,
+                "evidence": self.evidence,
+            },
+        }
+
+
 def _canonical_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
@@ -123,31 +181,31 @@ def _relative(path: Path | str) -> str:
     return candidate.as_posix()
 
 
-def _expected_generated_artifact_paths(project: KnowledgeBaseProject) -> dict[str, str]:
+def _expected_generated_artifact_paths(project: KnowledgeBaseProject) -> GeneratedArtifactPaths:
     if project.generated_artifacts is not None:
-        return {
-            "framework_ir_json": project.generated_artifacts.framework_ir_json,
-            "product_spec_json": project.generated_artifacts.product_spec_json,
-            "implementation_bundle_py": project.generated_artifacts.implementation_bundle_py,
-            "generation_manifest_json": project.generated_artifacts.generation_manifest_json,
-            "governance_manifest_json": project.generated_artifacts.governance_manifest_json,
-            "governance_tree_json": project.generated_artifacts.governance_tree_json,
-            "strict_zone_report_json": project.generated_artifacts.strict_zone_report_json,
-            "object_coverage_report_json": project.generated_artifacts.object_coverage_report_json,
-        }
+        return GeneratedArtifactPaths(
+            framework_ir_json=project.generated_artifacts.framework_ir_json,
+            product_spec_json=project.generated_artifacts.product_spec_json,
+            implementation_bundle_py=project.generated_artifacts.implementation_bundle_py,
+            generation_manifest_json=project.generated_artifacts.generation_manifest_json,
+            governance_manifest_json=project.generated_artifacts.governance_manifest_json,
+            governance_tree_json=project.generated_artifacts.governance_tree_json,
+            strict_zone_report_json=project.generated_artifacts.strict_zone_report_json,
+            object_coverage_report_json=project.generated_artifacts.object_coverage_report_json,
+        )
 
     generated_dir = Path(project.product_spec_file).parent / "generated"
     artifact_names = project.implementation.artifacts
-    return {
-        "framework_ir_json": _relative(generated_dir / artifact_names.framework_ir_json),
-        "product_spec_json": _relative(generated_dir / artifact_names.product_spec_json),
-        "implementation_bundle_py": _relative(generated_dir / artifact_names.implementation_bundle_py),
-        "generation_manifest_json": _relative(generated_dir / artifact_names.generation_manifest_json),
-        "governance_manifest_json": _relative(generated_dir / artifact_names.governance_manifest_json),
-        "governance_tree_json": _relative(generated_dir / artifact_names.governance_tree_json),
-        "strict_zone_report_json": _relative(generated_dir / artifact_names.strict_zone_report_json),
-        "object_coverage_report_json": _relative(generated_dir / artifact_names.object_coverage_report_json),
-    }
+    return GeneratedArtifactPaths(
+        framework_ir_json=_relative(generated_dir / artifact_names.framework_ir_json),
+        product_spec_json=_relative(generated_dir / artifact_names.product_spec_json),
+        implementation_bundle_py=_relative(generated_dir / artifact_names.implementation_bundle_py),
+        generation_manifest_json=_relative(generated_dir / artifact_names.generation_manifest_json),
+        governance_manifest_json=_relative(generated_dir / artifact_names.governance_manifest_json),
+        governance_tree_json=_relative(generated_dir / artifact_names.governance_tree_json),
+        strict_zone_report_json=_relative(generated_dir / artifact_names.strict_zone_report_json),
+        object_coverage_report_json=_relative(generated_dir / artifact_names.object_coverage_report_json),
+    )
 
 
 def _metadata_pairs(fragment: str) -> dict[str, str]:
@@ -1428,7 +1486,7 @@ def _config_effect_object(
     }
     runtime_bundle = project.to_runtime_bundle_dict()
     if runtime_bundle.get("generated_artifacts") in (None, {}, []):
-        runtime_bundle["generated_artifacts"] = dict(_expected_generated_artifact_paths(project))
+        runtime_bundle["generated_artifacts"] = _expected_generated_artifact_paths(project).to_dict()
     actual_evidence = {
         "field_path": field_path,
         "relation": relation,
@@ -1469,25 +1527,25 @@ def _config_effect_object(
     )
 
 
-def _project_record_for(project: KnowledgeBaseProject) -> Any:
+def _project_record_for(project: KnowledgeBaseProject) -> FrameworkDrivenProjectRecord:
     rel_product_spec = _relative(project.product_spec_file)
     for item in discover_framework_driven_projects():
         if item.product_spec_file == rel_product_spec:
             return item
     artifact_names = project.implementation.artifacts
-    return {
-        "project_id": project.metadata.project_id,
-        "template_id": project.metadata.template,
-        "product_spec_file": rel_product_spec,
-        "implementation_config_file": _relative(project.implementation_config_file),
-        "generated_dir": _relative(Path(project.product_spec_file).parent / "generated"),
-        "discovery_reasons": (
+    return FrameworkDrivenProjectRecord(
+        project_id=project.metadata.project_id,
+        template_id=project.metadata.template,
+        product_spec_file=rel_product_spec,
+        implementation_config_file=_relative(project.implementation_config_file),
+        generated_dir=_relative(Path(project.product_spec_file).parent / "generated"),
+        discovery_reasons=(
             "project spec exists under projects/<project_id>/product_spec.toml",
             "implementation_config.toml exists beside product_spec.toml",
             "registered template resolved through project.template",
             "project loads through the registered framework-driven materialization chain",
         ),
-        "framework_refs": tuple(
+        framework_refs=tuple(
             item
             for item in (
                 project.framework.frontend,
@@ -1496,7 +1554,7 @@ def _project_record_for(project: KnowledgeBaseProject) -> Any:
             )
             if isinstance(item, str) and item.strip()
         ),
-        "artifact_contract": tuple(
+        artifact_contract=tuple(
             getattr(artifact_names, field_name)
             for field_name in (
                 "framework_ir_json",
@@ -1509,7 +1567,7 @@ def _project_record_for(project: KnowledgeBaseProject) -> Any:
                 "object_coverage_report_json",
             )
         ),
-    }
+    )
 
 
 def build_governance_closure(project: KnowledgeBaseProject) -> ProjectGovernanceClosure:
@@ -1546,6 +1604,7 @@ def build_governance_closure(project: KnowledgeBaseProject) -> ProjectGovernance
     for field_path, effect_entry in sorted(build_implementation_effect_manifest(project).items()):
         structural_objects.append(_config_effect_object(project, field_path, effect_entry))
 
+    expected_artifacts = _expected_generated_artifact_paths(project).to_dict()
     raw_candidates = scan_python_structural_candidates(project_id=project.metadata.project_id)
     seed_bindings = resolve_role_bindings(tuple(structural_objects), raw_candidates)
     seed_candidates = classify_candidates(tuple(structural_objects), raw_candidates, seed_bindings)
@@ -1553,7 +1612,7 @@ def build_governance_closure(project: KnowledgeBaseProject) -> ProjectGovernance
         tuple(structural_objects),
         seed_bindings,
         seed_candidates,
-        _expected_generated_artifact_paths(project),
+        expected_artifacts,
     )
     strict_files = {entry.file for entry in seed_strict_zone}
     seed_candidate_ids = {candidate_id for binding in seed_bindings for candidate_id in binding.candidate_ids}
@@ -1568,21 +1627,15 @@ def build_governance_closure(project: KnowledgeBaseProject) -> ProjectGovernance
         tuple(structural_objects),
         role_bindings,
         candidates,
-        _expected_generated_artifact_paths(project),
+        expected_artifacts,
     )
     strict_zone = annotate_strict_zone_minimality(
         strict_zone,
         role_bindings,
         candidates,
-        _expected_generated_artifact_paths(project),
+        expected_artifacts,
     )
     record = _project_record_for(project)
-    if hasattr(record, "to_dict"):
-        discovery = record
-    else:
-        from project_runtime.project_governance import FrameworkDrivenProjectRecord
-
-        discovery = FrameworkDrivenProjectRecord(**record)
 
     upstream_index: dict[tuple[str, str, str, str], SourceRef] = {}
     for structural_object in structural_objects:
@@ -1593,7 +1646,7 @@ def build_governance_closure(project: KnowledgeBaseProject) -> ProjectGovernance
         template_id=project.metadata.template,
         product_spec_file=_relative(project.product_spec_file),
         implementation_config_file=_relative(project.implementation_config_file),
-        discovery=discovery,
+        discovery=record,
         structural_objects=tuple(sorted(structural_objects, key=lambda item: item.object_id)),
         candidates=tuple(sorted(candidates, key=lambda item: (item.file, item.locator, item.kind))),
         role_bindings=tuple(sorted(role_bindings, key=lambda item: (item.object_id, item.role_id))),
@@ -1601,7 +1654,7 @@ def build_governance_closure(project: KnowledgeBaseProject) -> ProjectGovernance
         upstream_closure=tuple(
             sorted(upstream_index.values(), key=lambda item: (item.layer, item.file, item.ref_kind, item.ref_id))
         ),
-        evidence_artifacts=_expected_generated_artifact_paths(project),
+        evidence_artifacts=expected_artifacts,
     )
 
 
@@ -1619,7 +1672,7 @@ def _build_governance_snapshot(project: KnowledgeBaseProject) -> dict[str, Any]:
         details = "; ".join(f"{item['file']}:{item['line']} -> {item['locator']}" for item in unbound)
         raise ValueError(f"missing governed_symbol binding for high-risk structures: {details}")
     upstream_closure: dict[tuple[str, str, str, str], str] = {}
-    symbols: list[dict[str, Any]] = []
+    symbols: list[GovernanceSnapshotSymbol] = []
     for definition in definitions:
         bindings = sorted(
             bindings_by_symbol.get(definition.symbol_id, []),
@@ -1639,23 +1692,21 @@ def _build_governance_snapshot(project: KnowledgeBaseProject) -> dict[str, Any]:
         for ref in upstream_refs:
             upstream_closure[ref.key()] = digest_upstream_ref(ref)
         symbols.append(
-            {
-                "symbol_id": definition.symbol_id,
-                "owner": definition.owner,
-                "kind": definition.kind,
-                "risk": definition.risk,
-                "bindings": [item.to_manifest_dict() for item in bindings],
-                "upstream_refs": [
+            GovernanceSnapshotSymbol(
+                symbol_id=definition.symbol_id,
+                owner=definition.owner,
+                kind=definition.kind,
+                risk=definition.risk,
+                bindings=tuple(item.to_manifest_dict() for item in bindings),
+                upstream_refs=tuple(
                     ref.to_manifest_dict(digest=upstream_closure[ref.key()])
                     for ref in upstream_refs
-                ],
-                "expected": {
-                    "extractor": definition.extractor,
-                    "comparator": definition.comparator,
-                    "fingerprint": _fingerprint(expected_evidence),
-                    "evidence": expected_evidence,
-                },
-            }
+                ),
+                extractor=definition.extractor,
+                comparator=definition.comparator,
+                fingerprint=_fingerprint(expected_evidence),
+                evidence=expected_evidence,
+            )
         )
     closure_items = [
         {
@@ -1669,7 +1720,7 @@ def _build_governance_snapshot(project: KnowledgeBaseProject) -> dict[str, Any]:
     ]
     return {
         "definitions": definitions,
-        "symbols": symbols,
+        "symbols": [item.to_dict() for item in symbols],
         "upstream_closure": closure_items,
     }
 
@@ -1693,7 +1744,7 @@ def build_governance_manifest(project: KnowledgeBaseProject) -> dict[str, Any]:
     strict_zone_report = build_strict_zone_report(closure)
     object_coverage_report = build_object_coverage_report(closure)
     binding_index = _binding_index_for_project(project)
-    symbols = []
+    symbols: list[GovernanceSnapshotSymbol] = []
     for structural_object in closure.structural_objects:
         bindings = [
             item.to_manifest_dict()
@@ -1703,26 +1754,25 @@ def build_governance_manifest(project: KnowledgeBaseProject) -> dict[str, Any]:
             )
         ]
         symbols.append(
-            {
-                "symbol_id": structural_object.object_id,
-                "owner": _object_owner(structural_object),
-                "kind": structural_object.kind,
-                "risk": structural_object.risk_level,
-                "bindings": bindings,
-                "expected": {
-                    "extractor": structural_object.extractor,
-                    "comparator": structural_object.comparator,
-                    "fingerprint": structural_object.expected_fingerprint,
-                    "evidence": structural_object.expected_evidence,
-                },
-            }
+            GovernanceSnapshotSymbol(
+                symbol_id=structural_object.object_id,
+                owner=_object_owner(structural_object),
+                kind=structural_object.kind,
+                risk=structural_object.risk_level,
+                bindings=tuple(bindings),
+                upstream_refs=(),
+                extractor=structural_object.extractor,
+                comparator=structural_object.comparator,
+                fingerprint=structural_object.expected_fingerprint,
+                evidence=structural_object.expected_evidence,
+            )
         )
     payload = closure.to_manifest_dict()
     payload.update(
         {
             "manifest_version": GOVERNANCE_MANIFEST_VERSION,
             "generator_version": GOVERNANCE_GENERATOR_VERSION,
-            "symbols": symbols,
+            "symbols": [item.to_dict() for item in symbols],
             "strict_zone_report": strict_zone_report,
             "object_coverage_report": object_coverage_report,
         }

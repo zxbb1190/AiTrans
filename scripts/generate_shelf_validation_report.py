@@ -60,6 +60,52 @@ class ShelfValidationSummary:
         }
 
 
+@dataclass(frozen=True)
+class ShelfValidationRow:
+    index: int
+    canonical_key: str
+    panel_count: int
+    structural_valid: bool
+    verification_passed: bool
+    boundary_valid: bool
+    combination_valid: bool
+    efficiency_improved: bool
+    target_efficiency: float
+    baseline_efficiency: float
+    reasons: str
+
+    def to_csv_row(self) -> dict[str, Any]:
+        return {
+            "index": self.index,
+            "canonical_key": self.canonical_key,
+            "panel_count": self.panel_count,
+            "structural_valid": self.structural_valid,
+            "verification_passed": self.verification_passed,
+            "boundary_valid": self.boundary_valid,
+            "combination_valid": self.combination_valid,
+            "efficiency_improved": self.efficiency_improved,
+            "target_efficiency": self.target_efficiency,
+            "baseline_efficiency": self.baseline_efficiency,
+            "reasons": self.reasons,
+        }
+
+
+@dataclass(frozen=True)
+class ShelfValidationArtifacts:
+    csv: Path
+    markdown: Path
+    dashboard_html: Path
+    summary_json: Path
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "csv": str(self.csv),
+            "markdown": str(self.markdown),
+            "dashboard_html": str(self.dashboard_html),
+            "summary_json": str(self.summary_json),
+        }
+
+
 def _run_mapping_check(check_changes: bool) -> MappingCheckResult:
     cmd = [sys.executable, str(REPO_ROOT / "scripts/validate_strict_mapping.py")]
     if check_changes:
@@ -130,7 +176,7 @@ def _collect_rows(
     baseline_efficiency: float,
     allow_empty_layer: bool,
     max_type_count: int,
-) -> tuple[list[dict[str, Any]], dict[str, int]]:
+) -> tuple[list[ShelfValidationRow], dict[str, int]]:
     enum_result = enumerate_structure_types(
         EnumerationConfig(
             grid=grid,
@@ -143,7 +189,7 @@ def _collect_rows(
         )
     )
 
-    rows: list[dict[str, Any]] = []
+    rows: list[ShelfValidationRow] = []
     reason_counter: Counter[str] = Counter()
     for idx, candidate in enumerate(enum_result.unique_candidates, start=1):
         report = verify_structure(
@@ -157,32 +203,32 @@ def _collect_rows(
                 reason_counter[reason] += 1
 
         rows.append(
-            {
-                "index": idx,
-                "canonical_key": candidate.canonical_key,
-                "panel_count": candidate.topology.panel_count(),
-                "structural_valid": candidate.structural_valid,
-                "verification_passed": report.passed,
-                "boundary_valid": report.boundary_valid,
-                "combination_valid": report.combination_valid,
-                "efficiency_improved": report.efficiency_improved,
-                "target_efficiency": round(report.target_efficiency, 6),
-                "baseline_efficiency": round(report.baseline_efficiency, 6),
-                "reasons": " | ".join(report.reasons),
-            }
+            ShelfValidationRow(
+                index=idx,
+                canonical_key=candidate.canonical_key,
+                panel_count=candidate.topology.panel_count(),
+                structural_valid=candidate.structural_valid,
+                verification_passed=report.passed,
+                boundary_valid=report.boundary_valid,
+                combination_valid=report.combination_valid,
+                efficiency_improved=report.efficiency_improved,
+                target_efficiency=round(report.target_efficiency, 6),
+                baseline_efficiency=round(report.baseline_efficiency, 6),
+                reasons=" | ".join(report.reasons),
+            )
         )
 
     return rows, dict(reason_counter)
 
 
 def _build_summary(
-    rows: list[dict[str, Any]],
+    rows: list[ShelfValidationRow],
     mapping_default: MappingCheckResult,
     mapping_changes: MappingCheckResult,
 ) -> ShelfValidationSummary:
-    target_values = [float(row["target_efficiency"]) for row in rows]
-    passed_rows = [row for row in rows if row["verification_passed"]]
-    structural_valid_rows = [row for row in rows if row["structural_valid"]]
+    target_values = [row.target_efficiency for row in rows]
+    passed_rows = [row for row in rows if row.verification_passed]
+    structural_valid_rows = [row for row in rows if row.structural_valid]
 
     return ShelfValidationSummary(
         generated_at_utc=datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
@@ -199,7 +245,7 @@ def _build_summary(
     )
 
 
-def _write_csv(rows: list[dict[str, Any]], output_path: Path) -> None:
+def _write_csv(rows: list[ShelfValidationRow], output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "index",
@@ -217,7 +263,8 @@ def _write_csv(rows: list[dict[str, Any]], output_path: Path) -> None:
     with output_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(rows)
+        for row in rows:
+            writer.writerow(row.to_csv_row())
 
 
 def _write_markdown_summary(
@@ -262,7 +309,7 @@ def _write_markdown_summary(
 
 
 def _write_dashboard(
-    rows: list[dict[str, Any]],
+    rows: list[ShelfValidationRow],
     summary: ShelfValidationSummary,
     reason_counter: dict[str, int],
     output_path: Path,
@@ -274,8 +321,8 @@ def _write_dashboard(
 
     valid_count = summary.verification_passed_types
     invalid_count = summary.verification_failed_types
-    efficiencies_passed = [float(row["target_efficiency"]) for row in rows if row["verification_passed"]]
-    efficiencies_failed = [float(row["target_efficiency"]) for row in rows if not row["verification_passed"]]
+    efficiencies_passed = [row.target_efficiency for row in rows if row.verification_passed]
+    efficiencies_failed = [row.target_efficiency for row in rows if not row.verification_passed]
 
     reason_items = sorted(reason_counter.items(), key=lambda item: item[1], reverse=True)
     top_reasons = reason_items[:8]
@@ -284,7 +331,7 @@ def _write_dashboard(
 
     table_rows = sorted(
         rows,
-        key=lambda item: (item["verification_passed"], -float(item["target_efficiency"])),
+        key=lambda item: (item.verification_passed, -item.target_efficiency),
     )[:20]
 
     fig = make_subplots(
@@ -361,11 +408,11 @@ def _write_dashboard(
             },
             cells={
                 "values": [
-                    [item["index"] for item in table_rows],
-                    [item["verification_passed"] for item in table_rows],
-                    [item["target_efficiency"] for item in table_rows],
-                    [item["panel_count"] for item in table_rows],
-                    [item["canonical_key"] for item in table_rows],
+                    [item.index for item in table_rows],
+                    [item.verification_passed for item in table_rows],
+                    [item.target_efficiency for item in table_rows],
+                    [item.panel_count for item in table_rows],
+                    [item.canonical_key for item in table_rows],
                 ],
                 "fill_color": "#f8fafc",
                 "align": "left",
@@ -434,26 +481,23 @@ def main() -> None:
     summary = _build_summary(rows, mapping_default, mapping_changes)
 
     output_dir = Path(args.output_dir)
-    csv_path = output_dir / "shelf_validation_table.csv"
-    md_path = output_dir / "shelf_validation_summary.md"
-    html_path = output_dir / "shelf_validation_dashboard.html"
-    json_path = output_dir / "shelf_validation_summary.json"
+    artifacts = ShelfValidationArtifacts(
+        csv=output_dir / "shelf_validation_table.csv",
+        markdown=output_dir / "shelf_validation_summary.md",
+        dashboard_html=output_dir / "shelf_validation_dashboard.html",
+        summary_json=output_dir / "shelf_validation_summary.json",
+    )
 
-    _write_csv(rows, csv_path)
-    _write_markdown_summary(summary, mapping_default, mapping_changes, md_path)
-    _write_dashboard(rows, summary, reason_counter, html_path)
-    _write_json_summary(summary, json_path)
+    _write_csv(rows, artifacts.csv)
+    _write_markdown_summary(summary, mapping_default, mapping_changes, artifacts.markdown)
+    _write_dashboard(rows, summary, reason_counter, artifacts.dashboard_html)
+    _write_json_summary(summary, artifacts.summary_json)
 
     print(
         json.dumps(
             {
                 "summary": summary.to_dict(),
-                "artifacts": {
-                    "csv": str(csv_path),
-                    "markdown": str(md_path),
-                    "dashboard_html": str(html_path),
-                    "summary_json": str(json_path),
-                },
+                "artifacts": artifacts.to_dict(),
             },
             ensure_ascii=False,
             indent=2,

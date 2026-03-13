@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
@@ -14,7 +15,13 @@ from knowledge_base_runtime.frontend import (
 from project_runtime.knowledge_base import KnowledgeBaseProject, materialize_knowledge_base_project
 
 
-def _require_backend_transport(project: KnowledgeBaseProject) -> dict[str, str]:
+@dataclass(frozen=True)
+class BackendTransportContract:
+    mode: str
+    product_spec_endpoint: str
+
+
+def _require_backend_transport(project: KnowledgeBaseProject) -> BackendTransportContract:
     transport = project.backend_spec.get("transport")
     if not isinstance(transport, dict):
         raise ValueError("backend_spec.transport is required for runtime app construction")
@@ -24,10 +31,7 @@ def _require_backend_transport(project: KnowledgeBaseProject) -> dict[str, str]:
     product_spec_endpoint = transport.get("product_spec_endpoint")
     if not isinstance(product_spec_endpoint, str) or not product_spec_endpoint.startswith(project.route.api_prefix):
         raise ValueError("backend_spec.transport.product_spec_endpoint must stay under route.api_prefix")
-    return {
-        "mode": mode,
-        "product_spec_endpoint": product_spec_endpoint,
-    }
+    return BackendTransportContract(mode=mode, product_spec_endpoint=product_spec_endpoint)
 
 
 def build_knowledge_base_runtime_app(project: KnowledgeBaseProject | None = None) -> FastAPI:
@@ -47,7 +51,7 @@ def build_knowledge_base_runtime_app(project: KnowledgeBaseProject | None = None
         return {
             "project": resolved.public_summary(),
             "frontend": resolved.route.workbench,
-            "product_spec": transport["product_spec_endpoint"],
+            "product_spec": transport.product_spec_endpoint,
         }
 
     # @governed_symbol id=kb.runtime.page_routes owner=framework kind=runtime_routes risk=high
@@ -86,7 +90,7 @@ def build_knowledge_base_runtime_app(project: KnowledgeBaseProject | None = None
         return compose_document_detail_page(resolved, document, active_section_id=section)
 
     # @governed_symbol id=kb.runtime.page_routes owner=framework kind=runtime_routes risk=high
-    @app.get(transport["product_spec_endpoint"])
+    @app.get(transport.product_spec_endpoint)
     def product_spec() -> dict[str, object]:
         return resolved.to_product_spec_dict()
 

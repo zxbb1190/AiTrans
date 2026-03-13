@@ -2798,7 +2798,7 @@
         "level": 4,
         "description": "kind=strict_zone_file | layer=Code | project_id=knowledge_base_basic | file=src/knowledge_base_runtime/app.py | minimality_status=required",
         "source_file": "src/knowledge_base_runtime/app.py",
-        "source_line": 44,
+        "source_line": 48,
         "node_kind": "strict_zone_file",
         "layer": "Code",
         "project_id": "knowledge_base_basic",
@@ -2827,12 +2827,39 @@
         "audit_classification": null
       },
       {
+        "id": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
+        "label": "class:BackendTransportContract",
+        "level": 5,
+        "description": "kind=structural_candidate | layer=Code | project_id=knowledge_base_basic | file=src/knowledge_base_runtime/app.py | locator=class:BackendTransportContract | object_id=kb.runtime.page_routes | candidate_id=knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
+        "source_file": "src/knowledge_base_runtime/app.py",
+        "source_line": 48,
+        "node_kind": "structural_candidate",
+        "layer": "Code",
+        "project_id": "knowledge_base_basic",
+        "project_product_spec_file": "projects/knowledge_base_basic/product_spec.toml",
+        "parent_node_id": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py",
+        "derived_from": [
+          "project:knowledge_base_basic:structure:object:kb.runtime.page_routes"
+        ],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "object_id": "kb.runtime.page_routes",
+        "role_id": null,
+        "candidate_id": "knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null,
+        "minimality_status": null,
+        "audit_classification": null
+      },
+      {
         "id": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:basketball_showcase_page",
         "label": "function:basketball_showcase_page",
         "level": 5,
         "description": "kind=structural_candidate | layer=Code | project_id=knowledge_base_basic | file=src/knowledge_base_runtime/app.py | locator=function:basketball_showcase_page | object_id=kb.runtime.page_routes | candidate_id=knowledge_base_basic:src/knowledge_base_runtime/app.py:function:basketball_showcase_page",
         "source_file": "src/knowledge_base_runtime/app.py",
-        "source_line": 44,
+        "source_line": 48,
         "node_kind": "structural_candidate",
         "layer": "Code",
         "project_id": "knowledge_base_basic",
@@ -2859,7 +2886,7 @@
         "level": 5,
         "description": "kind=structural_candidate | layer=Code | project_id=knowledge_base_basic | file=src/knowledge_base_runtime/app.py | locator=function:build_knowledge_base_runtime_app | object_id=kb.runtime.page_routes | candidate_id=knowledge_base_basic:src/knowledge_base_runtime/app.py:function:build_knowledge_base_runtime_app",
         "source_file": "src/knowledge_base_runtime/app.py",
-        "source_line": 44,
+        "source_line": 48,
         "node_kind": "structural_candidate",
         "layer": "Code",
         "project_id": "knowledge_base_basic",
@@ -2886,7 +2913,7 @@
         "level": 5,
         "description": "kind=structural_candidate | layer=Code | project_id=knowledge_base_basic | file=src/knowledge_base_runtime/app.py | locator=function:document_detail_page | object_id=kb.runtime.page_routes | candidate_id=knowledge_base_basic:src/knowledge_base_runtime/app.py:function:document_detail_page",
         "source_file": "src/knowledge_base_runtime/app.py",
-        "source_line": 44,
+        "source_line": 48,
         "node_kind": "structural_candidate",
         "layer": "Code",
         "project_id": "knowledge_base_basic",
@@ -2913,7 +2940,7 @@
         "level": 5,
         "description": "kind=structural_candidate | layer=Code | project_id=knowledge_base_basic | file=src/knowledge_base_runtime/app.py | locator=function:knowledge_base_detail_page | object_id=kb.runtime.page_routes | candidate_id=knowledge_base_basic:src/knowledge_base_runtime/app.py:function:knowledge_base_detail_page",
         "source_file": "src/knowledge_base_runtime/app.py",
-        "source_line": 44,
+        "source_line": 48,
         "node_kind": "structural_candidate",
         "layer": "Code",
         "project_id": "knowledge_base_basic",
@@ -2940,7 +2967,7 @@
         "level": 5,
         "description": "kind=structural_candidate | layer=Code | project_id=knowledge_base_basic | file=src/knowledge_base_runtime/app.py | locator=function:knowledge_base_list_page | object_id=kb.runtime.page_routes | candidate_id=knowledge_base_basic:src/knowledge_base_runtime/app.py:function:knowledge_base_list_page",
         "source_file": "src/knowledge_base_runtime/app.py",
-        "source_line": 44,
+        "source_line": 48,
         "node_kind": "structural_candidate",
         "layer": "Code",
         "project_id": "knowledge_base_basic",
@@ -2967,7 +2994,7 @@
         "level": 5,
         "description": "kind=structural_candidate | layer=Code | project_id=knowledge_base_basic | file=src/knowledge_base_runtime/app.py | locator=function:knowledge_base_page | object_id=kb.runtime.page_routes | candidate_id=knowledge_base_basic:src/knowledge_base_runtime/app.py:function:knowledge_base_page",
         "source_file": "src/knowledge_base_runtime/app.py",
-        "source_line": 44,
+        "source_line": 48,
         "node_kind": "structural_candidate",
         "layer": "Code",
         "project_id": "knowledge_base_basic",
@@ -2994,7 +3021,7 @@
         "level": 5,
         "description": "kind=structural_candidate | layer=Code | project_id=knowledge_base_basic | file=src/knowledge_base_runtime/app.py | locator=function:product_spec | object_id=kb.runtime.page_routes | candidate_id=knowledge_base_basic:src/knowledge_base_runtime/app.py:function:product_spec",
         "source_file": "src/knowledge_base_runtime/app.py",
-        "source_line": 44,
+        "source_line": 48,
         "node_kind": "structural_candidate",
         "layer": "Code",
         "project_id": "knowledge_base_basic",
@@ -3021,7 +3048,7 @@
         "level": 5,
         "description": "kind=structural_candidate | layer=Code | project_id=knowledge_base_basic | file=src/knowledge_base_runtime/app.py | locator=function:root | object_id=kb.runtime.page_routes | candidate_id=knowledge_base_basic:src/knowledge_base_runtime/app.py:function:root",
         "source_file": "src/knowledge_base_runtime/app.py",
-        "source_line": 44,
+        "source_line": 48,
         "node_kind": "structural_candidate",
         "layer": "Code",
         "project_id": "knowledge_base_basic",
@@ -3741,6 +3768,60 @@
         "risk": null,
         "validator": null,
         "minimality_status": "required",
+        "audit_classification": null
+      },
+      {
+        "id": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+        "label": "class:GeneratedArtifactPaths",
+        "level": 5,
+        "description": "kind=structural_candidate | layer=Code | project_id=knowledge_base_basic | file=src/project_runtime/governance.py | locator=class:GeneratedArtifactPaths | object_id=kb.answer.behavior | candidate_id=knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+        "source_file": "src/project_runtime/governance.py",
+        "source_line": 1,
+        "node_kind": "structural_candidate",
+        "layer": "Code",
+        "project_id": "knowledge_base_basic",
+        "project_product_spec_file": "projects/knowledge_base_basic/product_spec.toml",
+        "parent_node_id": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
+        "derived_from": [
+          "project:knowledge_base_basic:structure:object:kb.answer.behavior"
+        ],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "object_id": "kb.answer.behavior",
+        "role_id": null,
+        "candidate_id": "knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null,
+        "minimality_status": null,
+        "audit_classification": null
+      },
+      {
+        "id": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
+        "label": "class:GovernanceSnapshotSymbol",
+        "level": 5,
+        "description": "kind=structural_candidate | layer=Code | project_id=knowledge_base_basic | file=src/project_runtime/governance.py | locator=class:GovernanceSnapshotSymbol | object_id=kb.answer.behavior | candidate_id=knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
+        "source_file": "src/project_runtime/governance.py",
+        "source_line": 1,
+        "node_kind": "structural_candidate",
+        "layer": "Code",
+        "project_id": "knowledge_base_basic",
+        "project_product_spec_file": "projects/knowledge_base_basic/product_spec.toml",
+        "parent_node_id": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
+        "derived_from": [
+          "project:knowledge_base_basic:structure:object:kb.answer.behavior"
+        ],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "object_id": "kb.answer.behavior",
+        "role_id": null,
+        "candidate_id": "knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null,
+        "minimality_status": null,
         "audit_classification": null
       },
       {
@@ -4574,6 +4655,33 @@
         "object_id": "kb.answer.behavior",
         "role_id": null,
         "candidate_id": "knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_tree",
+        "symbol_kind": null,
+        "risk": null,
+        "validator": null,
+        "minimality_status": null,
+        "audit_classification": null
+      },
+      {
+        "id": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
+        "label": "function:to_dict",
+        "level": 5,
+        "description": "kind=structural_candidate | layer=Code | project_id=knowledge_base_basic | file=src/project_runtime/governance.py | locator=function:to_dict | object_id=kb.answer.behavior | candidate_id=knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
+        "source_file": "src/project_runtime/governance.py",
+        "source_line": 1,
+        "node_kind": "structural_candidate",
+        "layer": "Code",
+        "project_id": "knowledge_base_basic",
+        "project_product_spec_file": "projects/knowledge_base_basic/product_spec.toml",
+        "parent_node_id": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
+        "derived_from": [
+          "project:knowledge_base_basic:structure:object:kb.answer.behavior"
+        ],
+        "owner": null,
+        "artifact": null,
+        "symbol_id": null,
+        "object_id": "kb.answer.behavior",
+        "role_id": null,
+        "candidate_id": "knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
         "symbol_kind": null,
         "risk": null,
         "validator": null,
@@ -10678,6 +10786,11 @@
       },
       {
         "from": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py",
+        "to": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py",
         "to": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:basketball_showcase_page",
         "relation": "tree_child"
       },
@@ -10843,6 +10956,16 @@
       },
       {
         "from": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
+        "to": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
+        "to": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
         "to": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernedBinding",
         "relation": "tree_child"
       },
@@ -10994,6 +11117,11 @@
       {
         "from": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
         "to": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_tree",
+        "relation": "tree_child"
+      },
+      {
+        "from": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
+        "to": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
         "relation": "tree_child"
       },
       {
@@ -12278,6 +12406,7 @@
               "kb.runtime.page_routes:root"
             ],
             "candidate_ids": [
+              "knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
               "knowledge_base_basic:src/knowledge_base_runtime/app.py:function:basketball_showcase_page",
               "knowledge_base_basic:src/knowledge_base_runtime/app.py:function:build_knowledge_base_runtime_app",
               "knowledge_base_basic:src/knowledge_base_runtime/app.py:function:document_detail_page",
@@ -12288,6 +12417,7 @@
               "knowledge_base_basic:src/knowledge_base_runtime/app.py:function:root"
             ],
             "reasons": [
+              "candidate:attached",
               "candidate:governed",
               "object:kb.runtime.page_routes",
               "role:kb.runtime.page_routes:basketball_showcase_page",
@@ -12423,6 +12553,8 @@
               "kb.workbench.surface_contract:expected_builder"
             ],
             "candidate_ids": [
+              "knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+              "knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
               "knowledge_base_basic:src/project_runtime/governance.py:class:GovernedBinding",
               "knowledge_base_basic:src/project_runtime/governance.py:class:SymbolDefinition",
               "knowledge_base_basic:src/project_runtime/governance.py:class:UpstreamRef",
@@ -12454,6 +12586,7 @@
               "knowledge_base_basic:src/project_runtime/governance.py:function:build_governance_tree",
               "knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_manifest",
               "knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_tree",
+              "knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
               "knowledge_base_basic:src/project_runtime/governance.py:function:validate_manifest_closure",
               "knowledge_base_basic:src/project_runtime/governance.py:function:validate_tree_closure"
             ],
@@ -12852,6 +12985,7 @@
                 "kb.runtime.page_routes:root"
               ],
               "candidate_ids": [
+                "knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
                 "knowledge_base_basic:src/knowledge_base_runtime/app.py:function:basketball_showcase_page",
                 "knowledge_base_basic:src/knowledge_base_runtime/app.py:function:build_knowledge_base_runtime_app",
                 "knowledge_base_basic:src/knowledge_base_runtime/app.py:function:document_detail_page",
@@ -12862,6 +12996,7 @@
                 "knowledge_base_basic:src/knowledge_base_runtime/app.py:function:root"
               ],
               "reasons": [
+                "candidate:attached",
                 "candidate:governed",
                 "object:kb.runtime.page_routes",
                 "role:kb.runtime.page_routes:basketball_showcase_page",
@@ -12997,6 +13132,8 @@
                 "kb.workbench.surface_contract:expected_builder"
               ],
               "candidate_ids": [
+                "knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+                "knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
                 "knowledge_base_basic:src/project_runtime/governance.py:class:GovernedBinding",
                 "knowledge_base_basic:src/project_runtime/governance.py:class:SymbolDefinition",
                 "knowledge_base_basic:src/project_runtime/governance.py:class:UpstreamRef",
@@ -13028,6 +13165,7 @@
                 "knowledge_base_basic:src/project_runtime/governance.py:function:build_governance_tree",
                 "knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_manifest",
                 "knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_tree",
+                "knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
                 "knowledge_base_basic:src/project_runtime/governance.py:function:validate_manifest_closure",
                 "knowledge_base_basic:src/project_runtime/governance.py:function:validate_tree_closure"
               ],
@@ -13275,7 +13413,7 @@
             "fully_closed_object_count": 23,
             "partially_closed_object_count": 0,
             "governed_candidate_count": 24,
-            "attached_candidate_count": 76,
+            "attached_candidate_count": 80,
             "internal_candidate_count": 0,
             "uncovered_future_categories": [
               "compiler/evidence builders that are still attached-only",
@@ -20380,6 +20518,20 @@
             ]
           },
           {
+            "candidate_id": "knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
+            "project_id": "knowledge_base_basic",
+            "file": "src/knowledge_base_runtime/app.py",
+            "locator": "class:BackendTransportContract",
+            "kind": "python_schema_carrier",
+            "confidence": 0.96,
+            "reasons": [
+              "class carries request/response/spec schema surface"
+            ],
+            "classification": "attached",
+            "object_id": "kb.runtime.page_routes",
+            "role_ids": []
+          },
+          {
             "candidate_id": "knowledge_base_basic:src/knowledge_base_runtime/app.py:function:basketball_showcase_page",
             "project_id": "knowledge_base_basic",
             "file": "src/knowledge_base_runtime/app.py",
@@ -20855,6 +21007,34 @@
             ]
           },
           {
+            "candidate_id": "knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+            "project_id": "knowledge_base_basic",
+            "file": "src/project_runtime/governance.py",
+            "locator": "class:GeneratedArtifactPaths",
+            "kind": "python_schema_carrier",
+            "confidence": 0.96,
+            "reasons": [
+              "class carries request/response/spec schema surface"
+            ],
+            "classification": "attached",
+            "object_id": "kb.answer.behavior",
+            "role_ids": []
+          },
+          {
+            "candidate_id": "knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
+            "project_id": "knowledge_base_basic",
+            "file": "src/project_runtime/governance.py",
+            "locator": "class:GovernanceSnapshotSymbol",
+            "kind": "python_schema_carrier",
+            "confidence": 0.96,
+            "reasons": [
+              "class carries request/response/spec schema surface"
+            ],
+            "classification": "attached",
+            "object_id": "kb.answer.behavior",
+            "role_ids": []
+          },
+          {
             "candidate_id": "knowledge_base_basic:src/project_runtime/governance.py:class:GovernedBinding",
             "project_id": "knowledge_base_basic",
             "file": "src/project_runtime/governance.py",
@@ -21315,6 +21495,20 @@
             "project_id": "knowledge_base_basic",
             "file": "src/project_runtime/governance.py",
             "locator": "function:parse_governance_tree",
+            "kind": "python_evidence_builder",
+            "confidence": 0.84,
+            "reasons": [
+              "function emits manifest/tree/generated evidence"
+            ],
+            "classification": "attached",
+            "object_id": "kb.answer.behavior",
+            "role_ids": []
+          },
+          {
+            "candidate_id": "knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
+            "project_id": "knowledge_base_basic",
+            "file": "src/project_runtime/governance.py",
+            "locator": "function:to_dict",
             "kind": "python_evidence_builder",
             "confidence": 0.84,
             "reasons": [
@@ -22186,6 +22380,7 @@
             "node_id": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py",
             "parent": "project:knowledge_base_basic:code",
             "children": [
+              "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
               "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:basketball_showcase_page",
               "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:build_knowledge_base_runtime_app",
               "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:document_detail_page",
@@ -22213,6 +22408,7 @@
               "kb.runtime.page_routes:root"
             ],
             "reasons": [
+              "candidate:attached",
               "candidate:governed",
               "object:kb.runtime.page_routes",
               "role:kb.runtime.page_routes:basketball_showcase_page",
@@ -22244,6 +22440,29 @@
               "project:knowledge_base_basic:structure:object:kb.runtime.page_routes:role:kb.runtime.page_routes:knowledge_base_page",
               "project:knowledge_base_basic:structure:object:kb.runtime.page_routes:role:kb.runtime.page_routes:product_spec",
               "project:knowledge_base_basic:structure:object:kb.runtime.page_routes:role:kb.runtime.page_routes:root"
+            ],
+            "project_id": "knowledge_base_basic"
+          },
+          {
+            "node_id": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
+            "parent": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py",
+            "children": [],
+            "kind": "structural_candidate",
+            "layer": "Code",
+            "title": "class:BackendTransportContract",
+            "file": "src/knowledge_base_runtime/app.py",
+            "locator": "class:BackendTransportContract",
+            "candidate_id": "knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
+            "candidate_kind": "python_schema_carrier",
+            "confidence": 0.96,
+            "classification": "attached",
+            "object_id": "kb.runtime.page_routes",
+            "role_ids": [],
+            "reasons": [
+              "class carries request/response/spec schema surface"
+            ],
+            "derived_from": [
+              "project:knowledge_base_basic:structure:object:kb.runtime.page_routes"
             ],
             "project_id": "knowledge_base_basic"
           },
@@ -23106,6 +23325,8 @@
             "node_id": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
             "parent": "project:knowledge_base_basic:code",
             "children": [
+              "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+              "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
               "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernedBinding",
               "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:SymbolDefinition",
               "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:UpstreamRef",
@@ -23137,6 +23358,7 @@
               "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:build_governance_tree",
               "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_manifest",
               "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_tree",
+              "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
               "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_manifest_closure",
               "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_tree_closure"
             ],
@@ -23235,6 +23457,52 @@
               "project:knowledge_base_basic:structure:object:kb.ui.surface_spec:role:kb.ui.surface_spec:expected_builder",
               "project:knowledge_base_basic:structure:object:kb.workbench.surface_contract:role:kb.workbench.surface_contract:actual_extractor",
               "project:knowledge_base_basic:structure:object:kb.workbench.surface_contract:role:kb.workbench.surface_contract:expected_builder"
+            ],
+            "project_id": "knowledge_base_basic"
+          },
+          {
+            "node_id": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+            "parent": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
+            "children": [],
+            "kind": "structural_candidate",
+            "layer": "Code",
+            "title": "class:GeneratedArtifactPaths",
+            "file": "src/project_runtime/governance.py",
+            "locator": "class:GeneratedArtifactPaths",
+            "candidate_id": "knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+            "candidate_kind": "python_schema_carrier",
+            "confidence": 0.96,
+            "classification": "attached",
+            "object_id": "kb.answer.behavior",
+            "role_ids": [],
+            "reasons": [
+              "class carries request/response/spec schema surface"
+            ],
+            "derived_from": [
+              "project:knowledge_base_basic:structure:object:kb.answer.behavior"
+            ],
+            "project_id": "knowledge_base_basic"
+          },
+          {
+            "node_id": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
+            "parent": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
+            "children": [],
+            "kind": "structural_candidate",
+            "layer": "Code",
+            "title": "class:GovernanceSnapshotSymbol",
+            "file": "src/project_runtime/governance.py",
+            "locator": "class:GovernanceSnapshotSymbol",
+            "candidate_id": "knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
+            "candidate_kind": "python_schema_carrier",
+            "confidence": 0.96,
+            "classification": "attached",
+            "object_id": "kb.answer.behavior",
+            "role_ids": [],
+            "reasons": [
+              "class carries request/response/spec schema surface"
+            ],
+            "derived_from": [
+              "project:knowledge_base_basic:structure:object:kb.answer.behavior"
             ],
             "project_id": "knowledge_base_basic"
           },
@@ -23974,6 +24242,29 @@
             "file": "src/project_runtime/governance.py",
             "locator": "function:parse_governance_tree",
             "candidate_id": "knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_tree",
+            "candidate_kind": "python_evidence_builder",
+            "confidence": 0.84,
+            "classification": "attached",
+            "object_id": "kb.answer.behavior",
+            "role_ids": [],
+            "reasons": [
+              "function emits manifest/tree/generated evidence"
+            ],
+            "derived_from": [
+              "project:knowledge_base_basic:structure:object:kb.answer.behavior"
+            ],
+            "project_id": "knowledge_base_basic"
+          },
+          {
+            "node_id": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
+            "parent": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
+            "children": [],
+            "kind": "structural_candidate",
+            "layer": "Code",
+            "title": "function:to_dict",
+            "file": "src/project_runtime/governance.py",
+            "locator": "function:to_dict",
+            "candidate_id": "knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
             "candidate_kind": "python_evidence_builder",
             "confidence": 0.84,
             "classification": "attached",
@@ -30556,6 +30847,7 @@
       ],
       "src/knowledge_base_runtime/app.py": [
         "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py",
+        "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
         "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:basketball_showcase_page",
         "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:build_knowledge_base_runtime_app",
         "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:document_detail_page",
@@ -30634,6 +30926,8 @@
       ],
       "src/project_runtime/governance.py": [
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
+        "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+        "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernedBinding",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:SymbolDefinition",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:UpstreamRef",
@@ -30665,6 +30959,7 @@
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:build_governance_tree",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_manifest",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_tree",
+        "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_manifest_closure",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_tree_closure",
         "workspace:code:file:src/project_runtime/governance.py"
@@ -31136,6 +31431,7 @@
       "project:knowledge_base_basic:code:file:src/knowledge_base_framework/workbench.py": "project:knowledge_base_basic:code",
       "project:knowledge_base_basic:code:file:src/knowledge_base_framework/workbench.py:candidate:knowledge_base_basic:src/knowledge_base_framework/workbench.py:function:build_workbench_contract": "project:knowledge_base_basic:code:file:src/knowledge_base_framework/workbench.py",
       "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py": "project:knowledge_base_basic:code",
+      "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py",
       "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:basketball_showcase_page": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py",
       "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:build_knowledge_base_runtime_app": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py",
       "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:document_detail_page": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py",
@@ -31169,6 +31465,8 @@
       "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/backend.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/backend.py:function:list_knowledge_bases": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/backend.py",
       "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/backend.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/backend.py:function:list_tags": "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/backend.py",
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py": "project:knowledge_base_basic:code",
+      "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
+      "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernedBinding": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:SymbolDefinition": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:UpstreamRef": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
@@ -31200,6 +31498,7 @@
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:build_governance_tree": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_manifest": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_tree": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
+      "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:to_dict": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_manifest_closure": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_tree_closure": "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
       "project:knowledge_base_basic:code:file:src/project_runtime/knowledge_base.py": "project:knowledge_base_basic:code",
@@ -31423,6 +31722,7 @@
       ],
       "project:knowledge_base_basic:code:file:src/knowledge_base_framework/workbench.py:candidate:knowledge_base_basic:src/knowledge_base_framework/workbench.py:function:build_workbench_contract": [],
       "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py": [
+        "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
         "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:basketball_showcase_page",
         "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:build_knowledge_base_runtime_app",
         "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:document_detail_page",
@@ -31432,6 +31732,7 @@
         "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:product_spec",
         "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:root"
       ],
+      "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract": [],
       "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:basketball_showcase_page": [],
       "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:build_knowledge_base_runtime_app": [],
       "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:document_detail_page": [],
@@ -31489,6 +31790,8 @@
       "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/backend.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/backend.py:function:list_knowledge_bases": [],
       "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/backend.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/backend.py:function:list_tags": [],
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py": [
+        "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+        "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernedBinding",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:SymbolDefinition",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:UpstreamRef",
@@ -31520,9 +31823,12 @@
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:build_governance_tree",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_manifest",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_tree",
+        "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_manifest_closure",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_tree_closure"
       ],
+      "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths": [],
+      "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol": [],
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernedBinding": [],
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:SymbolDefinition": [],
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:UpstreamRef": [],
@@ -31554,6 +31860,7 @@
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:build_governance_tree": [],
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_manifest": [],
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_tree": [],
+      "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:to_dict": [],
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_manifest_closure": [],
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_tree_closure": [],
       "project:knowledge_base_basic:code:file:src/project_runtime/knowledge_base.py": [
@@ -32392,6 +32699,9 @@
         "project:knowledge_base_basic:structure:object:kb.runtime.page_routes:role:kb.runtime.page_routes:product_spec",
         "project:knowledge_base_basic:structure:object:kb.runtime.page_routes:role:kb.runtime.page_routes:root"
       ],
+      "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract": [
+        "project:knowledge_base_basic:structure:object:kb.runtime.page_routes"
+      ],
       "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:basketball_showcase_page": [
         "project:knowledge_base_basic:structure:object:kb.runtime.page_routes:role:kb.runtime.page_routes:basketball_showcase_page"
       ],
@@ -32517,6 +32827,12 @@
         "project:knowledge_base_basic:structure:object:kb.workbench.surface_contract:role:kb.workbench.surface_contract:actual_extractor",
         "project:knowledge_base_basic:structure:object:kb.workbench.surface_contract:role:kb.workbench.surface_contract:expected_builder"
       ],
+      "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths": [
+        "project:knowledge_base_basic:structure:object:kb.answer.behavior"
+      ],
+      "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol": [
+        "project:knowledge_base_basic:structure:object:kb.answer.behavior"
+      ],
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernedBinding": [
         "project:knowledge_base_basic:structure:object:kb.answer.behavior"
       ],
@@ -32608,6 +32924,9 @@
         "project:knowledge_base_basic:structure:object:kb.answer.behavior"
       ],
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_tree": [
+        "project:knowledge_base_basic:structure:object:kb.answer.behavior"
+      ],
+      "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:to_dict": [
         "project:knowledge_base_basic:structure:object:kb.answer.behavior"
       ],
       "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_manifest_closure": [
@@ -33706,6 +34025,8 @@
         "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/backend.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/backend.py:class:KnowledgeTagListResponse",
         "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/backend.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/backend.py:class:RankedSection",
         "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/backend.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/backend.py:function:_to_document_detail",
+        "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+        "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernedBinding",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:SymbolDefinition",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:UpstreamRef",
@@ -33721,6 +34042,7 @@
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:build_governance_tree",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_manifest",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_tree",
+        "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_manifest_closure",
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_tree_closure",
         "project:knowledge_base_basic:evidence:artifact:framework_ir_json",
@@ -33922,6 +34244,7 @@
         "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:_expected_frontend_surface_contract"
       ],
       "project:knowledge_base_basic:structure:object:kb.runtime.page_routes": [
+        "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
         "project:knowledge_base_basic:evidence:artifact:framework_ir_json",
         "project:knowledge_base_basic:evidence:artifact:generation_manifest_json",
         "project:knowledge_base_basic:evidence:artifact:governance_manifest_json",
@@ -34340,6 +34663,7 @@
           "project:knowledge_base_basic:code:file:src/knowledge_base_framework/workbench.py",
           "project:knowledge_base_basic:code:file:src/knowledge_base_framework/workbench.py:candidate:knowledge_base_basic:src/knowledge_base_framework/workbench.py:function:build_workbench_contract",
           "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py",
+          "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:class:BackendTransportContract",
           "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:basketball_showcase_page",
           "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:build_knowledge_base_runtime_app",
           "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/app.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/app.py:function:document_detail_page",
@@ -34373,6 +34697,8 @@
           "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/backend.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/backend.py:function:list_knowledge_bases",
           "project:knowledge_base_basic:code:file:src/knowledge_base_runtime/backend.py:candidate:knowledge_base_basic:src/knowledge_base_runtime/backend.py:function:list_tags",
           "project:knowledge_base_basic:code:file:src/project_runtime/governance.py",
+          "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GeneratedArtifactPaths",
+          "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernanceSnapshotSymbol",
           "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:GovernedBinding",
           "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:SymbolDefinition",
           "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:class:UpstreamRef",
@@ -34404,6 +34730,7 @@
           "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:build_governance_tree",
           "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_manifest",
           "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:parse_governance_tree",
+          "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:to_dict",
           "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_manifest_closure",
           "project:knowledge_base_basic:code:file:src/project_runtime/governance.py:candidate:knowledge_base_basic:src/project_runtime/governance.py:function:validate_tree_closure",
           "project:knowledge_base_basic:code:file:src/project_runtime/knowledge_base.py",

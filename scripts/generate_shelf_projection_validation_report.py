@@ -78,6 +78,120 @@ class ProjectionValidationSummary:
         }
 
 
+@dataclass(frozen=True)
+class ProjectionValidationRow:
+    index: int
+    group_id: str
+    group_counts_per_layer: str
+    canonical_key: str
+    panel_count: int
+    boundary_valid: bool
+    combination_valid: bool
+    structural_valid: bool
+    projection_improved: bool
+    passed: bool
+    weighted_projected_cells: int
+    union_projected_cells: int
+    effective_area: float
+    footprint_area: float
+    projection_ratio: float
+    threshold: float
+    reasons: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "index": self.index,
+            "group_id": self.group_id,
+            "group_counts_per_layer": self.group_counts_per_layer,
+            "canonical_key": self.canonical_key,
+            "panel_count": self.panel_count,
+            "boundary_valid": self.boundary_valid,
+            "combination_valid": self.combination_valid,
+            "structural_valid": self.structural_valid,
+            "projection_improved": self.projection_improved,
+            "passed": self.passed,
+            "weighted_projected_cells": self.weighted_projected_cells,
+            "union_projected_cells": self.union_projected_cells,
+            "effective_area": self.effective_area,
+            "footprint_area": self.footprint_area,
+            "projection_ratio": self.projection_ratio,
+            "threshold": self.threshold,
+            "reasons": self.reasons,
+        }
+
+
+@dataclass(frozen=True)
+class ProjectionScenario:
+    scenario_id: str
+    x_cells: int
+    y_cells: int
+    layers: int
+    allow_empty_layer: bool
+    footprint_cells: int
+    rows: tuple[ProjectionValidationRow, ...]
+    reason_counter: dict[str, int]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.scenario_id,
+            "x_cells": self.x_cells,
+            "y_cells": self.y_cells,
+            "layers": self.layers,
+            "allow_empty_layer": self.allow_empty_layer,
+            "footprint_cells": self.footprint_cells,
+            "rows": [row.to_dict() for row in self.rows],
+            "reason_counter": dict(self.reason_counter),
+        }
+
+
+@dataclass(frozen=True)
+class ProjectionDashboardDefaultState:
+    x_cells: int
+    y_cells: int
+    layers: int
+    allow_empty_layer: bool
+    ratio_threshold: float
+    require_boundary: bool
+    require_combination: bool
+    require_structural: bool
+    require_ratio_threshold: bool
+    require_r6_weighted_gt_footprint: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "x_cells": self.x_cells,
+            "y_cells": self.y_cells,
+            "layers": self.layers,
+            "allow_empty_layer": self.allow_empty_layer,
+            "ratio_threshold": self.ratio_threshold,
+            "require_boundary": self.require_boundary,
+            "require_combination": self.require_combination,
+            "require_structural": self.require_structural,
+            "require_ratio_threshold": self.require_ratio_threshold,
+            "require_r6_weighted_gt_footprint": self.require_r6_weighted_gt_footprint,
+        }
+
+
+@dataclass(frozen=True)
+class ProjectionValidationArtifacts:
+    row_csv: Path
+    group_csv: Path
+    summary_markdown: Path
+    dashboard_html: Path
+    summary_json: Path
+    scenarios_json: Path
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "row_csv": str(self.row_csv),
+            "group_csv": str(self.group_csv),
+            "summary_markdown": str(self.summary_markdown),
+            "dashboard_html": str(self.dashboard_html),
+            "summary_json": str(self.summary_json),
+            "scenarios_json": str(self.scenarios_json),
+        }
+
+
 def _parse_int_options(raw: str, *, name: str) -> list[int]:
     items = [item.strip() for item in raw.split(",")]
     values: list[int] = []
@@ -232,7 +346,7 @@ def _collect_rows(
     ratio_threshold: float,
     allow_empty_layer: bool,
     max_type_count: int,
-) -> tuple[list[dict[str, Any]], dict[str, int]]:
+) -> tuple[list[ProjectionValidationRow], dict[str, int]]:
     enum_result = enumerate_structure_types(
         EnumerationConfig(
             grid=grid,
@@ -249,7 +363,7 @@ def _collect_rows(
     valid_combo_keys = {frozenset(combo) for combo in geometric_type_combinations()}
     boundary_valid, boundary_errors = boundary.validate()
 
-    rows: list[dict[str, Any]] = []
+    rows: list[ProjectionValidationRow] = []
     reason_counter: Counter[str] = Counter()
     for idx, candidate in enumerate(enum_result.unique_candidates, start=1):
         projection = _projection_metric(candidate.topology, grid, boundary)
@@ -277,25 +391,25 @@ def _collect_rows(
             reason_counter[reason] += 1
 
         rows.append(
-            {
-                "index": idx,
-                "group_id": group_id,
-                "group_counts_per_layer": ",".join(str(x) for x in (group.counts_per_layer if group else ())),
-                "canonical_key": candidate.canonical_key,
-                "panel_count": candidate.topology.panel_count(),
-                "boundary_valid": boundary_valid,
-                "combination_valid": combo_valid,
-                "structural_valid": structural_valid,
-                "projection_improved": projection_improved,
-                "passed": boundary_valid and combo_valid and structural_valid and projection_improved,
-                "weighted_projected_cells": projection.weighted_cells,
-                "union_projected_cells": projection.union_cells,
-                "effective_area": round(projection.effective_area, 6),
-                "footprint_area": round(projection.footprint_area, 6),
-                "projection_ratio": round(projection.ratio, 6),
-                "threshold": round(ratio_threshold, 6),
-                "reasons": " | ".join(reasons),
-            }
+            ProjectionValidationRow(
+                index=idx,
+                group_id=group_id,
+                group_counts_per_layer=",".join(str(x) for x in (group.counts_per_layer if group else ())),
+                canonical_key=candidate.canonical_key,
+                panel_count=candidate.topology.panel_count(),
+                boundary_valid=boundary_valid,
+                combination_valid=combo_valid,
+                structural_valid=structural_valid,
+                projection_improved=projection_improved,
+                passed=boundary_valid and combo_valid and structural_valid and projection_improved,
+                weighted_projected_cells=projection.weighted_cells,
+                union_projected_cells=projection.union_cells,
+                effective_area=round(projection.effective_area, 6),
+                footprint_area=round(projection.footprint_area, 6),
+                projection_ratio=round(projection.ratio, 6),
+                threshold=round(ratio_threshold, 6),
+                reasons=" | ".join(reasons),
+            )
         )
 
     return rows, dict(reason_counter)
@@ -310,8 +424,8 @@ def _collect_scenarios(
     allow_empty_options: list[bool],
     ratio_threshold: float,
     max_type_count: int,
-) -> list[dict[str, Any]]:
-    scenarios: list[dict[str, Any]] = []
+) -> list[ProjectionScenario]:
+    scenarios: list[ProjectionScenario] = []
     for layers in layers_options:
         boundary = BoundaryDefinition(
             layers_n=layers,
@@ -332,39 +446,39 @@ def _collect_scenarios(
                         max_type_count=max_type_count,
                     )
                     scenarios.append(
-                        {
-                            "id": _scenario_id(x_cells, y_cells, layers, allow_empty_layer),
-                            "x_cells": x_cells,
-                            "y_cells": y_cells,
-                            "layers": layers,
-                            "allow_empty_layer": allow_empty_layer,
-                            "footprint_cells": x_cells * y_cells,
-                            "rows": rows,
-                            "reason_counter": reason_counter,
-                        }
+                        ProjectionScenario(
+                            scenario_id=_scenario_id(x_cells, y_cells, layers, allow_empty_layer),
+                            x_cells=x_cells,
+                            y_cells=y_cells,
+                            layers=layers,
+                            allow_empty_layer=allow_empty_layer,
+                            footprint_cells=x_cells * y_cells,
+                            rows=tuple(rows),
+                            reason_counter=reason_counter,
+                        )
                     )
     scenarios.sort(
         key=lambda item: (
-            int(item["layers"]),
-            int(item["x_cells"]),
-            int(item["y_cells"]),
-            0 if bool(item["allow_empty_layer"]) else 1,
+            item.layers,
+            item.x_cells,
+            item.y_cells,
+            0 if item.allow_empty_layer else 1,
         )
     )
     return scenarios
 
 
 def _build_summary(
-    rows: list[dict[str, Any]],
+    rows: list[ProjectionValidationRow],
     mapping_default: MappingCheckResult,
     mapping_changes: MappingCheckResult,
     ratio_threshold: float,
 ) -> ProjectionValidationSummary:
-    ratios = [float(row["projection_ratio"]) for row in rows]
-    passed_rows = [row for row in rows if row["passed"]]
-    structural_valid_rows = [row for row in rows if row["structural_valid"]]
-    improved_rows = [row for row in rows if row["projection_improved"]]
-    boundary_valid = bool(rows[0]["boundary_valid"]) if rows else False
+    ratios = [row.projection_ratio for row in rows]
+    passed_rows = [row for row in rows if row.passed]
+    structural_valid_rows = [row for row in rows if row.structural_valid]
+    improved_rows = [row for row in rows if row.projection_improved]
+    boundary_valid = rows[0].boundary_valid if rows else False
 
     return ProjectionValidationSummary(
         generated_at_utc=datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
@@ -385,7 +499,7 @@ def _build_summary(
     )
 
 
-def _write_rows_csv(rows: list[dict[str, Any]], output_path: Path) -> None:
+def _write_rows_csv(rows: list[ProjectionValidationRow], output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "index",
@@ -409,14 +523,15 @@ def _write_rows_csv(rows: list[dict[str, Any]], output_path: Path) -> None:
     with output_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(rows)
+        for row in rows:
+            writer.writerow(row.to_dict())
 
 
-def _write_group_summary_csv(rows: list[dict[str, Any]], output_path: Path) -> None:
+def _write_group_summary_csv(rows: list[ProjectionValidationRow], output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    group_buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    group_buckets: dict[str, list[ProjectionValidationRow]] = defaultdict(list)
     for row in rows:
-        group_buckets[str(row["group_id"])].append(row)
+        group_buckets[row.group_id].append(row)
 
     fieldnames = [
         "group_id",
@@ -433,12 +548,12 @@ def _write_group_summary_csv(rows: list[dict[str, Any]], output_path: Path) -> N
         writer.writeheader()
         for gid in sorted(group_buckets.keys()):
             bucket = group_buckets[gid]
-            ratios = [float(row["projection_ratio"]) for row in bucket]
-            passed_types = sum(1 for row in bucket if row["passed"])
+            ratios = [row.projection_ratio for row in bucket]
+            passed_types = sum(1 for row in bucket if row.passed)
             writer.writerow(
                 {
                     "group_id": gid,
-                    "counts_per_layer": bucket[0]["group_counts_per_layer"],
+                    "counts_per_layer": bucket[0].group_counts_per_layer,
                     "total_types": len(bucket),
                     "passed_types": passed_types,
                     "failed_types": len(bucket) - passed_types,
@@ -502,14 +617,14 @@ def _write_json_summary(summary: ProjectionValidationSummary, output_path: Path)
 
 
 def _write_dashboard(
-    scenarios: list[dict[str, Any]],
-    default_state: dict[str, Any],
+    scenarios: list[ProjectionScenario],
+    default_state: ProjectionDashboardDefaultState,
     output_path: Path,
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
-        "scenarios": scenarios,
-        "default": default_state,
+        "scenarios": [scenario.to_dict() for scenario in scenarios],
+        "default": default_state.to_dict(),
     }
     payload_json = json.dumps(payload, ensure_ascii=False)
     html = """<!doctype html>
@@ -1403,10 +1518,10 @@ def _write_dashboard(
     output_path.write_text(html.replace("__PAYLOAD_JSON__", payload_json), encoding="utf-8")
 
 
-def _write_scenarios_json(scenarios: list[dict[str, Any]], output_path: Path) -> None:
+def _write_scenarios_json(scenarios: list[ProjectionScenario], output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
-        json.dumps({"scenarios": scenarios}, ensure_ascii=False, indent=2),
+        json.dumps({"scenarios": [scenario.to_dict() for scenario in scenarios]}, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
@@ -1458,7 +1573,7 @@ def main() -> None:
         ratio_threshold=args.ratio_threshold,
         max_type_count=args.max_type_count,
     )
-    scenario_lookup = {str(item["id"]): item for item in scenarios}
+    scenario_lookup = {item.scenario_id: item for item in scenarios}
     selected_scenario_id = _scenario_id(
         args.x_cells,
         args.y_cells,
@@ -1469,8 +1584,8 @@ def main() -> None:
     if selected_scenario is None:
         raise ValueError(f"default scenario missing: {selected_scenario_id}")
 
-    rows = list(selected_scenario["rows"])
-    reason_counter = dict(selected_scenario["reason_counter"])
+    rows = list(selected_scenario.rows)
+    reason_counter = dict(selected_scenario.reason_counter)
     summary = _build_summary(
         rows=rows,
         mapping_default=mapping_default,
@@ -1479,34 +1594,36 @@ def main() -> None:
     )
 
     output_dir = Path(args.output_dir)
-    row_csv_path = output_dir / "shelf_projection_validation_table.csv"
-    group_csv_path = output_dir / "shelf_projection_group_summary.csv"
-    md_path = output_dir / "shelf_projection_validation_summary.md"
-    html_path = output_dir / "shelf_projection_validation_dashboard.html"
-    json_path = output_dir / "shelf_projection_validation_summary.json"
-    scenarios_json_path = output_dir / "shelf_projection_validation_scenarios.json"
+    artifacts = ProjectionValidationArtifacts(
+        row_csv=output_dir / "shelf_projection_validation_table.csv",
+        group_csv=output_dir / "shelf_projection_group_summary.csv",
+        summary_markdown=output_dir / "shelf_projection_validation_summary.md",
+        dashboard_html=output_dir / "shelf_projection_validation_dashboard.html",
+        summary_json=output_dir / "shelf_projection_validation_summary.json",
+        scenarios_json=output_dir / "shelf_projection_validation_scenarios.json",
+    )
 
-    _write_rows_csv(rows, row_csv_path)
-    _write_group_summary_csv(rows, group_csv_path)
-    _write_markdown_summary(summary, mapping_default, mapping_changes, md_path)
+    _write_rows_csv(rows, artifacts.row_csv)
+    _write_group_summary_csv(rows, artifacts.group_csv)
+    _write_markdown_summary(summary, mapping_default, mapping_changes, artifacts.summary_markdown)
     _write_dashboard(
         scenarios=scenarios,
-        default_state={
-            "x_cells": args.x_cells,
-            "y_cells": args.y_cells,
-            "layers": args.layers,
-            "allow_empty_layer": args.allow_empty_layer,
-            "ratio_threshold": args.ratio_threshold,
-            "require_boundary": True,
-            "require_combination": True,
-            "require_structural": True,
-            "require_ratio_threshold": True,
-            "require_r6_weighted_gt_footprint": True,
-        },
-        output_path=html_path,
+        default_state=ProjectionDashboardDefaultState(
+            x_cells=args.x_cells,
+            y_cells=args.y_cells,
+            layers=args.layers,
+            allow_empty_layer=args.allow_empty_layer,
+            ratio_threshold=args.ratio_threshold,
+            require_boundary=True,
+            require_combination=True,
+            require_structural=True,
+            require_ratio_threshold=True,
+            require_r6_weighted_gt_footprint=True,
+        ),
+        output_path=artifacts.dashboard_html,
     )
-    _write_json_summary(summary, json_path)
-    _write_scenarios_json(scenarios, scenarios_json_path)
+    _write_json_summary(summary, artifacts.summary_json)
+    _write_scenarios_json(scenarios, artifacts.scenarios_json)
 
     print(
         json.dumps(
@@ -1515,14 +1632,7 @@ def main() -> None:
                 "scenario_count": len(scenarios),
                 "default_scenario_id": selected_scenario_id,
                 "default_failure_reason_count": len(reason_counter),
-                "artifacts": {
-                    "row_csv": str(row_csv_path),
-                    "group_csv": str(group_csv_path),
-                    "summary_markdown": str(md_path),
-                    "dashboard_html": str(html_path),
-                    "summary_json": str(json_path),
-                    "scenarios_json": str(scenarios_json_path),
-                },
+                "artifacts": artifacts.to_dict(),
             },
             ensure_ascii=False,
             indent=2,
