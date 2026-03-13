@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+- Restored the framework tree as Shelf AI's default visual entry. The sidebar and primary command now open `docs/hierarchy/shelf_framework_tree.html`, while the workspace governance tree stays available as a separate secondary view for closure tracing and guard debugging.
+- Split framework-tree and governance-tree commands, packaged settings, and generated-artifact protection. Both derived tree artifacts are now regenerated and guarded independently instead of being treated as one mixed default view.
 
 ## 0.0.43 - 2026-03-11
 - Clarified the current governance-tree scope in the packaged Shelf AI docs: the mainline now explicitly means the path that carries `Framework -> Product Spec -> Implementation Config -> Code -> Evidence` convergence plus the reverse-check chain back to upstream structure.
