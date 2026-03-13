@@ -9567,7 +9567,7 @@
             "file": "framework/frontend/L2-M0-前端框架标准模块.md",
             "ref_kind": "rule",
             "ref_id": "R1",
-            "digest": "sha256:a03324c08ebcb5b446db164abc6f87e75b2baded97c4857451cd5e540be252ab"
+            "digest": "sha256:7ca05cc0d008327a236cf924bc8dc97be4f49c4feaa06fc8e4ad80e327fc48d1"
           },
           {
             "layer": "framework",
@@ -9588,14 +9588,14 @@
             "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
             "ref_kind": "rule",
             "ref_id": "R1",
-            "digest": "sha256:b04c50deffd7a2bddcd35b639860eab9d86b40f98dafc24bf25dff4dea6220e9"
+            "digest": "sha256:499bd6405cd0df9e3c31b014c71c61d0da5bd9a5a4eeb5e84cfd2b87822cc908"
           },
           {
             "layer": "framework",
             "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
             "ref_kind": "rule",
             "ref_id": "R2",
-            "digest": "sha256:df950855bba059c886d1e00da604724e4d1e513feef7f096c3b9ba2dd38279ac"
+            "digest": "sha256:bca79686f149a328447a518b5261430769824e967faad9db36e71856be948578"
           },
           {
             "layer": "framework",
@@ -9609,7 +9609,7 @@
             "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
             "ref_kind": "rule",
             "ref_id": "R4",
-            "digest": "sha256:dd900429f5c51c04fb9d24c119a54ffd7350dddd911fc0dffbf10a35c42bd279"
+            "digest": "sha256:d90f4b9c0c4056644812fbd9ffac8131910b221491efdcb91d96cc0cf5e7ef2d"
           },
           {
             "layer": "implementation_config",
@@ -10890,14 +10890,14 @@
                     "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
                     "ref_kind": "rule",
                     "ref_id": "R1",
-                    "digest": "sha256:b04c50deffd7a2bddcd35b639860eab9d86b40f98dafc24bf25dff4dea6220e9"
+                    "digest": "sha256:499bd6405cd0df9e3c31b014c71c61d0da5bd9a5a4eeb5e84cfd2b87822cc908"
                   },
                   {
                     "layer": "framework",
                     "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
                     "ref_kind": "rule",
                     "ref_id": "R2",
-                    "digest": "sha256:df950855bba059c886d1e00da604724e4d1e513feef7f096c3b9ba2dd38279ac"
+                    "digest": "sha256:bca79686f149a328447a518b5261430769824e967faad9db36e71856be948578"
                   },
                   {
                     "layer": "framework",
@@ -10911,7 +10911,7 @@
                     "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
                     "ref_kind": "rule",
                     "ref_id": "R4",
-                    "digest": "sha256:dd900429f5c51c04fb9d24c119a54ffd7350dddd911fc0dffbf10a35c42bd279"
+                    "digest": "sha256:d90f4b9c0c4056644812fbd9ffac8131910b221491efdcb91d96cc0cf5e7ef2d"
                   }
                 ],
                 "product": [
@@ -11294,7 +11294,7 @@
                     "file": "framework/frontend/L2-M0-前端框架标准模块.md",
                     "ref_kind": "rule",
                     "ref_id": "R1",
-                    "digest": "sha256:a03324c08ebcb5b446db164abc6f87e75b2baded97c4857451cd5e540be252ab"
+                    "digest": "sha256:7ca05cc0d008327a236cf924bc8dc97be4f49c4feaa06fc8e4ad80e327fc48d1"
                   },
                   {
                     "layer": "framework",
@@ -11403,7 +11403,7 @@
                     "file": "framework/frontend/L2-M0-前端框架标准模块.md",
                     "ref_kind": "rule",
                     "ref_id": "R1",
-                    "digest": "sha256:a03324c08ebcb5b446db164abc6f87e75b2baded97c4857451cd5e540be252ab"
+                    "digest": "sha256:7ca05cc0d008327a236cf924bc8dc97be4f49c4feaa06fc8e4ad80e327fc48d1"
                   },
                   {
                     "layer": "framework",
@@ -11491,7 +11491,7 @@
                     "file": "framework/frontend/L2-M0-前端框架标准模块.md",
                     "ref_kind": "rule",
                     "ref_id": "R1",
-                    "digest": "sha256:a03324c08ebcb5b446db164abc6f87e75b2baded97c4857451cd5e540be252ab"
+                    "digest": "sha256:7ca05cc0d008327a236cf924bc8dc97be4f49c4feaa06fc8e4ad80e327fc48d1"
                   },
                   {
                     "layer": "framework",
@@ -11585,14 +11585,14 @@
                     "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
                     "ref_kind": "rule",
                     "ref_id": "R1",
-                    "digest": "sha256:b04c50deffd7a2bddcd35b639860eab9d86b40f98dafc24bf25dff4dea6220e9"
+                    "digest": "sha256:499bd6405cd0df9e3c31b014c71c61d0da5bd9a5a4eeb5e84cfd2b87822cc908"
                   },
                   {
                     "layer": "framework",
                     "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
                     "ref_kind": "rule",
                     "ref_id": "R2",
-                    "digest": "sha256:df950855bba059c886d1e00da604724e4d1e513feef7f096c3b9ba2dd38279ac"
+                    "digest": "sha256:bca79686f149a328447a518b5261430769824e967faad9db36e71856be948578"
                   },
                   {
                     "layer": "framework",
@@ -11606,7 +11606,7 @@
                     "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
                     "ref_kind": "rule",
                     "ref_id": "R4",
-                    "digest": "sha256:dd900429f5c51c04fb9d24c119a54ffd7350dddd911fc0dffbf10a35c42bd279"
+                    "digest": "sha256:d90f4b9c0c4056644812fbd9ffac8131910b221491efdcb91d96cc0cf5e7ef2d"
                   }
                 ],
                 "product": [
@@ -12327,14 +12327,14 @@
                   "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
                   "ref_kind": "rule",
                   "ref_id": "R1",
-                  "digest": "sha256:b04c50deffd7a2bddcd35b639860eab9d86b40f98dafc24bf25dff4dea6220e9"
+                  "digest": "sha256:499bd6405cd0df9e3c31b014c71c61d0da5bd9a5a4eeb5e84cfd2b87822cc908"
                 },
                 {
                   "layer": "framework",
                   "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
                   "ref_kind": "rule",
                   "ref_id": "R2",
-                  "digest": "sha256:df950855bba059c886d1e00da604724e4d1e513feef7f096c3b9ba2dd38279ac"
+                  "digest": "sha256:bca79686f149a328447a518b5261430769824e967faad9db36e71856be948578"
                 },
                 {
                   "layer": "framework",
@@ -12348,7 +12348,7 @@
                   "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
                   "ref_kind": "rule",
                   "ref_id": "R4",
-                  "digest": "sha256:dd900429f5c51c04fb9d24c119a54ffd7350dddd911fc0dffbf10a35c42bd279"
+                  "digest": "sha256:d90f4b9c0c4056644812fbd9ffac8131910b221491efdcb91d96cc0cf5e7ef2d"
                 }
               ],
               "product": [
@@ -13933,7 +13933,7 @@
                   "file": "framework/frontend/L2-M0-前端框架标准模块.md",
                   "ref_kind": "rule",
                   "ref_id": "R1",
-                  "digest": "sha256:a03324c08ebcb5b446db164abc6f87e75b2baded97c4857451cd5e540be252ab"
+                  "digest": "sha256:7ca05cc0d008327a236cf924bc8dc97be4f49c4feaa06fc8e4ad80e327fc48d1"
                 },
                 {
                   "layer": "framework",
@@ -14305,7 +14305,7 @@
                   "file": "framework/frontend/L2-M0-前端框架标准模块.md",
                   "ref_kind": "rule",
                   "ref_id": "R1",
-                  "digest": "sha256:a03324c08ebcb5b446db164abc6f87e75b2baded97c4857451cd5e540be252ab"
+                  "digest": "sha256:7ca05cc0d008327a236cf924bc8dc97be4f49c4feaa06fc8e4ad80e327fc48d1"
                 },
                 {
                   "layer": "framework",
@@ -14658,7 +14658,7 @@
                   "file": "framework/frontend/L2-M0-前端框架标准模块.md",
                   "ref_kind": "rule",
                   "ref_id": "R1",
-                  "digest": "sha256:a03324c08ebcb5b446db164abc6f87e75b2baded97c4857451cd5e540be252ab"
+                  "digest": "sha256:7ca05cc0d008327a236cf924bc8dc97be4f49c4feaa06fc8e4ad80e327fc48d1"
                 },
                 {
                   "layer": "framework",
@@ -15100,14 +15100,14 @@
                   "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
                   "ref_kind": "rule",
                   "ref_id": "R1",
-                  "digest": "sha256:b04c50deffd7a2bddcd35b639860eab9d86b40f98dafc24bf25dff4dea6220e9"
+                  "digest": "sha256:499bd6405cd0df9e3c31b014c71c61d0da5bd9a5a4eeb5e84cfd2b87822cc908"
                 },
                 {
                   "layer": "framework",
                   "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
                   "ref_kind": "rule",
                   "ref_id": "R2",
-                  "digest": "sha256:df950855bba059c886d1e00da604724e4d1e513feef7f096c3b9ba2dd38279ac"
+                  "digest": "sha256:bca79686f149a328447a518b5261430769824e967faad9db36e71856be948578"
                 },
                 {
                   "layer": "framework",
@@ -15121,7 +15121,7 @@
                   "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
                   "ref_kind": "rule",
                   "ref_id": "R4",
-                  "digest": "sha256:dd900429f5c51c04fb9d24c119a54ffd7350dddd911fc0dffbf10a35c42bd279"
+                  "digest": "sha256:d90f4b9c0c4056644812fbd9ffac8131910b221491efdcb91d96cc0cf5e7ef2d"
                 }
               ],
               "product": [
@@ -23080,7 +23080,7 @@
             "file": "framework/frontend/L2-M0-前端框架标准模块.md",
             "ref_kind": "rule",
             "ref_id": "R1",
-            "digest": "sha256:a03324c08ebcb5b446db164abc6f87e75b2baded97c4857451cd5e540be252ab",
+            "digest": "sha256:7ca05cc0d008327a236cf924bc8dc97be4f49c4feaa06fc8e4ad80e327fc48d1",
             "project_id": "knowledge_base_basic"
           },
           {
@@ -23134,7 +23134,7 @@
             "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
             "ref_kind": "rule",
             "ref_id": "R1",
-            "digest": "sha256:b04c50deffd7a2bddcd35b639860eab9d86b40f98dafc24bf25dff4dea6220e9",
+            "digest": "sha256:499bd6405cd0df9e3c31b014c71c61d0da5bd9a5a4eeb5e84cfd2b87822cc908",
             "project_id": "knowledge_base_basic"
           },
           {
@@ -23147,7 +23147,7 @@
             "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
             "ref_kind": "rule",
             "ref_id": "R2",
-            "digest": "sha256:df950855bba059c886d1e00da604724e4d1e513feef7f096c3b9ba2dd38279ac",
+            "digest": "sha256:bca79686f149a328447a518b5261430769824e967faad9db36e71856be948578",
             "project_id": "knowledge_base_basic"
           },
           {
@@ -23173,7 +23173,7 @@
             "file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
             "ref_kind": "rule",
             "ref_id": "R4",
-            "digest": "sha256:dd900429f5c51c04fb9d24c119a54ffd7350dddd911fc0dffbf10a35c42bd279",
+            "digest": "sha256:d90f4b9c0c4056644812fbd9ffac8131910b221491efdcb91d96cc0cf5e7ef2d",
             "project_id": "knowledge_base_basic"
           },
           {

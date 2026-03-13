@@ -117,11 +117,20 @@ FRAMEWORK_RULE_TOP_LINE_PATTERN = re.compile(r"^\s*[-*]\s*`(R\d+)`\s*(.*)$")
 FRAMEWORK_RULE_CHILD_LINE_PATTERN = re.compile(r"^\s*[-*]\s*`(R\d+\.\d+)`\s*(.*)$")
 FRAMEWORK_BACKTICK_CONTENT_PATTERN = re.compile(r"`([^`]+)`")
 FRAMEWORK_SYMBOL_TOKEN_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
+FRAMEWORK_FORBIDDEN_DOWNSTREAM_CARRYING_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"\bProduct Spec\b"), "Product Spec"),
+    (re.compile(r"\bImplementation Config\b"), "Implementation Config"),
+    (re.compile(r"\bproduct_spec(?:\.toml|/)?\b"), "product_spec"),
+    (re.compile(r"\bimplementation_config(?:\.toml)?\b"), "implementation_config"),
+    (re.compile(r"\[[a-z][a-z0-9_]*\]"), "instance section token"),
+)
 NEGATIVE_RULE_NAME_TOKENS = ("禁止组合", "无效组合", "不适用组合")
 REQUIRED_FRAMEWORK_DIRECTIVE_SECTIONS = VALIDATION_POLICY.required_framework_directive_sections
 PROJECT_ALLOWED_TOP_LEVEL_DIRS = VALIDATION_POLICY.allowed_project_top_level_dirs
 PROJECT_ALLOWED_ROOT_FILES = VALIDATION_POLICY.allowed_project_root_files
 PROJECT_ALLOWED_DOC_SUFFIXES = VALIDATION_POLICY.allowed_project_doc_suffixes
+CODE_LANGUAGE_STANDARDS_INDEX = REPO_ROOT / "specs/code/代码语言标准索引.toml"
+AGENTS_FILE = REPO_ROOT / "AGENTS.md"
 
 Issue = dict[str, Any]
 
@@ -861,6 +870,125 @@ def validate_repository_portability(repo_root: Path = REPO_ROOT) -> list[Issue]:
                         code="ISSUE_TEMPLATE_REPO_URL_STALE",
                     )
                 )
+    return issues
+
+
+def validate_code_language_standards_contract(repo_root: Path = REPO_ROOT) -> list[Issue]:
+    issues: list[Issue] = []
+    repo_root = repo_root.resolve()
+    index_path = (repo_root / "specs/code/代码语言标准索引.toml").resolve()
+    agents_path = (repo_root / "AGENTS.md").resolve()
+
+    if not index_path.exists():
+        issues.append(
+            make_issue(
+                "missing code language standards index: specs/code/代码语言标准索引.toml",
+                index_path.relative_to(repo_root).as_posix(),
+                1,
+                code="CODE_STANDARDS_INDEX_MISSING",
+            )
+        )
+        return issues
+
+    try:
+        index_data = tomllib.loads(read_text(index_path))
+    except Exception as exc:
+        issues.append(
+            make_issue(
+                f"invalid code language standards index: {exc}",
+                index_path.relative_to(repo_root).as_posix(),
+                1,
+                code="CODE_STANDARDS_INDEX_INVALID",
+            )
+        )
+        return issues
+
+    mappings = index_data.get("mapping")
+    if not isinstance(mappings, list) or not mappings:
+        issues.append(
+            make_issue(
+                "code language standards index must define non-empty [[mapping]] entries",
+                index_path.relative_to(repo_root).as_posix(),
+                1,
+                code="CODE_STANDARDS_INDEX_INVALID",
+            )
+        )
+        return issues
+
+    referenced_standard_files: set[str] = set()
+    for entry in mappings:
+        if not isinstance(entry, dict):
+            issues.append(
+                make_issue(
+                    "each code language standards mapping must be a table",
+                    index_path.relative_to(repo_root).as_posix(),
+                    1,
+                    code="CODE_STANDARDS_INDEX_INVALID",
+                )
+            )
+            continue
+        patterns = entry.get("patterns")
+        standards = entry.get("standards")
+        if not isinstance(patterns, list) or not patterns or not all(isinstance(item, str) and item for item in patterns):
+            issues.append(
+                make_issue(
+                    "each code language standards mapping must define non-empty patterns",
+                    index_path.relative_to(repo_root).as_posix(),
+                    1,
+                    code="CODE_STANDARDS_INDEX_INVALID",
+                )
+            )
+        if not isinstance(standards, list) or not standards or not all(
+            isinstance(item, str) and item for item in standards
+        ):
+            issues.append(
+                make_issue(
+                    "each code language standards mapping must define non-empty standards",
+                    index_path.relative_to(repo_root).as_posix(),
+                    1,
+                    code="CODE_STANDARDS_INDEX_INVALID",
+                )
+            )
+            continue
+        for standard_file in standards:
+            referenced_standard_files.add(standard_file)
+            standard_path = (repo_root / standard_file).resolve()
+            if standard_path.exists():
+                continue
+            issues.append(
+                make_issue(
+                    f"code language standards mapping references missing standard file: {standard_file}",
+                    index_path.relative_to(repo_root).as_posix(),
+                    1,
+                    code="CODE_STANDARDS_FILE_MISSING",
+                )
+            )
+
+    if not agents_path.exists():
+        issues.append(
+            make_issue(
+                "missing AGENTS.md; repository cannot advertise language-specific coding standards to AI",
+                "AGENTS.md",
+                1,
+                code="AGENTS_MISSING",
+            )
+        )
+        return issues
+
+    agents_text = read_text(agents_path)
+    required_agents_refs = {index_path.relative_to(repo_root).as_posix(), *referenced_standard_files}
+    for ref in sorted(required_agents_refs):
+        if ref in agents_text:
+            continue
+        issues.append(
+            make_issue(
+                f"AGENTS.md must reference required code standard path: {ref}",
+                agents_path.relative_to(repo_root).as_posix(),
+                1,
+                code="AGENTS_CODE_STANDARD_REF_MISSING",
+            )
+        )
+
     return issues
 
 
@@ -1707,6 +1835,20 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                             code="FW003",
                         )
                     )
+
+        for forbidden_pattern, forbidden_label in FRAMEWORK_FORBIDDEN_DOWNSTREAM_CARRYING_PATTERNS:
+            for forbidden_match in forbidden_pattern.finditer(file_text):
+                issues.append(
+                    make_issue(
+                        (
+                            "framework module must stay downstream-carrier-agnostic; "
+                            f"remove forbidden term: {forbidden_label}"
+                        ),
+                        rel_file,
+                        line_from_offset(file_text, forbidden_match.start()),
+                        code="FW004",
+                    )
+                )
 
         file_identifiers: set[str] = set()
         file_identifier_origin: dict[str, int] = {}
@@ -3330,6 +3472,9 @@ def main() -> int:
 
     if not issues:
         issues.extend(validate_repository_portability())
+
+    if not issues:
+        issues.extend(validate_code_language_standards_contract())
 
     if not issues:
         issues.extend(validate_project_generation_discipline(scoped_project_spec_files))
