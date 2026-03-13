@@ -143,6 +143,11 @@ OCR 运行时已随安装包分发，不应再要求用户手工安装 `tesserac
 - `AITRANS_UPDATE_BASE_URL`
 - `%APPDATA%\\AiTrans\\runtime-overrides.json` 中的 `release.update_base_url`
 
+说明：
+
+- `electron-builder` 中的 `publish.generic.url` 仅用于生成 `latest.yml` 等更新元数据
+- 应用运行时真正访问的更新地址，仍以上面的环境变量或运行时覆盖配置为准
+
 ## 8. 当前边界
 
 - 当前已能构建 Windows `NSIS` 安装包与 `portable` 产物

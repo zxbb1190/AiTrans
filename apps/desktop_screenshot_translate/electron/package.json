@@ -89,6 +89,13 @@
         }
       ]
     },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://updates.invalid/aitrans/stable/win-x64",
+        "channel": "stable"
+      }
+    ],
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": false,
