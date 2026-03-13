@@ -1911,15 +1911,28 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                         )
                     )
 
-            has_capability_ref = any(re.fullmatch(r"C\d+", token) for token in source_tokens)
-            has_boundary_ref = any(not re.fullmatch(r"C\d+", token) for token in source_tokens)
-            if not has_capability_ref or not has_boundary_ref:
+            capability_refs = {
+                token for token in source_tokens if re.fullmatch(r"C\d+", token) is not None
+            }
+            invalid_capability_refs = capability_refs - positive_capability_ids
+            if invalid_capability_refs:
                 issues.append(
                     make_issue(
                         (
-                            f"{base_id} source must include at least one capability id (C*) "
-                            "and one boundary/parameter identifier"
+                            f"{base_id} source may only reference positive capabilities; "
+                            f"found invalid capability ids: {', '.join(sorted(invalid_capability_refs))}"
                         ),
+                        rel_file,
+                        base_line_num,
+                        code="FW022",
+                    )
+                )
+
+            has_boundary_ref = any(not re.fullmatch(r"C\d+", token) for token in source_tokens)
+            if not has_boundary_ref:
+                issues.append(
+                    make_issue(
+                        f"{base_id} source must include at least one boundary/parameter identifier",
                         rel_file,
                         base_line_num,
                         code="FW022",
@@ -2118,8 +2131,8 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
             for child_line, content in child_items:
                 if "输出能力" not in content:
                     continue
-                capability_refs = re.findall(r"C\d+", content)
-                if not capability_refs:
+                output_capability_refs = re.findall(r"C\d+", content)
+                if not output_capability_refs:
                     issues.append(
                         make_issue(
                             f"{parent_rule} output capability must reference at least one C*",
@@ -2129,7 +2142,7 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                         )
                     )
                     continue
-                for cap_id in capability_refs:
+                for cap_id in output_capability_refs:
                     if cap_id in capability_ids:
                         continue
                     issues.append(
@@ -2148,9 +2161,9 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                     capability_source_bases.setdefault(capability_id, set()).add(base_ref_id)
 
         capability_output_rules: dict[str, set[str]] = {cap_id: set() for cap_id in positive_capability_ids}
-        for parent_rule, output_capability_refs in rule_output_capabilities.items():
+        for parent_rule, parent_rule_output_capabilities in rule_output_capabilities.items():
             for capability_id in positive_capability_ids:
-                if capability_id in output_capability_refs:
+                if capability_id in parent_rule_output_capabilities:
                     capability_output_rules.setdefault(capability_id, set()).add(parent_rule)
 
         for capability_id in sorted(positive_capability_ids):
@@ -2167,6 +2180,18 @@ def validate_framework_layers() -> tuple[list[Issue], set[str]]:
                         rel_file,
                         capability_line_num,
                         code="FW070",
+                    )
+                )
+            elif len(supporting_bases) > 1:
+                issues.append(
+                    make_issue(
+                        (
+                            f"{capability_id} must map to exactly one B* source expression; "
+                            f"found multiple bases: {', '.join(sorted(supporting_bases))}"
+                        ),
+                        rel_file,
+                        capability_line_num,
+                        code="FW075",
                     )
                 )
             if not output_rules:
