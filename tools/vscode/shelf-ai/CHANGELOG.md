@@ -6,7 +6,8 @@
 - Kept the extension aligned with the rewritten mainline:
   `Framework Markdown -> Package Registry -> Project Config -> Code -> Evidence`.
 - Kept project navigation, auto-materialization, generated-artifact guarding, and validation centered on `projects/*/project.toml` and canonical-derived views.
-- Clarified the current state in repository docs: the new main skeleton is live, but remaining scene-level runtime aggregation is documented explicitly instead of being overstated as fully removed.
+- Fixed configured-framework inference for the unified `[[selection.roots]]` layout by reading `framework_file` directly instead of assuming the removed `selection.root_modules` table.
+- Updated repository docs to point at the current pipeline entrypoint and mark the rewrite execution ledger as complete so extension-facing guidance matches the shipped architecture.
 
 ## 0.0.48 - 2026-03-14
 

@@ -24,7 +24,7 @@ function main() {
   assert(isProtectedGeneratedPath("docs/hierarchy/shelf_governance_tree.json"));
   assert(!isProtectedGeneratedPath("projects/knowledge_base_basic/project.toml"));
 
-  assert(shouldRunMypyForRelPath("src/project_runtime/knowledge_base.py"));
+  assert(shouldRunMypyForRelPath("src/project_runtime/pipeline.py"));
   assert(shouldRunMypyForRelPath("scripts/materialize_project.py"));
   assert(shouldRunMypyForRelPath("tests/test_project_runtime.py"));
   assert(!shouldRunMypyForRelPath("tools/vscode/shelf-ai/extension.js"));
@@ -42,10 +42,20 @@ function main() {
   assert(projectFiles.some((item) => item.endsWith("projects/knowledge_base_basic/project.toml")));
 
   const frameworks = inferConfiguredFrameworks(`
-[selection.root_modules]
-frontend = "framework/frontend/L2-M0-前端框架标准模块.md"
-knowledge_base = "framework/knowledge_base/L2-M0-知识库工作台场景模块.md"
-backend = "framework/backend/L2-M0-知识库接口框架标准模块.md"
+[[selection.roots]]
+slot_id = "chat_shell"
+role = "frontend"
+framework_file = "framework/frontend/L2-M0-前端框架标准模块.md"
+
+[[selection.roots]]
+slot_id = "knowledge_workbench"
+role = "knowledge_base"
+framework_file = "framework/knowledge_base/L2-M0-知识库工作台场景模块.md"
+
+[[selection.roots]]
+slot_id = "knowledge_backend"
+role = "backend"
+framework_file = "framework/backend/L2-M0-知识库接口框架标准模块.md"
 `);
   assert(frameworks.has("frontend"));
   assert(frameworks.has("knowledge_base"));

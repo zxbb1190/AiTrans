@@ -62,7 +62,7 @@ uv run python src/main.py
   - [src/framework_packages/registry.py](./src/framework_packages/registry.py)
   - [src/framework_packages/builtin_registry.py](./src/framework_packages/builtin_registry.py)
 - 编译器：
-  - [src/project_runtime/knowledge_base.py](./src/project_runtime/knowledge_base.py)
+  - [src/project_runtime/pipeline.py](./src/project_runtime/pipeline.py)
 - 运行时：
   - [src/knowledge_base_runtime/app.py](./src/knowledge_base_runtime/app.py)
 - 派生治理：

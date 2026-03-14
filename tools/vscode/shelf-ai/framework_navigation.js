@@ -814,17 +814,8 @@ function discoverProjectFiles(repoRoot) {
 function inferConfiguredFrameworks(projectText) {
   const frameworks = new Set();
   const lines = String(projectText).split(/\r?\n/);
-  let inFrameworkSection = false;
   for (const lineText of lines) {
-    const sectionMatch = TOML_SECTION_PATTERN.exec(lineText);
-    if (sectionMatch) {
-      inFrameworkSection = sectionMatch[1] === "selection.root_modules";
-      continue;
-    }
-    if (!inFrameworkSection) {
-      continue;
-    }
-    const valueMatch = /^\s*[A-Za-z0-9_-]+\s*=\s*"framework\/([^/]+)\//.exec(lineText);
+    const valueMatch = /^\s*framework_file\s*=\s*"framework\/([^/]+)\//.exec(lineText);
     if (valueMatch) {
       frameworks.add(valueMatch[1]);
     }

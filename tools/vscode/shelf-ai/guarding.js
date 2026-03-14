@@ -84,17 +84,8 @@ function discoverProjectFiles(repoRoot) {
 function inferConfiguredFrameworks(projectConfigText) {
   const frameworks = new Set();
   const lines = String(projectConfigText).split(/\r?\n/);
-  let inRootModuleSection = false;
   for (const lineText of lines) {
-    const sectionMatch = /^\s*\[([A-Za-z0-9_.-]+)\]\s*$/.exec(lineText);
-    if (sectionMatch) {
-      inRootModuleSection = sectionMatch[1] === "selection.root_modules";
-      continue;
-    }
-    if (!inRootModuleSection) {
-      continue;
-    }
-    const valueMatch = /^\s*[A-Za-z0-9_-]+\s*=\s*"framework\/([^/]+)\//.exec(lineText);
+    const valueMatch = /^\s*framework_file\s*=\s*"framework\/([^/]+)\//.exec(lineText);
     if (valueMatch) {
       frameworks.add(valueMatch[1]);
     }

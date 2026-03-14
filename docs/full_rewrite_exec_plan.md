@@ -4,7 +4,7 @@
 
 - [最终架构重构验收标准.md](./最终架构重构验收标准.md)
 
-## 当前剩余任务
+## 已完成任务
 
 - [x] 残差 1：把 config slicing 改成按模块树逐层分发
   - [x] root package 先拿到 subtree-owned config slice
@@ -35,3 +35,5 @@
 - [x] `uv run python -m unittest`
 - [x] `uv run python scripts/materialize_project.py`
 - [x] 相关文档只保留最终架构叙事
+
+当前执行账本状态：全部完成。
