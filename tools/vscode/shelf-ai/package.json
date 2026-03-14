@@ -2,7 +2,7 @@
   "name": "shelf-ai",
   "displayName": "Shelf AI",
   "description": "Shelf AI: framework-tree-first navigation for registry-bound packages and canonical-derived evidence.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "rdshr",
   "license": "SEE LICENSE IN LICENSE.txt",
   "repository": {
@@ -221,12 +221,12 @@
         },
         "shelf.changeValidationCommand": {
           "type": "string",
-          "default": "uv run python scripts/validate_strict_mapping.py --check-changes --json",
+          "default": "uv run python scripts/validate_strict_mapping.py --check-changes",
           "description": "Command used for save-triggered validation."
         },
         "shelf.fullValidationCommand": {
           "type": "string",
-          "default": "uv run python scripts/validate_strict_mapping.py --json",
+          "default": "uv run python scripts/validate_strict_mapping.py",
           "description": "Command used for manual full validation."
         },
         "shelf.frameworkTreeJsonPath": {

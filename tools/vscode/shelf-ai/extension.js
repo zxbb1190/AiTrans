@@ -761,6 +761,12 @@ function activate(context) {
     if (!command || typeof command !== "string") {
       return;
     }
+    const normalizedValidationCommand = validationRuntime.normalizeValidationCommand(command);
+    if (normalizedValidationCommand !== String(command).trim()) {
+      output.appendLine(
+        `[validate] removed unsupported --json flag from validate_strict_mapping.py command: ${normalizedValidationCommand}`
+      );
+    }
 
     const showProgressStatus = task.source === "manual";
     if (showProgressStatus) {
@@ -820,7 +826,7 @@ function activate(context) {
       combinedIssues.push(...mypyResult.errors);
     }
 
-    const parsed = await runParsedCommand("validate", String(command), repoRoot, parseResult);
+    const parsed = await runParsedCommand("validate", normalizedValidationCommand, repoRoot, parseResult);
     combinedIssues.push(...parsed.errors);
 
     const combined = {

@@ -84,6 +84,16 @@ function main() {
   ]) {
     assert(Object.prototype.hasOwnProperty.call(configuration, key), `package.json must expose ${key}`);
   }
+  assert.strictEqual(
+    configuration["shelf.changeValidationCommand"]?.default,
+    "uv run python scripts/validate_strict_mapping.py --check-changes",
+    "package.json must default shelf.changeValidationCommand to the supported strict mapping command"
+  );
+  assert.strictEqual(
+    configuration["shelf.fullValidationCommand"]?.default,
+    "uv run python scripts/validate_strict_mapping.py",
+    "package.json must default shelf.fullValidationCommand to the supported strict mapping command"
+  );
 
   const frameworkSnippet = snippetJson["@framework Module Template"];
   assert(frameworkSnippet, "markdown snippets must keep the @framework module template");
@@ -174,6 +184,18 @@ function main() {
   assert(
     readme.includes("shelf.guardMode = strict"),
     "README must document strict guard mode"
+  );
+  assert(
+    readme.includes("uv run python scripts/validate_strict_mapping.py --check-changes"),
+    "README must document the supported save-triggered strict mapping command"
+  );
+  assert(
+    readme.includes("uv run python scripts/validate_strict_mapping.py"),
+    "README must document the supported full strict mapping command"
+  );
+  assert(
+    !readme.includes("validate_strict_mapping.py --json"),
+    "README must not document the removed --json strict mapping flag"
   );
 
   const atEntries = frameworkCompletion.getFrameworkCompletionEntries("@", "@", false);

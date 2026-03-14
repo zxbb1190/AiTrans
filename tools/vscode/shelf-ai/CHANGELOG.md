@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 - 2026-03-14
+
+- Fixed Shelf validation defaults to use the supported `validate_strict_mapping.py` commands instead of passing the removed `--json` flag.
+- Added runtime command normalization so existing user settings with the stale `--json` flag still run successfully.
+- Synced the extension README and tests with the supported validation command contract to prevent the mismatch from reappearing.
+
 ## 0.1.0 - 2026-03-14
 
 - Raised the extension version to `0.1.0` to match the repository-wide architecture rewrite instead of treating it as another `0.0.x` patch.

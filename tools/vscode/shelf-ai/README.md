@@ -44,8 +44,8 @@
 
 Default commands:
 
-- `uv run python scripts/validate_strict_mapping.py --check-changes --json`
-- `uv run python scripts/validate_strict_mapping.py --json`
+- `uv run python scripts/validate_strict_mapping.py --check-changes`
+- `uv run python scripts/validate_strict_mapping.py`
 - `uv run python scripts/materialize_project.py`
 - `uv run mypy`
 
@@ -84,4 +84,4 @@ The extension no longer treats the removed dual-track config files as live autho
 Public release notes live at:
 
 - `tools/vscode/shelf-ai/CHANGELOG.md`
-- `tools/vscode/shelf-ai/release-notes/0.1.0.md`
+- `tools/vscode/shelf-ai/release-notes/0.1.1.md`
