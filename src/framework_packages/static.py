@@ -7,49 +7,6 @@ from framework_ir import FrameworkModule
 from .contract import PackageChildSlot, PackageCompileInput, PackageCompileResult, PackageConfigContract
 
 
-def _default_config_paths_for(module_id: str) -> tuple[str, ...]:
-    if module_id.startswith("frontend."):
-        paths = (
-            "selection.preset",
-            "truth.surface",
-            "truth.visual",
-            "truth.route",
-            "truth.a11y",
-            "truth.library",
-            "truth.preview",
-            "truth.chat",
-            "truth.return",
-        )
-        if module_id == "frontend.L2.M1":
-            return (*paths, "refinement.frontend")
-        if module_id == "frontend.L3.M0":
-            return (*paths, "truth.showcase_page")
-        return paths
-    if module_id.startswith("knowledge_base."):
-        return (
-            "selection.preset",
-            "truth.surface",
-            "truth.library",
-            "truth.preview",
-            "truth.chat",
-            "truth.context",
-            "truth.return",
-            "truth.documents",
-        )
-    if module_id.startswith("backend."):
-        return (
-            "truth.route",
-            "truth.library",
-            "truth.preview",
-            "truth.chat",
-            "truth.context",
-            "truth.return",
-            "refinement.backend",
-            "refinement.evidence",
-        )
-    return tuple()
-
-
 class StaticFrameworkPackage:
     FRAMEWORK_FILE = ""
     MODULE_ID = ""
@@ -65,7 +22,7 @@ class StaticFrameworkPackage:
         return self.MODULE_ID
 
     def config_contract(self) -> PackageConfigContract:
-        return PackageConfigContract(required_paths=_default_config_paths_for(self.module_id()))
+        return PackageConfigContract()
 
     def child_slots(self, framework_module: FrameworkModule) -> tuple[PackageChildSlot, ...]:
         upstream_ids = framework_module.export_surface().upstream_module_ids
@@ -117,4 +74,5 @@ class StaticFrameworkPackage:
             config_slice=dict(payload.config_slice),
             export=export,
             evidence=evidence,
+            runtime_exports={},
         )

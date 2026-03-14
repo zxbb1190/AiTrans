@@ -12,7 +12,8 @@ from knowledge_base_runtime.frontend import (
     compose_knowledge_base_list_page,
     compose_knowledge_base_page,
 )
-from project_runtime.knowledge_base import KnowledgeBaseRuntimeBundle, materialize_knowledge_base_runtime_bundle
+from project_runtime.knowledge_base import KnowledgeBaseRuntimeBundle
+from project_runtime.pipeline import materialize_project_runtime_bundle
 
 
 @dataclass(frozen=True)
@@ -37,7 +38,7 @@ def _require_backend_transport(project: KnowledgeBaseRuntimeBundle) -> BackendTr
 
 
 def build_knowledge_base_runtime_app(project: KnowledgeBaseRuntimeBundle | None = None) -> FastAPI:
-    resolved = project or materialize_knowledge_base_runtime_bundle()
+    resolved = project or materialize_project_runtime_bundle()
     transport = _require_backend_transport(resolved)
     repository = KnowledgeRepository(resolved)
     app = FastAPI(

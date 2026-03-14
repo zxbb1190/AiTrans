@@ -88,6 +88,9 @@ class FrameworkPackageRegistry:
         return tuple(sorted(orphans))
 
     def validate_against_framework(self, framework_registry: FrameworkRegistry) -> None:
+        from .validators import validate_unique_package_entry_classes
+
+        validate_unique_package_entry_classes(self)
         missing = self.detect_unimplemented_framework_files(framework_registry)
         if missing:
             raise ValueError("framework files missing package implementations: " + ", ".join(missing))

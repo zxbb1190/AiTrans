@@ -102,18 +102,22 @@ def discover_framework_driven_projects(projects_dir: Path | None = None) -> tupl
         document = load_project_config_document(project_file)
         project_table = _require_table(document.merged_data, "project", file_path=project_file)
         selection_table = _require_table(document.merged_data, "selection", file_path=project_file)
-        root_modules = _require_table(selection_table, "root_modules", file_path=project_file)
+        roots_value = selection_table.get("roots")
+        if not isinstance(roots_value, list) or not roots_value:
+            raise ValueError(f"{project_file}: missing selection.roots")
+        root_modules: dict[str, str] = {}
+        for item in roots_value:
+            if not isinstance(item, dict):
+                raise ValueError(f"{project_file}: invalid selection.roots entry")
+            role = _require_string(item, "role", file_path=project_file)
+            root_modules[role] = _require_string(item, "framework_file", file_path=project_file)
         records.append(
             FrameworkDrivenProjectRecord(
                 project_id=_require_string(project_table, "project_id", file_path=project_file),
                 runtime_scene=_require_string(project_table, "runtime_scene", file_path=project_file),
                 project_file=_relative_path(project_file),
                 generated_dir=_relative_path(project_file.parent / "generated"),
-                root_modules={
-                    "frontend": _require_string(root_modules, "frontend", file_path=project_file),
-                    "knowledge_base": _require_string(root_modules, "knowledge_base", file_path=project_file),
-                    "backend": _require_string(root_modules, "backend", file_path=project_file),
-                },
+                root_modules=root_modules,
                 artifact_contract=_artifact_contract(document.merged_data, file_path=project_file),
             )
         )
@@ -165,9 +169,8 @@ def render_project_discovery_audit_markdown(payload: dict[str, Any]) -> str:
         lines.append(f"- classification: `{item.get('classification', '')}`")
         root_modules = item.get("root_modules", {})
         if isinstance(root_modules, dict):
-            lines.append(f"- frontend_root: `{root_modules.get('frontend', '')}`")
-            lines.append(f"- knowledge_base_root: `{root_modules.get('knowledge_base', '')}`")
-            lines.append(f"- backend_root: `{root_modules.get('backend', '')}`")
+            for role, framework_file in sorted(root_modules.items()):
+                lines.append(f"- root[{role}]: `{framework_file}`")
         reasons = item.get("reasons", [])
         if isinstance(reasons, list):
             for reason in reasons:
@@ -178,4 +181,3 @@ def render_project_discovery_audit_markdown(payload: dict[str, Any]) -> str:
 
 def project_discovery_audit_json(projects_dir: Path | None = None) -> str:
     return json.dumps(build_project_discovery_audit(projects_dir), ensure_ascii=False, indent=2)
-

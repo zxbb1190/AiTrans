@@ -16,10 +16,28 @@ version = "0.4.0"
 [selection]
 preset = "document_chat_workbench"
 
-[selection.root_modules]
-frontend = "framework/frontend/L2-M0-前端框架标准模块.md"
-knowledge_base = "framework/knowledge_base/L2-M0-知识库工作台场景模块.md"
-backend = "framework/backend/L2-M0-知识库接口框架标准模块.md"
+# 根模块选择改为一般化模块树入口：
+# - `slot_id` 负责在项目内提供稳定引用名；
+# - `role` 负责把当前 runtime scene 需要的语义位显式绑定出来；
+# - `framework_file` 才是实际进入 framework registry 与 module tree 的正式入口。
+#
+# 当前知识库项目仍然需要 frontend / knowledge_base / backend 三个语义角色，
+# 但它们不再作为 selection 结构的固定槽位存在，而是由 roots 列表显式声明。
+
+[[selection.roots]]
+slot_id = "chat_shell"
+role = "frontend"
+framework_file = "framework/frontend/L2-M0-前端框架标准模块.md"
+
+[[selection.roots]]
+slot_id = "knowledge_workbench"
+role = "knowledge_base"
+framework_file = "framework/knowledge_base/L2-M0-知识库工作台场景模块.md"
+
+[[selection.roots]]
+slot_id = "knowledge_backend"
+role = "backend"
+framework_file = "framework/backend/L2-M0-知识库接口框架标准模块.md"
 
 [truth.surface]
 shell = "conversation_sidebar_shell"

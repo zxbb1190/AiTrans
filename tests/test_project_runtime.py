@@ -7,18 +7,18 @@ from pathlib import Path
 
 from project_runtime import (
     DEFAULT_KNOWLEDGE_BASE_PROJECT_FILE,
-    load_knowledge_base_runtime_bundle,
-    materialize_knowledge_base_runtime_bundle,
+    load_project_runtime_bundle,
+    materialize_project_runtime_bundle,
 )
 
 
 class ProjectRuntimeTest(unittest.TestCase):
     def test_load_default_project_uses_unified_config_and_package_compile(self) -> None:
-        project = load_knowledge_base_runtime_bundle(DEFAULT_KNOWLEDGE_BASE_PROJECT_FILE)
+        project = load_project_runtime_bundle(DEFAULT_KNOWLEDGE_BASE_PROJECT_FILE)
 
         self.assertEqual(project.metadata.project_id, "knowledge_base_basic")
         self.assertEqual(project.metadata.runtime_scene, "knowledge_base_workbench")
-        self.assertEqual(project.selection.root_modules.frontend, "framework/frontend/L2-M0-前端框架标准模块.md")
+        self.assertEqual(project.selection.root_modules["frontend"], "framework/frontend/L2-M0-前端框架标准模块.md")
         self.assertEqual(project.root_module_ids["frontend"], "frontend.L2.M0")
         self.assertEqual(project.root_module_ids["knowledge_base"], "knowledge_base.L2.M0")
         self.assertEqual(project.root_module_ids["backend"], "backend.L2.M0")
@@ -26,11 +26,12 @@ class ProjectRuntimeTest(unittest.TestCase):
         self.assertIn("frontend.L2.M0", project.package_compile_order)
         self.assertEqual(project.backend_spec["transport"]["project_config_endpoint"], "/api/knowledge/project-config")
         self.assertEqual(project.ui_spec["implementation"]["frontend_renderer"], "knowledge_chat_client_v1")
+        self.assertIn("frontend_contract", project.runtime_exports)
         self.assertEqual(project.to_runtime_bundle_dict()["project_config"]["project"]["project_id"], "knowledge_base_basic")
 
     def test_materialize_writes_canonical_and_derived_views(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            project = materialize_knowledge_base_runtime_bundle(
+            project = materialize_project_runtime_bundle(
                 DEFAULT_KNOWLEDGE_BASE_PROJECT_FILE,
                 output_dir=Path(temp_dir) / "generated",
             )

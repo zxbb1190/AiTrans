@@ -34,8 +34,12 @@ Framework Markdown
   - `projects/<project_id>/project.toml`
   - 分成 `selection / truth / refinement / narrative`
 - Code
-  - `src/project_runtime/knowledge_base.py`
-  - 用 registry 和 config slicing 编译 package
+  - `src/project_runtime/config_loader.py`
+  - `src/project_runtime/module_tree.py`
+  - `src/project_runtime/package_config.py`
+  - `src/project_runtime/export_builders.py`
+  - `src/project_runtime/pipeline.py`
+  - 用 module tree、字段级 config slicing 与 package exports 编译 runtime
 - Evidence
   - `projects/<project_id>/generated/canonical_graph.json`
   - 以及所有 derived views

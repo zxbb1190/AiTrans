@@ -5,6 +5,8 @@ from .contract import (
     PackageCompileInput,
     PackageCompileResult,
     PackageConfigContract,
+    PackageConfigFieldRule,
+    PackageSelectedRoot,
 )
 from .registry import FrameworkPackageRegistration, FrameworkPackageRegistry
 
@@ -16,5 +18,7 @@ __all__ = [
     "PackageCompileInput",
     "PackageCompileResult",
     "PackageConfigContract",
+    "PackageConfigFieldRule",
+    "PackageSelectedRoot",
     "load_builtin_package_registry",
 ]

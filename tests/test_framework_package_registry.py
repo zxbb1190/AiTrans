@@ -4,6 +4,7 @@ import unittest
 
 from framework_ir import load_framework_registry
 from framework_packages import load_builtin_package_registry
+from framework_packages.validators import validate_unique_package_entry_classes
 
 
 class FrameworkPackageRegistryTest(unittest.TestCase):
@@ -17,6 +18,10 @@ class FrameworkPackageRegistryTest(unittest.TestCase):
             {module.module_id for module in framework_registry.modules},
             {registration.module_id for registration in package_registry.iter_registrations()},
         )
+
+    def test_every_package_module_has_one_formal_entry_class(self) -> None:
+        package_registry = load_builtin_package_registry()
+        validate_unique_package_entry_classes(package_registry)
 
 
 if __name__ == "__main__":
