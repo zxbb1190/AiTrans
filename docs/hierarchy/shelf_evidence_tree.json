@@ -1,5 +1,6 @@
 {
   "root": {
+    "description": "从 canonical.json 派生，恢复旧交互式树图画布；保持当前 evidence tree 的 project/canonical/module 节点语义，只补回图形化浏览层。",
     "edges": [
       {
         "from": "project:knowledge_base_basic",
@@ -10,16 +11,6 @@
         "from": "project:knowledge_base_basic:canonical",
         "relation": "tree_child",
         "to": "backend.L0.M0"
-      },
-      {
-        "from": "project:knowledge_base_basic:canonical",
-        "relation": "tree_child",
-        "to": "backend.L1.M0"
-      },
-      {
-        "from": "project:knowledge_base_basic:canonical",
-        "relation": "tree_child",
-        "to": "backend.L2.M0"
       },
       {
         "from": "project:knowledge_base_basic:canonical",
@@ -35,6 +26,26 @@
         "from": "project:knowledge_base_basic:canonical",
         "relation": "tree_child",
         "to": "frontend.L0.M2"
+      },
+      {
+        "from": "project:knowledge_base_basic:canonical",
+        "relation": "tree_child",
+        "to": "knowledge_base.L0.M0"
+      },
+      {
+        "from": "project:knowledge_base_basic:canonical",
+        "relation": "tree_child",
+        "to": "knowledge_base.L0.M1"
+      },
+      {
+        "from": "project:knowledge_base_basic:canonical",
+        "relation": "tree_child",
+        "to": "knowledge_base.L0.M2"
+      },
+      {
+        "from": "project:knowledge_base_basic:canonical",
+        "relation": "tree_child",
+        "to": "backend.L1.M0"
       },
       {
         "from": "project:knowledge_base_basic:canonical",
@@ -64,26 +75,6 @@
       {
         "from": "project:knowledge_base_basic:canonical",
         "relation": "tree_child",
-        "to": "frontend.L2.M0"
-      },
-      {
-        "from": "project:knowledge_base_basic:canonical",
-        "relation": "tree_child",
-        "to": "knowledge_base.L0.M0"
-      },
-      {
-        "from": "project:knowledge_base_basic:canonical",
-        "relation": "tree_child",
-        "to": "knowledge_base.L0.M1"
-      },
-      {
-        "from": "project:knowledge_base_basic:canonical",
-        "relation": "tree_child",
-        "to": "knowledge_base.L0.M2"
-      },
-      {
-        "from": "project:knowledge_base_basic:canonical",
-        "relation": "tree_child",
         "to": "knowledge_base.L1.M0"
       },
       {
@@ -94,130 +85,780 @@
       {
         "from": "project:knowledge_base_basic:canonical",
         "relation": "tree_child",
+        "to": "backend.L2.M0"
+      },
+      {
+        "from": "project:knowledge_base_basic:canonical",
+        "relation": "tree_child",
+        "to": "frontend.L2.M0"
+      },
+      {
+        "from": "project:knowledge_base_basic:canonical",
+        "relation": "tree_child",
         "to": "knowledge_base.L2.M0"
       }
     ],
+    "foot_text": "图中展示 project / canonical / framework module 的证据追踪关系，保持现有 evidence tree 节点语义。",
+    "level_labels": {
+      "0": "Project",
+      "1": "Canonical",
+      "2": "L0 Modules",
+      "3": "L1 Modules",
+      "4": "L2 Modules"
+    },
     "nodes": [
       {
+        "base_items": [
+          {
+            "text": "projects/knowledge_base_basic/generated/canonical.json",
+            "token": "Truth"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "projects/knowledge_base_basic/project.toml",
+            "token": "Config"
+          }
+        ],
+        "description": "project=knowledge_base_basic | file=projects/knowledge_base_basic/project.toml",
+        "doc_line": 1,
+        "hover_kicker": "Project",
         "id": "project:knowledge_base_basic",
-        "label": "Project knowledge_base_basic",
+        "label": "project:knowledge_base_basic",
+        "level": 0,
+        "module_title": "Project knowledge_base_basic",
         "node_kind": "project",
-        "source_file": "projects/knowledge_base_basic/project.toml"
+        "source_file": "projects/knowledge_base_basic/project.toml",
+        "source_line": 1
       },
       {
+        "base_items": [
+          {
+            "text": "framework / config / code / evidence",
+            "token": "Layers"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "four-layer-canonical/v1",
+            "token": "Schema"
+          }
+        ],
+        "description": "artifact=canonical.json | file=projects/knowledge_base_basic/generated/canonical.json",
+        "doc_line": 1,
+        "hover_kicker": "Canonical Artifact",
         "id": "project:knowledge_base_basic:canonical",
         "label": "canonical.json",
+        "level": 1,
+        "module_title": "Canonical JSON",
         "node_kind": "canonical",
-        "source_file": "projects/knowledge_base_basic/generated/canonical.json"
+        "source_file": "projects/knowledge_base_basic/generated/canonical.json",
+        "source_line": 1
       },
       {
+        "base_items": [
+          {
+            "text": "framework/backend/L0-M0-文件资源与对话契约原子模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "FILE, PREVIEW, CHAT, CITATION, VALID, ERROR",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "BackendL0M0ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "BackendL0M0CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "BackendL0M0EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=backend.L0.M0 | framework=backend | level=L0 | config=BackendL0M0ConfigModule | code=BackendL0M0CodeModule | evidence=BackendL0M0EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
         "id": "backend.L0.M0",
-        "label": "backend.L0.M0 知识库文件资源与对话契约原子模块",
+        "label": "backend.L0.M0",
+        "level": 2,
+        "module_name": "backend",
+        "module_ref": "L0.M0",
+        "module_title": "知识库文件资源与对话契约原子模块",
         "node_kind": "framework_module",
-        "source_file": "framework/backend/L0-M0-文件资源与对话契约原子模块.md"
+        "order": 0,
+        "source_file": "framework/backend/L0-M0-文件资源与对话契约原子模块.md",
+        "source_line": 1
       },
       {
-        "id": "backend.L1.M0",
-        "label": "backend.L1.M0 知识库目录预览对话编排模块",
-        "node_kind": "framework_module",
-        "source_file": "framework/backend/L1-M0-目录预览对话编排模块.md"
-      },
-      {
-        "id": "backend.L2.M0",
-        "label": "backend.L2.M0 知识库接口框架标准模块",
-        "node_kind": "framework_module",
-        "source_file": "framework/backend/L2-M0-知识库接口框架标准模块.md"
-      },
-      {
+        "base_items": [
+          {
+            "text": "framework/frontend/L0-M0-承载与绑定原子模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "SURFACE, SLOT, HOST, PROP, FOCUS, A11Y",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "FrontendL0M0ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "FrontendL0M0CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "FrontendL0M0EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=frontend.L0.M0 | framework=frontend | level=L0 | config=FrontendL0M0ConfigModule | code=FrontendL0M0CodeModule | evidence=FrontendL0M0EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
         "id": "frontend.L0.M0",
-        "label": "frontend.L0.M0 前端承载与绑定原子模块",
+        "label": "frontend.L0.M0",
+        "level": 2,
+        "module_name": "frontend",
+        "module_ref": "L0.M0",
+        "module_title": "前端承载与绑定原子模块",
         "node_kind": "framework_module",
-        "source_file": "framework/frontend/L0-M0-承载与绑定原子模块.md"
+        "order": 0,
+        "source_file": "framework/frontend/L0-M0-承载与绑定原子模块.md",
+        "source_line": 1
       },
       {
+        "base_items": [
+          {
+            "text": "framework/frontend/L0-M1-状态与交互原子模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "VALUE, ACTION, STATE, RESET, FEEDBACK, TRANSFER",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "FrontendL0M1ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "FrontendL0M1CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "FrontendL0M1EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=frontend.L0.M1 | framework=frontend | level=L0 | config=FrontendL0M1ConfigModule | code=FrontendL0M1CodeModule | evidence=FrontendL0M1EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
         "id": "frontend.L0.M1",
-        "label": "frontend.L0.M1 前端状态与交互原子模块",
+        "label": "frontend.L0.M1",
+        "level": 2,
+        "module_name": "frontend",
+        "module_ref": "L0.M1",
+        "module_title": "前端状态与交互原子模块",
         "node_kind": "framework_module",
-        "source_file": "framework/frontend/L0-M1-状态与交互原子模块.md"
+        "order": 1,
+        "source_file": "framework/frontend/L0-M1-状态与交互原子模块.md",
+        "source_line": 1
       },
       {
+        "base_items": [
+          {
+            "text": "framework/frontend/L0-M2-视觉语义原子模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "TOKEN, THEME, DENSITY, TONE, A11Y",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "FrontendL0M2ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "FrontendL0M2CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "FrontendL0M2EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=frontend.L0.M2 | framework=frontend | level=L0 | config=FrontendL0M2ConfigModule | code=FrontendL0M2CodeModule | evidence=FrontendL0M2EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
         "id": "frontend.L0.M2",
-        "label": "frontend.L0.M2 前端视觉语义原子模块",
+        "label": "frontend.L0.M2",
+        "level": 2,
+        "module_name": "frontend",
+        "module_ref": "L0.M2",
+        "module_title": "前端视觉语义原子模块",
         "node_kind": "framework_module",
-        "source_file": "framework/frontend/L0-M2-视觉语义原子模块.md"
+        "order": 2,
+        "source_file": "framework/frontend/L0-M2-视觉语义原子模块.md",
+        "source_line": 1
       },
       {
-        "id": "frontend.L1.M0",
-        "label": "frontend.L1.M0 前端触发与选择原子模块",
-        "node_kind": "framework_module",
-        "source_file": "framework/frontend/L1-M0-触发与选择原子模块.md"
-      },
-      {
-        "id": "frontend.L1.M1",
-        "label": "frontend.L1.M1 前端文本输入原子模块",
-        "node_kind": "framework_module",
-        "source_file": "framework/frontend/L1-M1-文本输入原子模块.md"
-      },
-      {
-        "id": "frontend.L1.M2",
-        "label": "frontend.L1.M2 前端展示与容器原子模块",
-        "node_kind": "framework_module",
-        "source_file": "framework/frontend/L1-M2-展示与容器原子模块.md"
-      },
-      {
-        "id": "frontend.L1.M3",
-        "label": "frontend.L1.M3 前端集合与导航原子模块",
-        "node_kind": "framework_module",
-        "source_file": "framework/frontend/L1-M3-集合与导航原子模块.md"
-      },
-      {
-        "id": "frontend.L1.M4",
-        "label": "frontend.L1.M4 前端标记与反馈原子模块",
-        "node_kind": "framework_module",
-        "source_file": "framework/frontend/L1-M4-标记与反馈原子模块.md"
-      },
-      {
-        "id": "frontend.L2.M0",
-        "label": "frontend.L2.M0 前端框架标准模块",
-        "node_kind": "framework_module",
-        "source_file": "framework/frontend/L2-M0-前端框架标准模块.md"
-      },
-      {
+        "base_items": [
+          {
+            "text": "framework/knowledge_base/L0-M0-文件库与摄取原子模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "FILESET, INGEST, CLASSIFY, LIMIT, VISIBILITY, A11Y",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "Knowledge_baseL0M0ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "Knowledge_baseL0M0CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "Knowledge_baseL0M0EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=knowledge_base.L0.M0 | framework=knowledge_base | level=L0 | config=Knowledge_baseL0M0ConfigModule | code=Knowledge_baseL0M0CodeModule | evidence=Knowledge_baseL0M0EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
         "id": "knowledge_base.L0.M0",
-        "label": "knowledge_base.L0.M0 知识库文件库与摄取原子模块",
+        "label": "knowledge_base.L0.M0",
+        "level": 2,
+        "module_name": "knowledge_base",
+        "module_ref": "L0.M0",
+        "module_title": "知识库文件库与摄取原子模块",
         "node_kind": "framework_module",
-        "source_file": "framework/knowledge_base/L0-M0-文件库与摄取原子模块.md"
+        "order": 0,
+        "source_file": "framework/knowledge_base/L0-M0-文件库与摄取原子模块.md",
+        "source_line": 1
       },
       {
+        "base_items": [
+          {
+            "text": "framework/knowledge_base/L0-M1-文档与目录原子模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "DOCVIEW, TOC, META, FOCUS, EMPTY, A11Y",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "Knowledge_baseL0M1ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "Knowledge_baseL0M1CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "Knowledge_baseL0M1EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=knowledge_base.L0.M1 | framework=knowledge_base | level=L0 | config=Knowledge_baseL0M1ConfigModule | code=Knowledge_baseL0M1CodeModule | evidence=Knowledge_baseL0M1EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
         "id": "knowledge_base.L0.M1",
-        "label": "knowledge_base.L0.M1 知识库文档与目录原子模块",
+        "label": "knowledge_base.L0.M1",
+        "level": 2,
+        "module_name": "knowledge_base",
+        "module_ref": "L0.M1",
+        "module_title": "知识库文档与目录原子模块",
         "node_kind": "framework_module",
-        "source_file": "framework/knowledge_base/L0-M1-文档与目录原子模块.md"
+        "order": 1,
+        "source_file": "framework/knowledge_base/L0-M1-文档与目录原子模块.md",
+        "source_line": 1
       },
       {
+        "base_items": [
+          {
+            "text": "framework/knowledge_base/L0-M2-对话与引用原子模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "TURN, INPUT, CITATION, SCOPE, STATUS, A11Y",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "Knowledge_baseL0M2ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "Knowledge_baseL0M2CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "Knowledge_baseL0M2EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=knowledge_base.L0.M2 | framework=knowledge_base | level=L0 | config=Knowledge_baseL0M2ConfigModule | code=Knowledge_baseL0M2CodeModule | evidence=Knowledge_baseL0M2EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
         "id": "knowledge_base.L0.M2",
-        "label": "knowledge_base.L0.M2 知识库对话与引用原子模块",
+        "label": "knowledge_base.L0.M2",
+        "level": 2,
+        "module_name": "knowledge_base",
+        "module_ref": "L0.M2",
+        "module_title": "知识库对话与引用原子模块",
         "node_kind": "framework_module",
-        "source_file": "framework/knowledge_base/L0-M2-对话与引用原子模块.md"
+        "order": 2,
+        "source_file": "framework/knowledge_base/L0-M2-对话与引用原子模块.md",
+        "source_line": 1
       },
       {
+        "base_items": [
+          {
+            "text": "framework/backend/L1-M0-目录预览对话编排模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "LIBAPI, PREVIEWAPI, CHATAPI, CONSIST, AUTH, TRACE",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "BackendL1M0ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "BackendL1M0CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "BackendL1M0EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=backend.L1.M0 | framework=backend | level=L1 | config=BackendL1M0ConfigModule | code=BackendL1M0CodeModule | evidence=BackendL1M0EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
+        "id": "backend.L1.M0",
+        "label": "backend.L1.M0",
+        "level": 3,
+        "module_name": "backend",
+        "module_ref": "L1.M0",
+        "module_title": "知识库目录预览对话编排模块",
+        "node_kind": "framework_module",
+        "order": 0,
+        "source_file": "framework/backend/L1-M0-目录预览对话编排模块.md",
+        "source_line": 1
+      },
+      {
+        "base_items": [
+          {
+            "text": "framework/frontend/L1-M0-触发与选择原子模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "TRIGGER, PICK, OPTION, ACTION, STATUS, A11Y",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "FrontendL1M0ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "FrontendL1M0CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "FrontendL1M0EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=frontend.L1.M0 | framework=frontend | level=L1 | config=FrontendL1M0ConfigModule | code=FrontendL1M0CodeModule | evidence=FrontendL1M0EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
+        "id": "frontend.L1.M0",
+        "label": "frontend.L1.M0",
+        "level": 3,
+        "module_name": "frontend",
+        "module_ref": "L1.M0",
+        "module_title": "前端触发与选择原子模块",
+        "node_kind": "framework_module",
+        "order": 0,
+        "source_file": "framework/frontend/L1-M0-触发与选择原子模块.md",
+        "source_line": 1
+      },
+      {
+        "base_items": [
+          {
+            "text": "framework/frontend/L1-M1-文本输入原子模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "FIELD, AREA, VALUE, SUBMIT, STATUS, A11Y",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "FrontendL1M1ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "FrontendL1M1CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "FrontendL1M1EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=frontend.L1.M1 | framework=frontend | level=L1 | config=FrontendL1M1ConfigModule | code=FrontendL1M1CodeModule | evidence=FrontendL1M1EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
+        "id": "frontend.L1.M1",
+        "label": "frontend.L1.M1",
+        "level": 3,
+        "module_name": "frontend",
+        "module_ref": "L1.M1",
+        "module_title": "前端文本输入原子模块",
+        "node_kind": "framework_module",
+        "order": 1,
+        "source_file": "framework/frontend/L1-M1-文本输入原子模块.md",
+        "source_line": 1
+      },
+      {
+        "base_items": [
+          {
+            "text": "framework/frontend/L1-M2-展示与容器原子模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "TEXT, PANEL, VIEWPORT, META, EMPTY, A11Y",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "FrontendL1M2ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "FrontendL1M2CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "FrontendL1M2EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=frontend.L1.M2 | framework=frontend | level=L1 | config=FrontendL1M2ConfigModule | code=FrontendL1M2CodeModule | evidence=FrontendL1M2EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
+        "id": "frontend.L1.M2",
+        "label": "frontend.L1.M2",
+        "level": 3,
+        "module_name": "frontend",
+        "module_ref": "L1.M2",
+        "module_title": "前端展示与容器原子模块",
+        "node_kind": "framework_module",
+        "order": 2,
+        "source_file": "framework/frontend/L1-M2-展示与容器原子模块.md",
+        "source_line": 1
+      },
+      {
+        "base_items": [
+          {
+            "text": "framework/frontend/L1-M3-集合与导航原子模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "LIST, TREE, ITEM, NAV, FOCUS, A11Y",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "FrontendL1M3ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "FrontendL1M3CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "FrontendL1M3EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=frontend.L1.M3 | framework=frontend | level=L1 | config=FrontendL1M3ConfigModule | code=FrontendL1M3CodeModule | evidence=FrontendL1M3EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
+        "id": "frontend.L1.M3",
+        "label": "frontend.L1.M3",
+        "level": 3,
+        "module_name": "frontend",
+        "module_ref": "L1.M3",
+        "module_title": "前端集合与导航原子模块",
+        "node_kind": "framework_module",
+        "order": 3,
+        "source_file": "framework/frontend/L1-M3-集合与导航原子模块.md",
+        "source_line": 1
+      },
+      {
+        "base_items": [
+          {
+            "text": "framework/frontend/L1-M4-标记与反馈原子模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "TAG, BUBBLE, EMPTY, STATUS, EVENT, A11Y",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "FrontendL1M4ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "FrontendL1M4CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "FrontendL1M4EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=frontend.L1.M4 | framework=frontend | level=L1 | config=FrontendL1M4ConfigModule | code=FrontendL1M4CodeModule | evidence=FrontendL1M4EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
+        "id": "frontend.L1.M4",
+        "label": "frontend.L1.M4",
+        "level": 3,
+        "module_name": "frontend",
+        "module_ref": "L1.M4",
+        "module_title": "前端标记与反馈原子模块",
+        "node_kind": "framework_module",
+        "order": 4,
+        "source_file": "framework/frontend/L1-M4-标记与反馈原子模块.md",
+        "source_line": 1
+      },
+      {
+        "base_items": [
+          {
+            "text": "framework/knowledge_base/L1-M0-知识库界面骨架模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "REGION, FOCUS, EMPTY, RESPONSIVE, ENTRY, A11Y",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "Knowledge_baseL1M0ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "Knowledge_baseL1M0CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "Knowledge_baseL1M0EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=knowledge_base.L1.M0 | framework=knowledge_base | level=L1 | config=Knowledge_baseL1M0ConfigModule | code=Knowledge_baseL1M0CodeModule | evidence=Knowledge_baseL1M0EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
         "id": "knowledge_base.L1.M0",
-        "label": "knowledge_base.L1.M0 知识库界面骨架模块",
+        "label": "knowledge_base.L1.M0",
+        "level": 3,
+        "module_name": "knowledge_base",
+        "module_ref": "L1.M0",
+        "module_title": "知识库界面骨架模块",
         "node_kind": "framework_module",
-        "source_file": "framework/knowledge_base/L1-M0-知识库界面骨架模块.md"
+        "order": 0,
+        "source_file": "framework/knowledge_base/L1-M0-知识库界面骨架模块.md",
+        "source_line": 1
       },
       {
+        "base_items": [
+          {
+            "text": "framework/knowledge_base/L1-M1-知识引用上下文编排模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "SCOPE, ANCHOR, TURNLINK, RETURN, TRACE, STATUS",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "Knowledge_baseL1M1ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "Knowledge_baseL1M1CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "Knowledge_baseL1M1EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=knowledge_base.L1.M1 | framework=knowledge_base | level=L1 | config=Knowledge_baseL1M1ConfigModule | code=Knowledge_baseL1M1CodeModule | evidence=Knowledge_baseL1M1EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
         "id": "knowledge_base.L1.M1",
-        "label": "knowledge_base.L1.M1 知识引用上下文编排模块",
+        "label": "knowledge_base.L1.M1",
+        "level": 3,
+        "module_name": "knowledge_base",
+        "module_ref": "L1.M1",
+        "module_title": "知识引用上下文编排模块",
         "node_kind": "framework_module",
-        "source_file": "framework/knowledge_base/L1-M1-知识引用上下文编排模块.md"
+        "order": 1,
+        "source_file": "framework/knowledge_base/L1-M1-知识引用上下文编排模块.md",
+        "source_line": 1
       },
       {
-        "id": "knowledge_base.L2.M0",
-        "label": "knowledge_base.L2.M0 知识库工作台场景模块",
+        "base_items": [
+          {
+            "text": "framework/backend/L2-M0-知识库接口框架标准模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "LIBRARY, PREVIEW, CHAT, RESULT, AUTH, TRACE",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "BackendL2M0ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "BackendL2M0CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "BackendL2M0EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=backend.L2.M0 | framework=backend | level=L2 | config=BackendL2M0ConfigModule | code=BackendL2M0CodeModule | evidence=BackendL2M0EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
+        "id": "backend.L2.M0",
+        "label": "backend.L2.M0",
+        "level": 4,
+        "module_name": "backend",
+        "module_ref": "L2.M0",
+        "module_title": "知识库接口框架标准模块",
         "node_kind": "framework_module",
-        "source_file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md"
+        "order": 0,
+        "source_file": "framework/backend/L2-M0-知识库接口框架标准模块.md",
+        "source_line": 1
+      },
+      {
+        "base_items": [
+          {
+            "text": "framework/frontend/L2-M0-前端框架标准模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "SURFACE, VISUAL, INTERACT, STATE, EXTEND, ROUTE, A11Y",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "FrontendL2M0ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "FrontendL2M0CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "FrontendL2M0EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=frontend.L2.M0 | framework=frontend | level=L2 | config=FrontendL2M0ConfigModule | code=FrontendL2M0CodeModule | evidence=FrontendL2M0EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
+        "id": "frontend.L2.M0",
+        "label": "frontend.L2.M0",
+        "level": 4,
+        "module_name": "frontend",
+        "module_ref": "L2.M0",
+        "module_title": "前端框架标准模块",
+        "node_kind": "framework_module",
+        "order": 0,
+        "source_file": "framework/frontend/L2-M0-前端框架标准模块.md",
+        "source_line": 1
+      },
+      {
+        "base_items": [
+          {
+            "text": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
+            "token": "Framework"
+          },
+          {
+            "text": "SURFACE, LIBRARY, PREVIEW, CHAT, CONTEXT, RETURN",
+            "token": "Boundaries"
+          }
+        ],
+        "capability_items": [
+          {
+            "text": "Knowledge_baseL2M0ConfigModule",
+            "token": "Config"
+          },
+          {
+            "text": "Knowledge_baseL2M0CodeModule",
+            "token": "Code"
+          },
+          {
+            "text": "Knowledge_baseL2M0EvidenceModule",
+            "token": "Evidence"
+          }
+        ],
+        "description": "module=knowledge_base.L2.M0 | framework=knowledge_base | level=L2 | config=Knowledge_baseL2M0ConfigModule | code=Knowledge_baseL2M0CodeModule | evidence=Knowledge_baseL2M0EvidenceModule",
+        "doc_line": 1,
+        "hover_kicker": "Evidence Trace Node",
+        "id": "knowledge_base.L2.M0",
+        "label": "knowledge_base.L2.M0",
+        "level": 4,
+        "module_name": "knowledge_base",
+        "module_ref": "L2.M0",
+        "module_title": "知识库工作台场景模块",
+        "node_kind": "framework_module",
+        "order": 0,
+        "source_file": "framework/knowledge_base/L2-M0-知识库工作台场景模块.md",
+        "source_line": 1
       }
-    ]
+    ],
+    "storage_key_stem": "evidenceTree",
+    "title": "Shelf Evidence Tree"
   }
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.5 - 2026-03-15
+
+- Restored the interactive framework and evidence graph canvas so the generated tree views are no longer reduced to plain HTML lists.
+- Reintroduced the shared hierarchy renderer and model layer that powers zoom, drag, hover, and side-panel inspection for tree outputs.
+- Updated release-facing CI and repository templates to validate against the canonical pipeline instead of the removed strict-mapping commands.
+
 ## 0.1.4 - 2026-03-14
 
 - Rebuilt the extension against the final four-layer runtime and canonical output.

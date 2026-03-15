@@ -67,6 +67,7 @@ class HierarchyGraph:
     level_labels: dict[int, str]
     nodes: list[HierarchyNode]
     edges: list[HierarchyEdge]
+    foot_text: str | None = None
     layout_mode: str = "global_levels"
     framework_groups: list[HierarchyFrameworkGroup] | None = None
     storage_key_stem: str | None = None
@@ -79,6 +80,8 @@ class HierarchyGraph:
             "nodes": [node.to_payload_dict() for node in self.nodes],
             "edges": [edge.to_payload_dict() for edge in self.edges],
         }
+        if self.foot_text is not None:
+            root["foot_text"] = self.foot_text
         if self.layout_mode != "global_levels":
             root["layout_mode"] = self.layout_mode
         if self.framework_groups:
