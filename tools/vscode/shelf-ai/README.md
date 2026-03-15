@@ -14,6 +14,12 @@
 - Runs canonical validation and optionally `mypy` from the extension.
 - Supports publishing the active `framework_drafts/...` file into the formal `framework/...` tree.
 
+## Contract
+
+- 插件后续设计与实现的正式契约文档：
+  `tools/vscode/shelf-ai/插件设计与实现契约.md`
+- 后续凡是插件相关代码变更，都应同步检查并在需要时更新该文档。
+
 ## Install (Local)
 
 1. Package and install the current source version:

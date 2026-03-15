@@ -71,3 +71,19 @@
 - 修改 `.css/.scss/.less` 文件前，必须阅读 `specs/code/前端样式实现质量标准.md`。
 - 多语言或混合语法文件必须同时满足对应标准；冲突时按更严格者执行。
 - 语言到标准的机器可读索引为 `specs/code/代码语言标准索引.toml`；新增语言或文件类型时，必须先更新该索引与本节，再允许 AI 或人工按新语言写代码。
+
+### 4.2 Shelf AI 插件契约入口（强制）
+- 只要任务涉及 `tools/vscode/shelf-ai/**`，无论是代码、配置、README、release notes、tree 视图脚本，还是与插件直接耦合的导航 / evidence / validation 路径，都必须先阅读 `tools/vscode/shelf-ai/插件设计与实现契约.md`。
+- Shelf AI 插件的后续设计与实现，默认以 `tools/vscode/shelf-ai/插件设计与实现契约.md` 作为一线约束；README、零散注释、临时讨论或历史实现都不得覆盖该文档。
+- 凡是插件相关实现发生变化，必须同步审查该契约文档是否需要更新；若实现语义已变而契约文档未更新，则该实现视为未完成。
+- 修改以下文件时，默认应同时检查该契约文档是否需要更新：
+  - `tools/vscode/shelf-ai/extension.js`
+  - `tools/vscode/shelf-ai/guarding.js`
+  - `tools/vscode/shelf-ai/framework_navigation.js`
+  - `tools/vscode/shelf-ai/framework_completion.js`
+  - `tools/vscode/shelf-ai/evidence_tree.js`
+  - `tools/vscode/shelf-ai/validation_runtime.js`
+  - `tools/vscode/shelf-ai/package.json`
+  - `tools/vscode/shelf-ai/README.md`
+  - `tools/vscode/shelf-ai/release-notes/*`
+  - 与插件直接耦合的 tree / validation / materialize 脚本
