@@ -4,7 +4,7 @@
 
 - Restored the interactive framework and evidence graph canvas so the generated tree views are no longer reduced to plain HTML lists.
 - Reintroduced the shared hierarchy renderer and model layer that powers zoom, drag, hover, and side-panel inspection for tree outputs.
-- Updated release-facing CI and repository templates to validate against the canonical pipeline instead of the removed strict-mapping commands.
+- Updated release-facing CI, repository templates, and the local `pre-push` hook to validate against the canonical pipeline instead of the removed strict-mapping commands.
 
 ## 0.1.4 - 2026-03-14
 
