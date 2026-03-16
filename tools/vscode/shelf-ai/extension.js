@@ -2226,7 +2226,18 @@ function buildRuntimeFrameworkTreeModel(repoRoot) {
     throw new Error("framework/ directory is missing");
   }
 
-  const rows = [];
+  const nodes = [];
+  const edges = [];
+  const rootNodeId = "framework:root";
+  nodes.push({
+    id: rootNodeId,
+    label: "framework",
+    detail: "author source",
+    file: "",
+    line: 1,
+    depth: 0,
+    kind: "framework_root",
+  });
   const frameworkDirs = fs.readdirSync(frameworkRoot)
     .map((entry) => ({
       name: entry,
@@ -2239,86 +2250,106 @@ function buildRuntimeFrameworkTreeModel(repoRoot) {
     const moduleFiles = fs.readdirSync(frameworkDir.absPath)
       .filter((entry) => entry.endsWith(".md"))
       .sort((left, right) => left.localeCompare(right));
-    rows.push({
-      type: "group",
+    const groupNodeId = `framework-group:${frameworkDir.name}`;
+    nodes.push({
+      id: groupNodeId,
       label: frameworkDir.name,
       detail: `${moduleFiles.length} module(s)`,
-      depth: 0,
+      file: "",
+      line: 1,
+      depth: 1,
+      kind: "framework_group",
+    });
+    edges.push({
+      id: `${rootNodeId}->${groupNodeId}`,
+      from: rootNodeId,
+      to: groupNodeId,
+      relation: "tree_child",
     });
     for (const fileName of moduleFiles) {
       const absPath = path.join(frameworkDir.absPath, fileName);
       const relPath = workspaceGuard.normalizeRelPath(path.relative(repoRoot, absPath));
       const moduleRef = parseModuleRefFromFileName(fileName);
       const heading = firstMarkdownHeading(absPath);
-      rows.push({
-        type: "node",
+      const moduleNodeId = `framework-module:${relPath}`;
+      nodes.push({
+        id: moduleNodeId,
         label: moduleRef ? `${frameworkDir.name}.${moduleRef}` : `${frameworkDir.name}.${fileName}`,
         detail: heading || fileName,
         file: relPath,
         line: 1,
-        depth: 1,
+        depth: 2,
+        kind: "framework_module",
+      });
+      edges.push({
+        id: `${groupNodeId}->${moduleNodeId}`,
+        from: groupNodeId,
+        to: moduleNodeId,
+        relation: "tree_child",
       });
     }
   }
 
   return {
     title: "Shelf Framework Tree",
-    description: "Runtime projection from framework author source. No persisted tree artifact.",
-    rows,
+    description: "Runtime projection from framework author source. Interactive graph, no persisted tree artifact.",
+    nodes,
+    edges,
   };
 }
 
 function buildRuntimeEvidenceTreeModel(repoRoot) {
   const payload = evidenceTree.readEvidenceTree(repoRoot, "");
-  const nodes = Array.isArray(payload?.root?.nodes) ? payload.root.nodes : [];
-  const rows = nodes
+  const rawNodes = Array.isArray(payload?.root?.nodes) ? payload.root.nodes : [];
+  const nodes = rawNodes
     .filter((node) => node && typeof node === "object")
     .map((node) => ({
-      type: "node",
+      id: String(node.id || ""),
       label: String(node.label || node.id || "node"),
       detail: String(node.description || node.node_kind || ""),
       file: typeof node.source_file === "string" ? workspaceGuard.normalizeRelPath(node.source_file) : "",
-      line: Number(node.source_line || 1),
+      line: 1,
       depth: Math.max(0, Number(node.level || 0)),
+      kind: String(node.node_kind || "evidence_node"),
     }))
+    .filter((node) => node.id)
     .sort((left, right) => {
       if (left.depth !== right.depth) {
         return left.depth - right.depth;
       }
       return left.label.localeCompare(right.label);
     });
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const rawEdges = Array.isArray(payload?.root?.edges) ? payload.root.edges : [];
+  const edges = rawEdges
+    .filter((edge) => edge && String(edge.relation || "") === "tree_child")
+    .map((edge, index) => ({
+      id: String(edge.id || `${index}:${String(edge.from || "")}->${String(edge.to || "")}`),
+      from: String(edge.from || ""),
+      to: String(edge.to || ""),
+      relation: "tree_child",
+    }))
+    .filter((edge) => edge.from && edge.to && nodeIds.has(edge.from) && nodeIds.has(edge.to));
 
   return {
     title: "Shelf Evidence Tree",
-    description: "Runtime projection from canonical graph. No persisted tree artifact.",
-    rows,
+    description: "Runtime projection from canonical graph. Interactive graph, no persisted tree artifact.",
+    nodes,
+    edges,
   };
 }
 
 function buildRuntimeTreeHtml(model, kind) {
   const title = escapeHtml(model?.title || "Shelf Tree");
   const description = escapeHtml(model?.description || "");
-  const rows = Array.isArray(model?.rows) ? model.rows : [];
+  const graphPayload = {
+    nodes: Array.isArray(model?.nodes) ? model.nodes : [],
+    edges: Array.isArray(model?.edges) ? model.edges : [],
+  };
+  const graphJson = safeJsonForScript(graphPayload);
   const refreshCommandLabel = kind === "evidence"
     ? "Shelf: Refresh Evidence Tree"
     : "Shelf: Refresh Framework Tree";
-  const rowsHtml = rows.length
-    ? rows.map((row) => {
-      const depth = Math.max(0, Number(row.depth || 0));
-      const indentPx = depth * 14;
-      if (row.type === "group") {
-        return `<div class="group-row" style="margin-left:${indentPx}px"><span class="group-label">${escapeHtml(row.label || "")}</span><span class="group-detail">${escapeHtml(row.detail || "")}</span></div>`;
-      }
-      const file = escapeHtml(row.file || "");
-      const line = Math.max(1, Number(row.line || 1));
-      const label = escapeHtml(row.label || "");
-      const detail = escapeHtml(row.detail || "");
-      const openButton = row.file
-        ? `<button type="button" class="open-btn" data-file="${file}" data-line="${line}">Open Source</button>`
-        : `<span class="no-source">No source</span>`;
-      return `<div class="node-row" style="margin-left:${indentPx}px"><div class="node-main"><div class="node-label">${label}</div><div class="node-detail">${detail}</div></div>${openButton}</div>`;
-    }).join("")
-    : `<div class="empty">No rows to render.</div>`;
 
   return `<!doctype html>
 <html lang="en">
@@ -2335,22 +2366,43 @@ function buildRuntimeTreeHtml(model, kind) {
       --text: var(--vscode-editor-foreground, var(--vscode-foreground, #cccccc));
       --muted: var(--vscode-descriptionForeground, #9da1a6);
       --accent: var(--vscode-textLink-foreground, var(--vscode-button-background, #0e639c));
+      --ok: #4ca25f;
+      --warn: #c9952a;
+      --err: #cf4d54;
+      --node-root: #2f7dd6;
+      --node-group: #2f8a66;
+      --node-module: #685fd1;
+      --node-evidence: #865ec9;
+      --node-generic: #58627a;
+      --node-text: #f5f7fa;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      padding: 16px;
       color: var(--text);
       background: var(--bg);
       font-family: var(--vscode-font-family, "Segoe WPC", "Segoe UI", sans-serif);
     }
-    .card {
-      max-width: 920px;
-      margin: 0 auto;
+    .shell {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
       padding: 14px;
+      gap: 12px;
+    }
+    .topbar {
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 12px;
       background: var(--surface);
+      padding: 10px 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
     }
     .title {
       margin: 0;
@@ -2358,110 +2410,686 @@ function buildRuntimeTreeHtml(model, kind) {
       font-weight: 600;
     }
     .desc {
-      margin: 6px 0 12px;
+      margin: 0;
       font-size: 12px;
       color: var(--muted);
-      line-height: 1.5;
+      line-height: 1.45;
     }
-    .hint {
-      margin: 0 0 12px;
-      font-size: 12px;
+    .command {
       color: var(--muted);
+      font-size: 12px;
     }
-    .rows {
-      display: grid;
+    .tools {
+      display: flex;
+      flex-wrap: wrap;
       gap: 8px;
     }
-    .group-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      padding: 6px 8px;
+    .btn {
       border: 1px solid var(--border);
       border-radius: 8px;
-      background: rgba(255, 255, 255, 0.04);
-    }
-    .group-label {
-      font-size: 12px;
-      font-weight: 600;
-    }
-    .group-detail {
-      font-size: 11px;
-      color: var(--muted);
-    }
-    .node-row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.02);
-    }
-    .node-main {
-      min-width: 0;
-      display: grid;
-      gap: 3px;
-    }
-    .node-label {
-      font-size: 12px;
-      font-weight: 600;
-      word-break: break-word;
-    }
-    .node-detail {
-      font-size: 11px;
-      color: var(--muted);
-      word-break: break-word;
-    }
-    .open-btn {
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      padding: 5px 9px;
+      padding: 5px 10px;
       background: transparent;
-      color: var(--accent);
-      cursor: pointer;
+      color: var(--text);
       font-size: 11px;
+      cursor: pointer;
     }
-    .open-btn:hover {
+    .btn:hover {
       background: rgba(255, 255, 255, 0.08);
     }
-    .no-source {
+    .main {
+      min-height: 0;
+      display: flex;
+      gap: 12px;
+    }
+    .canvas {
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 520px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.045), transparent 42%),
+        radial-gradient(circle at 80% 78%, rgba(255, 255, 255, 0.035), transparent 40%),
+        var(--surface);
+      overflow: hidden;
+      position: relative;
+    }
+    .canvas svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+    .canvas svg.panning {
+      cursor: grabbing;
+    }
+    .legend {
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(2px);
+      padding: 6px 8px;
+      display: grid;
+      gap: 4px;
       font-size: 11px;
       color: var(--muted);
     }
-    .empty {
+    .legend strong {
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .legend ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 2px;
+    }
+    .side {
+      width: min(320px, 36%);
+      min-width: 240px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      padding: 10px 12px;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+    .side-title {
+      margin: 0;
       font-size: 12px;
+      font-weight: 600;
+    }
+    .kv {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 6px 8px;
+      align-items: start;
+      font-size: 12px;
+    }
+    .key {
       color: var(--muted);
-      padding: 8px;
+      user-select: none;
+    }
+    .value {
+      word-break: break-word;
+      color: var(--text);
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 11px;
+      color: var(--muted);
+      width: fit-content;
+    }
+    .pill::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--node-generic);
+    }
+    .pill.root::before { background: var(--node-root); }
+    .pill.group::before { background: var(--node-group); }
+    .pill.module::before { background: var(--node-module); }
+    .pill.evidence::before { background: var(--node-evidence); }
+    .hint {
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--muted);
       border: 1px dashed var(--border);
       border-radius: 8px;
+      padding: 8px;
+    }
+    .hint strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .edge {
+      fill: none;
+      stroke: rgba(185, 195, 210, 0.55);
+      stroke-width: 1.35;
+      stroke-linecap: round;
+      pointer-events: none;
+    }
+    .node {
+      cursor: pointer;
+      user-select: none;
+    }
+    .node rect {
+      stroke: rgba(255, 255, 255, 0.18);
+      stroke-width: 1;
+      rx: 10;
+      ry: 10;
+    }
+    .node text {
+      fill: var(--node-text);
+      pointer-events: none;
+    }
+    .node .title {
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .node .detail {
+      font-size: 10px;
+      opacity: 0.9;
+    }
+    .node.root rect {
+      fill: color-mix(in srgb, var(--node-root) 76%, black);
+    }
+    .node.group rect {
+      fill: color-mix(in srgb, var(--node-group) 70%, black);
+    }
+    .node.module rect {
+      fill: color-mix(in srgb, var(--node-module) 68%, black);
+    }
+    .node.evidence rect {
+      fill: color-mix(in srgb, var(--node-evidence) 68%, black);
+    }
+    .node.generic rect {
+      fill: color-mix(in srgb, var(--node-generic) 74%, black);
+    }
+    .node.selected rect {
+      stroke: #ffffff;
+      stroke-width: 2.1;
+    }
+    .empty {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--warn);
+    }
+    @media (max-width: 980px) {
+      .main {
+        flex-direction: column;
+      }
+      .side {
+        width: 100%;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1 class="title">${title}</h1>
-    <p class="desc">${description}</p>
-    <p class="hint">Projection only. No persisted tree artifact. Refresh command: <code>${escapeHtml(refreshCommandLabel)}</code></p>
-    <div class="rows">${rowsHtml}</div>
+  <div class="shell">
+    <section class="topbar">
+      <div class="title-row">
+        <h1 class="title">${title}</h1>
+        <span class="command">Refresh: <code>${escapeHtml(refreshCommandLabel)}</code></span>
+      </div>
+      <p class="desc">${description}</p>
+      <div class="tools">
+        <button id="layoutBtn" type="button" class="btn">Reset Layout</button>
+        <button id="fitBtn" type="button" class="btn">Fit View</button>
+        <button id="zoomInBtn" type="button" class="btn">Zoom +</button>
+        <button id="zoomOutBtn" type="button" class="btn">Zoom -</button>
+      </div>
+    </section>
+    <section class="main">
+      <div class="canvas">
+        <div class="legend">
+          <strong>Interaction</strong>
+          <ul>
+            <li>Drag node: move local structure</li>
+            <li>Drag blank canvas: pan</li>
+            <li>Wheel: zoom</li>
+            <li>Double click node: open source</li>
+          </ul>
+        </div>
+        <svg id="graphSvg" role="img" aria-label="${title}">
+          <g id="viewport">
+            <g id="edgeLayer"></g>
+            <g id="nodeLayer"></g>
+          </g>
+        </svg>
+      </div>
+      <aside class="side">
+        <h2 class="side-title">Node Inspector</h2>
+        <span id="kindPill" class="pill generic">none</span>
+        <div class="kv">
+          <span class="key">ID</span><span id="nodeId" class="value">-</span>
+          <span class="key">Label</span><span id="nodeLabel" class="value">Select a node</span>
+          <span class="key">Detail</span><span id="nodeDetail" class="value">-</span>
+          <span class="key">Source</span><span id="nodeSource" class="value">-</span>
+        </div>
+        <button id="openSourceBtn" type="button" class="btn" disabled>Open Source</button>
+        <div class="hint">
+          <strong>Contract:</strong> this view is runtime projection only.
+          Nodes and edges come from framework author files or canonical graph at runtime;
+          no tree JSON/HTML artifact is persisted.
+        </div>
+        <div id="emptyText" class="empty" hidden>No nodes to render.</div>
+      </aside>
+    </section>
   </div>
   <script>
     const vscode = acquireVsCodeApi();
-    const buttons = document.querySelectorAll(".open-btn[data-file]");
-    for (const button of buttons) {
-      button.addEventListener("click", () => {
-        const file = button.getAttribute("data-file");
-        const line = Number(button.getAttribute("data-line") || "1");
-        if (!file) {
+    const graph = ${graphJson};
+    const svg = document.getElementById("graphSvg");
+    const viewport = document.getElementById("viewport");
+    const edgeLayer = document.getElementById("edgeLayer");
+    const nodeLayer = document.getElementById("nodeLayer");
+    const nodeIdEl = document.getElementById("nodeId");
+    const nodeLabelEl = document.getElementById("nodeLabel");
+    const nodeDetailEl = document.getElementById("nodeDetail");
+    const nodeSourceEl = document.getElementById("nodeSource");
+    const kindPillEl = document.getElementById("kindPill");
+    const openSourceBtn = document.getElementById("openSourceBtn");
+    const emptyText = document.getElementById("emptyText");
+    const NS = "http://www.w3.org/2000/svg";
+
+    const state = {
+      tx: 36,
+      ty: 36,
+      scale: 1,
+      mode: "none",
+      pointerId: null,
+      panStartX: 0,
+      panStartY: 0,
+      dragNodeId: "",
+      dragOffsetX: 0,
+      dragOffsetY: 0,
+      selectedId: "",
+    };
+
+    const nodeById = new Map();
+    const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+    const edges = (Array.isArray(graph.edges) ? graph.edges : [])
+      .filter((edge) => edge && typeof edge === "object")
+      .map((edge, index) => ({
+        id: String(edge.id || index),
+        from: String(edge.from || ""),
+        to: String(edge.to || ""),
+      }))
+      .filter((edge) => edge.from && edge.to);
+
+    for (const rawNode of nodes) {
+      if (!rawNode || typeof rawNode !== "object") {
+        continue;
+      }
+      const nodeId = String(rawNode.id || "");
+      if (!nodeId) {
+        continue;
+      }
+      const node = {
+        id: nodeId,
+        label: String(rawNode.label || nodeId),
+        detail: String(rawNode.detail || ""),
+        file: String(rawNode.file || ""),
+        line: Math.max(1, Number(rawNode.line || 1)),
+        depth: Math.max(0, Number(rawNode.depth || 0)),
+        kind: String(rawNode.kind || "generic"),
+        width: 220,
+        height: 58,
+        x: 0,
+        y: 0,
+      };
+      if (node.kind.includes("root")) {
+        node.width = 176;
+        node.height = 48;
+      } else if (node.kind.includes("group")) {
+        node.width = 188;
+        node.height = 52;
+      }
+      nodeById.set(node.id, node);
+    }
+
+    const edgeElements = new Map();
+    const nodeElements = new Map();
+
+    function kindClassForNode(node) {
+      if (!node) {
+        return "generic";
+      }
+      if (node.kind.includes("root")) {
+        return "root";
+      }
+      if (node.kind.includes("group")) {
+        return "group";
+      }
+      if (node.kind.includes("module")) {
+        return "module";
+      }
+      if (node.kind.includes("evidence")) {
+        return "evidence";
+      }
+      return "generic";
+    }
+
+    function shortText(value, maxLen) {
+      const text = String(value || "");
+      if (text.length <= maxLen) {
+        return text;
+      }
+      return text.slice(0, Math.max(0, maxLen - 1)) + "…";
+    }
+
+    function applyTransform() {
+      viewport.setAttribute("transform", "translate(" + state.tx + " " + state.ty + ") scale(" + state.scale + ")");
+    }
+
+    function worldPoint(clientX, clientY) {
+      const rect = svg.getBoundingClientRect();
+      return {
+        x: (clientX - rect.left - state.tx) / state.scale,
+        y: (clientY - rect.top - state.ty) / state.scale,
+      };
+    }
+
+    function resetLayout() {
+      const levelMap = new Map();
+      for (const node of nodeById.values()) {
+        const depth = Math.max(0, Number(node.depth || 0));
+        if (!levelMap.has(depth)) {
+          levelMap.set(depth, []);
+        }
+        levelMap.get(depth).push(node);
+      }
+      const depths = [...levelMap.keys()].sort((a, b) => a - b);
+      const layerGap = 270;
+      const rowGap = 96;
+      for (const depth of depths) {
+        const levelNodes = levelMap.get(depth) || [];
+        levelNodes.sort((left, right) => left.label.localeCompare(right.label));
+        const totalHeight = Math.max(0, (levelNodes.length - 1) * rowGap);
+        const startY = -totalHeight / 2;
+        for (let i = 0; i < levelNodes.length; i += 1) {
+          const node = levelNodes[i];
+          node.x = depth * layerGap;
+          node.y = startY + i * rowGap;
+        }
+      }
+    }
+
+    function fitView() {
+      const nodeList = [...nodeById.values()];
+      if (!nodeList.length) {
+        applyTransform();
+        return;
+      }
+      let minX = Number.POSITIVE_INFINITY;
+      let minY = Number.POSITIVE_INFINITY;
+      let maxX = Number.NEGATIVE_INFINITY;
+      let maxY = Number.NEGATIVE_INFINITY;
+      for (const node of nodeList) {
+        minX = Math.min(minX, node.x - node.width / 2);
+        minY = Math.min(minY, node.y - node.height / 2);
+        maxX = Math.max(maxX, node.x + node.width / 2);
+        maxY = Math.max(maxY, node.y + node.height / 2);
+      }
+      const boxWidth = Math.max(1, maxX - minX);
+      const boxHeight = Math.max(1, maxY - minY);
+      const viewWidth = Math.max(200, svg.clientWidth);
+      const viewHeight = Math.max(160, svg.clientHeight);
+      const pad = 34;
+      const scaleX = (viewWidth - pad * 2) / boxWidth;
+      const scaleY = (viewHeight - pad * 2) / boxHeight;
+      state.scale = Math.max(0.25, Math.min(1.6, Math.min(scaleX, scaleY)));
+      state.tx = (viewWidth - boxWidth * state.scale) / 2 - minX * state.scale;
+      state.ty = (viewHeight - boxHeight * state.scale) / 2 - minY * state.scale;
+      applyTransform();
+    }
+
+    function buildEdgePath(fromNode, toNode) {
+      const dx = toNode.x - fromNode.x;
+      const bend = Math.max(46, Math.abs(dx) * 0.42);
+      const c1x = fromNode.x + (dx >= 0 ? bend : -bend);
+      const c2x = toNode.x - (dx >= 0 ? bend : -bend);
+      return "M " + fromNode.x + " " + fromNode.y
+        + " C " + c1x + " " + fromNode.y
+        + ", " + c2x + " " + toNode.y
+        + ", " + toNode.x + " " + toNode.y;
+    }
+
+    function updateGeometry() {
+      for (const edge of edges) {
+        const edgeEl = edgeElements.get(edge.id);
+        const fromNode = nodeById.get(edge.from);
+        const toNode = nodeById.get(edge.to);
+        if (!edgeEl || !fromNode || !toNode) {
+          continue;
+        }
+        edgeEl.setAttribute("d", buildEdgePath(fromNode, toNode));
+      }
+      for (const node of nodeById.values()) {
+        const group = nodeElements.get(node.id);
+        if (!group) {
+          continue;
+        }
+        group.setAttribute("transform", "translate(" + node.x + " " + node.y + ")");
+      }
+      applyTransform();
+    }
+
+    function selectNode(nodeId) {
+      state.selectedId = nodeById.has(nodeId) ? nodeId : "";
+      for (const [id, group] of nodeElements.entries()) {
+        if (state.selectedId && id === state.selectedId) {
+          group.classList.add("selected");
+        } else {
+          group.classList.remove("selected");
+        }
+      }
+      const node = state.selectedId ? nodeById.get(state.selectedId) : null;
+      if (!node) {
+        nodeIdEl.textContent = "-";
+        nodeLabelEl.textContent = "Select a node";
+        nodeDetailEl.textContent = "-";
+        nodeSourceEl.textContent = "-";
+        kindPillEl.textContent = "none";
+        kindPillEl.className = "pill generic";
+        openSourceBtn.disabled = true;
+        return;
+      }
+      nodeIdEl.textContent = node.id;
+      nodeLabelEl.textContent = node.label;
+      nodeDetailEl.textContent = node.detail || "(empty)";
+      nodeSourceEl.textContent = node.file ? (node.file + ":" + node.line) : "(none)";
+      const kindClass = kindClassForNode(node);
+      kindPillEl.textContent = node.kind;
+      kindPillEl.className = "pill " + kindClass;
+      openSourceBtn.disabled = !node.file;
+    }
+
+    function openNodeSource(node) {
+      if (!node || !node.file) {
+        return;
+      }
+      vscode.postMessage({
+        type: "shelf.openSource",
+        file: node.file,
+        line: node.line,
+      });
+    }
+
+    function renderGraph() {
+      while (edgeLayer.firstChild) {
+        edgeLayer.removeChild(edgeLayer.firstChild);
+      }
+      while (nodeLayer.firstChild) {
+        nodeLayer.removeChild(nodeLayer.firstChild);
+      }
+      edgeElements.clear();
+      nodeElements.clear();
+      for (const edge of edges) {
+        const fromNode = nodeById.get(edge.from);
+        const toNode = nodeById.get(edge.to);
+        if (!fromNode || !toNode) {
+          continue;
+        }
+        const pathEl = document.createElementNS(NS, "path");
+        pathEl.setAttribute("class", "edge");
+        edgeLayer.appendChild(pathEl);
+        edgeElements.set(edge.id, pathEl);
+      }
+      for (const node of nodeById.values()) {
+        const group = document.createElementNS(NS, "g");
+        const kindClass = kindClassForNode(node);
+        group.setAttribute("class", "node " + kindClass);
+        group.setAttribute("data-id", node.id);
+
+        const rect = document.createElementNS(NS, "rect");
+        rect.setAttribute("x", String(-node.width / 2));
+        rect.setAttribute("y", String(-node.height / 2));
+        rect.setAttribute("width", String(node.width));
+        rect.setAttribute("height", String(node.height));
+        group.appendChild(rect);
+
+        const titleText = document.createElementNS(NS, "text");
+        titleText.setAttribute("class", "title");
+        titleText.setAttribute("x", String(-node.width / 2 + 10));
+        titleText.setAttribute("y", String(-6));
+        titleText.textContent = shortText(node.label, 36);
+        group.appendChild(titleText);
+
+        const detailText = document.createElementNS(NS, "text");
+        detailText.setAttribute("class", "detail");
+        detailText.setAttribute("x", String(-node.width / 2 + 10));
+        detailText.setAttribute("y", String(13));
+        detailText.textContent = shortText(node.detail, 50);
+        group.appendChild(detailText);
+
+        group.addEventListener("pointerdown", (event) => {
+          event.stopPropagation();
+          state.mode = "drag-node";
+          state.pointerId = event.pointerId;
+          state.dragNodeId = node.id;
+          const pointer = worldPoint(event.clientX, event.clientY);
+          state.dragOffsetX = node.x - pointer.x;
+          state.dragOffsetY = node.y - pointer.y;
+          svg.classList.remove("panning");
+        });
+
+        group.addEventListener("click", (event) => {
+          event.stopPropagation();
+          selectNode(node.id);
+        });
+
+        group.addEventListener("dblclick", (event) => {
+          event.stopPropagation();
+          selectNode(node.id);
+          openNodeSource(node);
+        });
+
+        nodeLayer.appendChild(group);
+        nodeElements.set(node.id, group);
+      }
+      updateGeometry();
+      if (!state.selectedId && nodeById.size) {
+        selectNode([...nodeById.keys()][0]);
+      } else {
+        selectNode(state.selectedId);
+      }
+    }
+
+    svg.addEventListener("pointerdown", (event) => {
+      state.mode = "pan";
+      state.pointerId = event.pointerId;
+      state.panStartX = event.clientX - state.tx;
+      state.panStartY = event.clientY - state.ty;
+      svg.classList.add("panning");
+      selectNode("");
+    });
+
+    window.addEventListener("pointermove", (event) => {
+      if (state.mode === "none" || state.pointerId !== event.pointerId) {
+        return;
+      }
+      if (state.mode === "pan") {
+        state.tx = event.clientX - state.panStartX;
+        state.ty = event.clientY - state.panStartY;
+        applyTransform();
+        return;
+      }
+      if (state.mode === "drag-node" && state.dragNodeId) {
+        const node = nodeById.get(state.dragNodeId);
+        if (!node) {
           return;
         }
-        vscode.postMessage({ type: "shelf.openSource", file, line });
-      });
+        const pointer = worldPoint(event.clientX, event.clientY);
+        node.x = pointer.x + state.dragOffsetX;
+        node.y = pointer.y + state.dragOffsetY;
+        updateGeometry();
+      }
+    });
+
+    window.addEventListener("pointerup", (event) => {
+      if (state.pointerId !== event.pointerId) {
+        return;
+      }
+      state.mode = "none";
+      state.pointerId = null;
+      state.dragNodeId = "";
+      svg.classList.remove("panning");
+    });
+
+    svg.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      const scaleFactor = event.deltaY < 0 ? 1.09 : 0.92;
+      const oldScale = state.scale;
+      const nextScale = Math.max(0.2, Math.min(3.2, oldScale * scaleFactor));
+      if (Math.abs(nextScale - oldScale) < 1e-6) {
+        return;
+      }
+      const rect = svg.getBoundingClientRect();
+      const px = event.clientX - rect.left;
+      const py = event.clientY - rect.top;
+      const worldX = (px - state.tx) / oldScale;
+      const worldY = (py - state.ty) / oldScale;
+      state.scale = nextScale;
+      state.tx = px - worldX * nextScale;
+      state.ty = py - worldY * nextScale;
+      applyTransform();
+    }, { passive: false });
+
+    document.getElementById("layoutBtn").addEventListener("click", () => {
+      resetLayout();
+      updateGeometry();
+      fitView();
+    });
+    document.getElementById("fitBtn").addEventListener("click", () => {
+      fitView();
+    });
+    document.getElementById("zoomInBtn").addEventListener("click", () => {
+      state.scale = Math.min(3.2, state.scale * 1.14);
+      applyTransform();
+    });
+    document.getElementById("zoomOutBtn").addEventListener("click", () => {
+      state.scale = Math.max(0.2, state.scale * 0.86);
+      applyTransform();
+    });
+    openSourceBtn.addEventListener("click", () => {
+      const node = state.selectedId ? nodeById.get(state.selectedId) : null;
+      openNodeSource(node);
+    });
+
+    if (!nodeById.size) {
+      emptyText.hidden = false;
+      emptyText.textContent = "No nodes to render.";
+    } else {
+      resetLayout();
+      renderGraph();
+      fitView();
     }
   </script>
 </body>
 </html>`;
+}
+
+function safeJsonForScript(value) {
+  return JSON.stringify(value)
+    .replaceAll("<", "\\u003c")
+    .replaceAll(">", "\\u003e")
+    .replaceAll("&", "\\u0026")
+    .replaceAll("\u2028", "\\u2028")
+    .replaceAll("\u2029", "\\u2029");
 }
 
 function toWorkspaceRelative(filePath, repoRoot) {

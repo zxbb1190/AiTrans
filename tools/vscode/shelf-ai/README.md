@@ -63,6 +63,7 @@ The `@framework` template entry is a repository-side hard authoring contract and
 The framework tree is the authoring view.
 The evidence tree is the canonical-derived workspace evidence view.
 No persisted tree artifact is used for these views; both trees are runtime projections.
+Both tree views render as interactive webview graphs (drag node, pan canvas, wheel zoom, inspector + open source).
 When canonical is stale, missing, or invalid, Shelf blocks the formal evidence tree until you materialize again.
 
 ## Project Config Navigation
