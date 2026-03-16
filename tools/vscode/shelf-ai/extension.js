@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const vscode = require("vscode");
 const frameworkNavigation = require("./framework_navigation");
+const configNavigation = require("./config_navigation");
 const frameworkCompletion = require("./framework_completion");
 const evidenceTree = require("./evidence_tree");
 const workspaceGuard = require("./guarding");
@@ -2100,6 +2101,33 @@ function activate(context) {
     }
   );
 
+  const configToCodeDefinitionDisposable = vscode.languages.registerDefinitionProvider(
+    { language: "toml", scheme: "file" },
+    {
+      provideDefinition(document, position) {
+        const folder = vscode.workspace.getWorkspaceFolder(document.uri);
+        if (!folder) {
+          return null;
+        }
+        const repoRoot = folder.uri.fsPath;
+        const target = configNavigation.resolveConfigToCodeTarget({
+          repoRoot,
+          filePath: document.uri.fsPath,
+          text: document.getText(),
+          line: position.line,
+          character: position.character,
+        });
+        if (!target) {
+          return null;
+        }
+        const targetUri = vscode.Uri.file(target.filePath);
+        const start = new vscode.Position(target.line, target.character);
+        const end = new vscode.Position(target.line, target.character + Math.max(1, target.length || 1));
+        return new vscode.Location(targetUri, new vscode.Range(start, end));
+      }
+    }
+  );
+
   const frameworkHoverDisposable = vscode.languages.registerHoverProvider(
     { language: "markdown", scheme: "file" },
     {
@@ -2669,6 +2697,7 @@ function activate(context) {
   context.subscriptions.push(
     sidebarViewDisposable,
     frameworkDefinitionDisposable,
+    configToCodeDefinitionDisposable,
     frameworkHoverDisposable,
     frameworkReferenceDisposable,
     frameworkCompletionDisposable,
