@@ -106,6 +106,9 @@ class ConfigBoundaryRuntimeClass:
         }
 
 
+_BOUNDARY_PAYLOAD_MIRROR_KEYS = frozenset({"boundary_id", "mapping_mode"})
+
+
 @dataclass(frozen=True)
 class ConfigModuleBinding:
     framework_module: type[FrameworkModuleClass]
@@ -134,7 +137,11 @@ def _require_string(parent: dict[str, Any], key: str) -> str:
 def _require_boundary_payload(value: Any, *, path: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"boundary path must be a table: {path}")
-    return value
+    return {
+        key: item
+        for key, item in value.items()
+        if key not in _BOUNDARY_PAYLOAD_MIRROR_KEYS
+    }
 
 
 def _load_toml(project_file: Path) -> dict[str, Any]:

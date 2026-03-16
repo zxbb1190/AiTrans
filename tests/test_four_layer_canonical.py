@@ -185,6 +185,21 @@ class FourLayerCanonicalTest(unittest.TestCase):
             )
         )
 
+    def test_boundary_payloads_strip_projection_mirror_keys(self) -> None:
+        canonical = compile_project_runtime().canonical
+        config_modules = {
+            str(module["module_id"]): module
+            for module in canonical["config"]["modules"]
+            if isinstance(module, dict)
+        }
+        frontend_module = config_modules["frontend.L2.M0"]
+        exact_boundary = frontend_module["exact_export"]["boundaries"]["SURFACE"]
+        communication_boundary = frontend_module["communication_export"]["boundaries"]["SURFACE"]
+        self.assertNotIn("boundary_id", exact_boundary)
+        self.assertNotIn("mapping_mode", exact_boundary)
+        self.assertNotIn("boundary_id", communication_boundary)
+        self.assertNotIn("mapping_mode", communication_boundary)
+
     def test_framework_guard_scope_is_included_and_passes_on_current_project(self) -> None:
         canonical = compile_project_runtime().canonical
         validation_reports = canonical["evidence"]["validation_reports"]
