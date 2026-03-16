@@ -6,6 +6,7 @@ from typing import Any
 from rule_validation_models import ValidationReports
 
 from project_runtime.code_layer import CodeModuleBinding
+from project_runtime.framework_violation_guard import summarize_framework_violation_guard
 from project_runtime.models import ProjectRuntimeAssembly, jsonable
 from project_runtime.utils import sha256_text
 
@@ -93,10 +94,16 @@ def build_evidence_modules(
 
     frontend_summary = summarize_frontend_rules(validate_frontend_rules(assembly))
     knowledge_summary = summarize_workbench_rules(validate_workbench_rules(assembly))
+    framework_summary = summarize_framework_violation_guard(
+        framework_modules=tuple(binding.framework_module for binding in code_modules),
+        communication_config=assembly.config.communication,
+        exact_config=assembly.config.exact,
+    )
     validation_reports = ValidationReports(
         scopes={
             "frontend": frontend_summary,
             "knowledge_base": knowledge_summary,
+            "framework_guard": framework_summary,
         }
     )
     runtime_documents = assembly.require_runtime_export("runtime_documents")
