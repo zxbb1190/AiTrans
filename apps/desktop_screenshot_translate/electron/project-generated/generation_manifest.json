@@ -4,7 +4,7 @@
   "source_mode": "standalone_materialized",
   "generator": {
     "entry": "electron/scripts/materialize-project.js",
-    "discipline": "standalone repo keeps only the generated runtime inputs required by the Electron app"
+    "discipline": "project behavior is derived from framework markdown, product spec, and implementation config; generated code must not be edited directly"
   },
   "generated_files": {
     "product_spec_json": "project-generated/product_spec.json",
@@ -13,6 +13,6 @@
   },
   "content_sha256": {
     "product_spec_json": "9361d541d5dcf7f134bd4aa7fafc4d872d8247b03083979525762674615119ee",
-    "implementation_bundle_py": "cdca7615e43f1c8e044ee610f561e7fc7bf0d352d5edc6e356a21a1d1149aafc"
+    "implementation_bundle_py": "4e5e931242718d2b48cc469c346679d4f95da902dbb971c0d4ea8be154fa85cf"
   }
 }
