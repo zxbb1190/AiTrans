@@ -1,0 +1,18 @@
+{
+  "project_id": "desktop_screenshot_translate",
+  "template": "desktop_screenshot_translate",
+  "source_mode": "standalone_materialized",
+  "generator": {
+    "entry": "electron/scripts/materialize-project.js",
+    "discipline": "standalone repo keeps only the generated runtime inputs required by the Electron app"
+  },
+  "generated_files": {
+    "product_spec_json": "project-generated/product_spec.json",
+    "implementation_bundle_py": "project-generated/implementation_bundle.py",
+    "generation_manifest_json": "project-generated/generation_manifest.json"
+  },
+  "content_sha256": {
+    "product_spec_json": "9361d541d5dcf7f134bd4aa7fafc4d872d8247b03083979525762674615119ee",
+    "implementation_bundle_py": "cdca7615e43f1c8e044ee610f561e7fc7bf0d352d5edc6e356a21a1d1149aafc"
+  }
+}

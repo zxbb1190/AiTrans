@@ -3,7 +3,7 @@
   "translation": {
     "base_url": "",
     "api_key": "",
-    "model_note": "Runtime still uses the model declared in projects/desktop_screenshot_translate/implementation_config.toml."
+    "model_note": "Runtime uses the translation model embedded in project-generated/implementation_bundle.py."
   },
   "desktop": {
     "capture_shortcut": ""

@@ -3,12 +3,16 @@ const path = require('node:path');
 
 const { loadRuntimeOverrides, resolveAppRoot } = require('./runtime-overrides');
 
-function getRepoRoot() {
-  return path.resolve(__dirname, '../../../../');
+function getStandaloneRoot() {
+  return resolveAppRoot();
 }
 
-function getProjectRoot() {
-  return path.join(getRepoRoot(), 'projects', 'desktop_screenshot_translate');
+function getLocalGeneratedDir() {
+  return path.join(getStandaloneRoot(), 'project-generated');
+}
+
+function getReleaseNotesDir() {
+  return path.join(getStandaloneRoot(), 'release-notes');
 }
 
 function readJson(filePath) {
@@ -23,8 +27,7 @@ function getGeneratedDirCandidates() {
 
   return [
     resourcesPath ? path.join(resourcesPath, 'project-generated') : null,
-    path.join(resolveAppRoot(), 'project-generated'),
-    path.join(getProjectRoot(), 'generated'),
+    getLocalGeneratedDir(),
   ].filter(Boolean);
 }
 
@@ -77,9 +80,9 @@ function loadProjectConfig() {
   ).trim();
 
   return {
-    repoRoot: getRepoRoot(),
-    projectRoot: getProjectRoot(),
+    appRoot: getStandaloneRoot(),
     generatedDir,
+    releaseNotesDir: getReleaseNotesDir(),
     productSpecPath,
     manifestPath,
     implementationBundlePath,
@@ -92,7 +95,7 @@ function loadProjectConfig() {
 }
 
 module.exports = {
-  getRepoRoot,
-  getProjectRoot,
+  getLocalGeneratedDir,
+  getReleaseNotesDir,
   loadProjectConfig,
 };

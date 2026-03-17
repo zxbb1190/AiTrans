@@ -13,7 +13,7 @@ function resolveDistRoot() {
 }
 
 function resolveReleaseNotesPath(config) {
-  return path.join(config.projectRoot, 'release-notes', `${config.productSpec.project.version}.md`);
+  return path.join(config.releaseNotesDir, `${config.productSpec.project.version}.md`);
 }
 
 function hashFile(filePath) {
@@ -98,7 +98,7 @@ function main() {
     version,
     generated_at: new Date().toISOString(),
     channel,
-    release_notes: path.relative(config.repoRoot, releaseNotesPath),
+    release_notes: path.relative(config.appRoot, releaseNotesPath),
     artifacts: [
       describeArtifact(installer),
       describeArtifact(installerBlockmap),

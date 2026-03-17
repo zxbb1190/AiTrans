@@ -95,7 +95,7 @@ function checkVersionAlignment(config, failures) {
 }
 
 function resolveReleaseNotesPath(config) {
-  return path.join(config.projectRoot, 'release-notes', `${config.productSpec.project.version}.md`);
+  return path.join(config.releaseNotesDir, `${config.productSpec.project.version}.md`);
 }
 
 function checkReleaseNotes(config, failures) {

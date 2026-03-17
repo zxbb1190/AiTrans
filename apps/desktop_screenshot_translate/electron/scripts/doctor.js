@@ -10,14 +10,10 @@ const {
   resolveOpenAiBaseUrl,
   resolveTesseractExecutable,
 } = require('../lib/provider-runtime');
-const { loadProjectConfig } = require('../lib/project-config');
-
-function resolveRepoRoot() {
-  return path.resolve(resolveAppRoot(), '../../..');
-}
+const { getLocalGeneratedDir, loadProjectConfig } = require('../lib/project-config');
 
 function resolveProjectGeneratedDir() {
-  return path.join(resolveRepoRoot(), 'projects', 'desktop_screenshot_translate', 'generated');
+  return getLocalGeneratedDir();
 }
 
 function checkFile(label, filePath, failures) {
@@ -92,7 +88,7 @@ function main() {
 
   console.log('desktop_screenshot_translate Windows MVP doctor');
   console.log(`app root: ${resolveAppRoot()}`);
-  console.log(`repo root: ${resolveRepoRoot()}`);
+  console.log(`generated dir: ${generatedDir}`);
 
   checkPlatform();
   checkFile('generated/product_spec.json', path.join(generatedDir, 'product_spec.json'), failures);
@@ -117,8 +113,9 @@ function main() {
     }
     console.log('');
     if (failures.some((item) => item.startsWith('missing generated/'))) {
-      console.log('[NEXT] generate project artifacts from repo root:');
-      console.log('       uv run python scripts/materialize_project.py --project projects/desktop_screenshot_translate/product_spec.toml');
+      console.log('[NEXT] refresh local generated artifacts:');
+      console.log('       npm run materialize:project');
+      console.log('       Optional sources: AITRANS_PROJECT_GENERATED_SOURCE, AITRANS_RELEASE_NOTES_SOURCE');
     }
     if (failures.includes('missing tesseract')) {
       console.log('[NEXT] place bundled tesseract under electron/vendor/tesseract, or set AITRANS_TESSERACT_PATH in the current session');
