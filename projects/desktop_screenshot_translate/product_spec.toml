@@ -98,6 +98,8 @@ image_format = "png_bitmap"
 # [pipeline] 固定识别翻译链路对用户承诺的结果语义。
 # 这里定义目标语言、交付字段、回退策略和总时延预算；
 # 不定义具体 OCR / 翻译 provider 名字。
+# `source_languages` 同时也是用户可选源语言集合；
+# 默认值仍是 `auto`，但设置界面应允许用户在受支持集合内显式指定源语言。
 [pipeline]
 source_languages = ["auto", "zh", "en", "ja"]
 target_language = "zh-Hans"

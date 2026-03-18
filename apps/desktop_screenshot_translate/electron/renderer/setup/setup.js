@@ -17,8 +17,26 @@ function syncForm(guide) {
   const baseUrlInput = document.getElementById('baseUrl');
   const apiKeyInput = document.getElementById('apiKey');
   const captureShortcutInput = document.getElementById('captureShortcut');
+  const sourceLanguageInput = document.getElementById('sourceLanguage');
   const runtimeDraft = guide?.runtimeDraft || {};
   const desktopDraft = guide?.desktopDraft || {};
+  const pipelineDraft = guide?.pipelineDraft || {};
+  const pipelineOptions = Array.isArray(guide?.pipelineOptions) ? guide.pipelineOptions : ['auto', 'zh', 'en', 'ja'];
+
+  const currentSourceLanguage = sourceLanguageInput.value;
+  sourceLanguageInput.innerHTML = '';
+  for (const option of pipelineOptions) {
+    const element = document.createElement('option');
+    element.value = option;
+    element.textContent = option === 'auto'
+      ? '自动识别'
+      : (option === 'zh' ? '中文' : option === 'en' ? '英文' : option === 'ja' ? '日文' : option);
+    sourceLanguageInput.appendChild(element);
+  }
+  const nextSourceLanguage = pipelineDraft.sourceLanguage || 'auto';
+  if (document.activeElement !== sourceLanguageInput || !pipelineOptions.includes(currentSourceLanguage)) {
+    sourceLanguageInput.value = pipelineOptions.includes(nextSourceLanguage) ? nextSourceLanguage : 'auto';
+  }
 
   if (document.activeElement !== baseUrlInput) {
     baseUrlInput.value = runtimeDraft.baseUrl || '';
@@ -88,13 +106,20 @@ async function saveConfig(startCapture) {
   const baseUrl = document.getElementById('baseUrl').value.trim();
   const apiKey = document.getElementById('apiKey').value.trim();
   const captureShortcut = document.getElementById('captureShortcut').value.trim();
+  const sourceLanguage = document.getElementById('sourceLanguage').value;
 
   saveButton.disabled = true;
   startButton.disabled = true;
   setStatus(startCapture ? '正在保存并准备截图…' : '正在保存配置…', 'info');
 
   try {
-    const result = await window.aitransDesktop.saveSetupConfig({ baseUrl, apiKey, captureShortcut, startCapture });
+    const result = await window.aitransDesktop.saveSetupConfig({
+      baseUrl,
+      apiKey,
+      captureShortcut,
+      sourceLanguage,
+      startCapture,
+    });
     if (!result?.ok) {
       setStatus(result?.error || '保存配置失败', 'error');
       return;

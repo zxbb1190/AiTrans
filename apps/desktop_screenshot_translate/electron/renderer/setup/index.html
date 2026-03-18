@@ -169,7 +169,8 @@
         color: var(--ink);
       }
 
-      .field input {
+      .field input,
+      .field select {
         width: 100%;
         border: 1px solid rgba(15, 118, 110, 0.18);
         border-radius: 14px;
@@ -280,6 +281,16 @@
             <label for="apiKey">接口密钥</label>
             <input id="apiKey" type="password" placeholder="输入 API Key；本地兼容端点如允许无密钥可留空" />
             <small>优先通过本界面保存。除高级排障外，不要求用户手工编辑 JSON。</small>
+          </div>
+          <div class="field">
+            <label for="sourceLanguage">源语言</label>
+            <select id="sourceLanguage">
+              <option value="auto">自动识别</option>
+              <option value="zh">中文</option>
+              <option value="en">英文</option>
+              <option value="ja">日文</option>
+            </select>
+            <small>默认自动识别。若 OCR 经常把源语言判错，可以固定为中文、英文或日文。</small>
           </div>
           <div class="field">
             <label for="captureShortcut">截图快捷键</label>

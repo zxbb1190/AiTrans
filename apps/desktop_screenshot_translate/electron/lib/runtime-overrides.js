@@ -141,6 +141,9 @@ function ensureRuntimeOverridesTemplate() {
     desktop: {
       capture_shortcut: '',
     },
+    pipeline: {
+      source_language: 'auto',
+    },
     ocr: {
       tesseract_path: '',
       tessdata_dir: '',
@@ -174,6 +177,10 @@ function writeRuntimeOverrides(nextValues) {
     ocr: {
       ...normalizePlainObject(currentValues.ocr),
       ...normalizePlainObject(incomingValues.ocr),
+    },
+    pipeline: {
+      ...normalizePlainObject(currentValues.pipeline),
+      ...normalizePlainObject(incomingValues.pipeline),
     },
     release: {
       ...normalizePlainObject(currentValues.release),

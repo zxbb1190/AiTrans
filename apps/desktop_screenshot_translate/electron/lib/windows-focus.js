@@ -109,6 +109,9 @@ public static class AiTransFocus {
     public static extern bool IsWindow(IntPtr hWnd);
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsIconic(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -120,12 +123,18 @@ if (-not [AiTransFocus]::IsWindow($hwnd)) {
     [Console]::Out.WriteLine((@{ ok = $false; reason = "missing_window" } | ConvertTo-Json -Compress));
     return
 }
-[AiTransFocus]::ShowWindowAsync($hwnd, 9) | Out-Null;
-Start-Sleep -Milliseconds 60;
+$wasMinimized = [AiTransFocus]::IsIconic($hwnd);
+if ($wasMinimized) {
+    [AiTransFocus]::ShowWindowAsync($hwnd, 9) | Out-Null;
+    Start-Sleep -Milliseconds 60;
+}
 $restored = [AiTransFocus]::SetForegroundWindow($hwnd);
 [Console]::Out.WriteLine((@{
     ok = $restored;
-    reason = $(if ($restored) { "restored" } else { "set_foreground_failed" });
+    reason = $(if ($restored) {
+        if ($wasMinimized) { "restored_minimized_window" } else { "restored_foreground_only" }
+    } else { "set_foreground_failed" });
+    wasMinimized = $wasMinimized;
 } | ConvertTo-Json -Compress));
 `);
 
@@ -140,6 +149,7 @@ $restored = [AiTransFocus]::SetForegroundWindow($hwnd);
   return {
     ok: Boolean(payload.ok),
     reason: typeof payload.reason === 'string' ? payload.reason : 'unknown',
+    wasMinimized: Boolean(payload.wasMinimized),
   };
 }
 

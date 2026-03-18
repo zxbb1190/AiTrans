@@ -9,6 +9,8 @@ const { resolveTesseractExecutable } = require('./provider-runtime');
 const execFileAsync = promisify(execFile);
 const OCR_ACCEPT_SCORE = 10;
 const OCR_ACCEPT_TEXT_LENGTH = 5;
+const OCR_DENSE_BLOCK_ACCEPT_SCORE = 26;
+const OCR_DENSE_BLOCK_ACCEPT_TEXT_LENGTH = 48;
 
 const TESSERACT_LANGUAGE_MAP = {
   auto: null,
@@ -94,9 +96,15 @@ function buildTesseractLanguages(productSpec) {
 function buildTesseractLanguageProfiles(productSpec) {
   const profiles = [];
   const seen = new Set();
-  const sourceLanguages = Array.isArray(productSpec?.pipeline?.source_languages)
-    ? productSpec.pipeline.source_languages
-    : [];
+  const configuredSourceLanguage =
+    typeof productSpec?.pipeline?.selected_source_language === 'string'
+      ? productSpec.pipeline.selected_source_language.trim()
+      : '';
+  const sourceLanguages = configuredSourceLanguage && configuredSourceLanguage !== 'auto'
+    ? [configuredSourceLanguage]
+    : (Array.isArray(productSpec?.pipeline?.source_languages)
+      ? productSpec.pipeline.source_languages
+      : []);
 
   function pushProfile(label, languages) {
     const normalized = languages.filter(Boolean);
@@ -119,15 +127,17 @@ function buildTesseractLanguageProfiles(productSpec) {
       continue;
     }
     if (item === 'zh' || item === 'zh-Hans') {
+      pushProfile('zh_primary', ['chi_sim']);
       pushProfile('zh_en_primary', ['chi_sim', 'eng']);
       continue;
     }
     if (item === 'ja') {
+      pushProfile('ja_primary', ['jpn']);
       pushProfile('ja_en_fallback', ['jpn', 'eng']);
       continue;
     }
     if (item === 'en') {
-      pushProfile('en_fallback', ['eng']);
+      pushProfile('en_primary', ['eng']);
     }
   }
 
@@ -138,18 +148,37 @@ function buildTesseractLanguageProfiles(productSpec) {
   return profiles;
 }
 
-function buildPsmCandidates(capture) {
+function getCaptureLayoutProfile(capture) {
   const width = capture?.size?.width || 0;
   const height = capture?.size?.height || 0;
+  const area = width * height;
   const ratio = height > 0 ? width / height : 1;
 
   if (height > 0 && (height <= 96 || ratio >= 5.5)) {
-    return [7, 6, 11];
+    return 'single_line';
   }
   if (width > 0 && height > 0 && (width <= 320 || height <= 180)) {
+    return 'compact_fragment';
+  }
+  if (area >= 140000 && height >= 220 && ratio >= 0.75 && ratio <= 4.8) {
+    return 'dense_block';
+  }
+  return 'standard_block';
+}
+
+function buildPsmCandidates(capture) {
+  const layoutProfile = getCaptureLayoutProfile(capture);
+
+  if (layoutProfile === 'single_line') {
+    return [7, 6, 11];
+  }
+  if (layoutProfile === 'compact_fragment') {
     return [11, 7, 6];
   }
-  return [6, 4, 11];
+  if (layoutProfile === 'dense_block') {
+    return [1, 3, 4, 6];
+  }
+  return [6, 4, 3];
 }
 
 function scoreRecognizedText(text) {
@@ -199,7 +228,12 @@ function scoreRecognizedText(text) {
     noise += 1.2;
   }
 
-  return signal - noise;
+  const lineCount = text.split(/\r?\n+/u).filter((line) => line.trim().length > 0).length;
+  const whitespaceRuns = (normalized.match(/\s+/gu) || []).length;
+  const lengthBonus = Math.min(18, normalized.length * 0.08);
+  const structureBonus = Math.min(6, lineCount * 1.2) + Math.min(4, whitespaceRuns * 0.35);
+
+  return signal - noise + lengthBonus + structureBonus;
 }
 
 function getElectronNativeImage() {
@@ -266,7 +300,10 @@ function buildCaptureVariants(capture) {
     const baseImage = nativeImage.createFromBuffer(capture.pngBuffer);
     const baseSize = baseImage.getSize();
     const maxDimension = Math.max(baseSize.width || 0, baseSize.height || 0);
-    const upscaleFactor = maxDimension > 0 && maxDimension < 1600 ? 2 : 1;
+    const layoutProfile = getCaptureLayoutProfile(capture);
+    const upscaleFactor = layoutProfile === 'dense_block'
+      ? (maxDimension > 0 && maxDimension < 2200 ? 3 : 1)
+      : (maxDimension > 0 && maxDimension < 1600 ? 2 : 1);
 
     const preparedImage = upscaleFactor > 1
       ? baseImage.resize({
@@ -277,24 +314,30 @@ function buildCaptureVariants(capture) {
       : baseImage;
 
     variants.push({
+      name: 'upscaled_original',
+      pngBuffer: preparedImage.toPNG(),
+      stages: upscaleFactor > 1 ? ['scale', `scale${upscaleFactor}x`] : ['original'],
+    });
+    variants.push({
       name: 'upscaled_grayscale',
       pngBuffer: buildBitmapVariantPng(preparedImage, 'grayscale'),
-      stages: upscaleFactor > 1 ? ['scale2x', 'grayscale'] : ['grayscale'],
+      stages: upscaleFactor > 1 ? ['scale', `scale${upscaleFactor}x`, 'grayscale'] : ['grayscale'],
     });
     variants.push({
       name: 'upscaled_threshold',
       pngBuffer: buildBitmapVariantPng(preparedImage, 'threshold'),
-      stages: upscaleFactor > 1 ? ['scale2x', 'threshold'] : ['threshold'],
+      stages: upscaleFactor > 1 ? ['scale', `scale${upscaleFactor}x`, 'threshold'] : ['threshold'],
     });
   } catch {
     return variants;
   }
 
-  const width = capture?.size?.width || 0;
-  const height = capture?.size?.height || 0;
-  const ratio = height > 0 ? width / height : 1;
-  if (height > 0 && (height <= 96 || ratio >= 5.5)) {
-    return [variants[1], variants[2], variants[0]].filter(Boolean);
+  const layoutProfile = getCaptureLayoutProfile(capture);
+  if (layoutProfile === 'single_line') {
+    return [variants[2], variants[3], variants[1], variants[0]].filter(Boolean);
+  }
+  if (layoutProfile === 'dense_block') {
+    return [variants[2], variants[1], variants[0], variants[3]].filter(Boolean);
   }
   return variants.filter(Boolean);
 }
@@ -304,6 +347,42 @@ function buildRecognitionAttempts(capture, productSpec) {
   const psmCandidates = buildPsmCandidates(capture);
   const variants = buildCaptureVariants(capture);
   const attempts = [];
+  const layoutProfile = getCaptureLayoutProfile(capture);
+  const seen = new Set();
+
+  function pushAttempt(languageProfile, variant, psm) {
+    if (!languageProfile || !variant || typeof psm !== 'number') {
+      return;
+    }
+    const token = `${languageProfile.languages}|${variant.name}|${psm}`;
+    if (seen.has(token)) {
+      return;
+    }
+    seen.add(token);
+    attempts.push({
+      languageProfile,
+      variant,
+      psm,
+    });
+  }
+
+  if (layoutProfile === 'dense_block') {
+    const [primaryLanguage, ...fallbackLanguages] = languageProfiles;
+    for (const psm of psmCandidates) {
+      for (const variant of variants) {
+        pushAttempt(primaryLanguage, variant, psm);
+      }
+    }
+    for (const languageProfile of fallbackLanguages) {
+      for (const psm of psmCandidates.slice(0, 2)) {
+        for (const variant of variants.slice(0, 2)) {
+          pushAttempt(languageProfile, variant, psm);
+        }
+      }
+    }
+    return attempts;
+  }
+
   const priorities = [
     [0, 0, 0],
     [0, 1, 0],
@@ -314,20 +393,26 @@ function buildRecognitionAttempts(capture, productSpec) {
   ];
 
   for (const [languageIndex, variantIndex, psmIndex] of priorities) {
-    const languageProfile = languageProfiles[languageIndex];
-    const variant = variants[variantIndex];
-    const psm = psmCandidates[psmIndex];
-    if (!languageProfile || !variant || typeof psm !== 'number') {
-      continue;
-    }
-    attempts.push({
-      languageProfile,
-      variant,
-      psm,
-    });
+    pushAttempt(languageProfiles[languageIndex], variants[variantIndex], psmCandidates[psmIndex]);
   }
 
   return attempts;
+}
+
+function shouldAcceptRecognitionResult(result, attempt, capture) {
+  const text = typeof result?.text === 'string' ? result.text.trim() : '';
+  const score = result?.diagnostics?.textScore ?? -Infinity;
+  const layoutProfile = getCaptureLayoutProfile(capture);
+
+  if (layoutProfile === 'dense_block') {
+    return (
+      score >= OCR_DENSE_BLOCK_ACCEPT_SCORE
+      && text.length >= OCR_DENSE_BLOCK_ACCEPT_TEXT_LENGTH
+      && !attempt.variant.stages.includes('threshold')
+    );
+  }
+
+  return score >= OCR_ACCEPT_SCORE && text.length >= OCR_ACCEPT_TEXT_LENGTH;
 }
 
 async function withTemporaryWorkspace(callback) {
@@ -352,6 +437,8 @@ async function recognizeWithTesseract(imagePath, attempt, implementationConfig) 
     String(attempt.psm),
     '-c',
     'preserve_interword_spaces=1',
+    '-c',
+    'user_defined_dpi=300',
   ];
   if (tessdataDir) {
     args.push('--tessdata-dir', tessdataDir);
@@ -410,8 +497,7 @@ async function recognizeText(capture, productSpec, implementationConfig) {
             try {
               const result = await recognizeWithTesseract(imagePath, attempt, implementationConfig);
               successes.push(result);
-              const currentScore = result.diagnostics?.textScore ?? -Infinity;
-              if (currentScore >= OCR_ACCEPT_SCORE && result.text.trim().length >= OCR_ACCEPT_TEXT_LENGTH) {
+              if (shouldAcceptRecognitionResult(result, attempt, capture)) {
                 return result;
               }
             } catch (error) {

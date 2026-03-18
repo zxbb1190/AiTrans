@@ -114,6 +114,8 @@ const runtimeCapabilities = {
 const focusRestoreState = {
   target: null,
   preferInactivePanel: false,
+  pendingSnapshot: null,
+  requestId: 0,
 };
 const captureUiState = {
   overlayVisible: false,
@@ -171,6 +173,7 @@ function createOverlayWindow() {
     width: display.bounds.width,
     height: display.bounds.height,
     frame: false,
+    show: false,
     transparent: true,
     alwaysOnTop: true,
     skipTaskbar: true,
@@ -321,44 +324,75 @@ function isFocusRestoreEnabled() {
 }
 
 function clearFocusRestoreSession() {
+  focusRestoreState.requestId += 1;
   focusRestoreState.target = null;
   focusRestoreState.preferInactivePanel = false;
+  focusRestoreState.pendingSnapshot = null;
 }
 
-async function captureExternalFocusTarget() {
+function captureExternalFocusTarget() {
   if (!isFocusRestoreEnabled()) {
     clearFocusRestoreSession();
-    return;
+    return Promise.resolve();
   }
 
-  try {
-    const snapshot = await snapshotForegroundWindow(process.pid);
-    if (!snapshot || snapshot.isCurrentProcess) {
-      clearFocusRestoreSession();
-      appendStartupLog('focus-restore:snapshot-skipped', {
-        reason: snapshot?.isCurrentProcess ? 'foreground_is_aitrans' : 'no_foreground_window',
+  const requestId = focusRestoreState.requestId + 1;
+  focusRestoreState.requestId = requestId;
+  focusRestoreState.target = null;
+  focusRestoreState.preferInactivePanel = false;
+
+  const snapshotTask = (async () => {
+    try {
+      const snapshot = await snapshotForegroundWindow(process.pid);
+      if (focusRestoreState.requestId !== requestId) {
+        return;
+      }
+      if (!snapshot || snapshot.isCurrentProcess) {
+        clearFocusRestoreSession();
+        appendStartupLog('focus-restore:snapshot-skipped', {
+          reason: snapshot?.isCurrentProcess ? 'foreground_is_aitrans' : 'no_foreground_window',
+        });
+        return;
+      }
+
+      focusRestoreState.target = {
+        hwnd: snapshot.hwnd,
+        pid: snapshot.pid,
+      };
+      focusRestoreState.preferInactivePanel = true;
+      appendStartupLog('focus-restore:snapshot-captured', {
+        hwnd: snapshot.hwnd,
+        pid: snapshot.pid,
       });
-      return;
+    } catch (error) {
+      if (focusRestoreState.requestId !== requestId) {
+        return;
+      }
+      clearFocusRestoreSession();
+      appendStartupLog('focus-restore:snapshot-failed', {
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
+  })();
 
-    focusRestoreState.target = {
-      hwnd: snapshot.hwnd,
-      pid: snapshot.pid,
-    };
-    focusRestoreState.preferInactivePanel = true;
-    appendStartupLog('focus-restore:snapshot-captured', {
-      hwnd: snapshot.hwnd,
-      pid: snapshot.pid,
-    });
-  } catch (error) {
-    clearFocusRestoreSession();
-    appendStartupLog('focus-restore:snapshot-failed', {
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
+  const trackedTask = snapshotTask.finally(() => {
+    if (focusRestoreState.pendingSnapshot === trackedTask) {
+      focusRestoreState.pendingSnapshot = null;
+    }
+  });
+  focusRestoreState.pendingSnapshot = trackedTask;
+  return trackedTask;
 }
 
 async function restoreCapturedFocusTarget(reason) {
+  if (focusRestoreState.pendingSnapshot) {
+    try {
+      await focusRestoreState.pendingSnapshot;
+    } catch {
+      // snapshot failure is already logged; keep restore best-effort
+    }
+  }
+
   if (!isFocusRestoreEnabled() || !focusRestoreState.target) {
     return false;
   }
@@ -381,6 +415,18 @@ async function restoreCapturedFocusTarget(reason) {
     });
     return false;
   }
+}
+
+function scheduleFocusRestore(reason, clearAfterRestore = false) {
+  void (async () => {
+    try {
+      await restoreCapturedFocusTarget(reason);
+    } finally {
+      if (clearAfterRestore) {
+        clearFocusRestoreSession();
+      }
+    }
+  })();
 }
 
 function sleep(ms) {
@@ -541,6 +587,10 @@ async function ensureScreenCaptureCapability() {
   if (runtimeCapabilities.screenCaptureAvailable === true) {
     return true;
   }
+  if (runtimeCapabilities.screenCaptureAvailable === null) {
+    void probeAndStoreScreenCaptureCapability();
+    return true;
+  }
   const probe = await probeAndStoreScreenCaptureCapability();
   return Boolean(probe.available);
 }
@@ -575,7 +625,7 @@ async function showOverlay() {
     showSetupGuide();
     return;
   }
-  await captureExternalFocusTarget();
+  captureExternalFocusTarget();
   const display = getOverlayDisplay();
   const window = createOverlayWindow();
   hideAuxiliaryWindowsForCapture();
@@ -629,6 +679,10 @@ function getSetupGuideState() {
     overrides.values && typeof overrides.values.desktop === 'object'
       ? overrides.values.desktop
       : {};
+  const pipelineOverrides =
+    overrides.values && typeof overrides.values.pipeline === 'object'
+      ? overrides.values.pipeline
+      : {};
   let configured = true;
   let credentialMode = 'configured';
 
@@ -665,6 +719,15 @@ function getSetupGuideState() {
           ? desktopOverrides.capture_shortcut.trim()
           : currentCaptureShortcut || config.shortcut,
     },
+    pipelineDraft: {
+      sourceLanguage:
+        typeof pipelineOverrides.source_language === 'string' && pipelineOverrides.source_language.trim()
+          ? pipelineOverrides.source_language.trim()
+          : config.selectedSourceLanguage || 'auto',
+    },
+    pipelineOptions: Array.isArray(config.productSpec.pipeline.source_languages)
+      ? config.productSpec.pipeline.source_languages
+      : ['auto'],
     capabilities: {
       shortcutAvailable: runtimeCapabilities.shortcutAvailable !== false,
       shortcutMessage: runtimeCapabilities.shortcutMessage,
@@ -798,7 +861,7 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.hide();
   }
-  await restoreCapturedFocusTarget('capture_submitted');
+  scheduleFocusRestore('capture_submitted');
   try {
     appendPipelineEvent('capture_started', audit, {
       resultState: 'capturing',
@@ -938,8 +1001,7 @@ ipcMain.handle('overlay:cancel', async () => {
     overlayWindow.hide();
   }
   captureUiState.pipelineBusy = false;
-  await restoreCapturedFocusTarget('capture_cancelled');
-  clearFocusRestoreSession();
+  scheduleFocusRestore('capture_cancelled', true);
   return { ok: true };
 });
 
@@ -952,8 +1014,7 @@ ipcMain.handle('panel:close', async () => {
   if (panelWindow && !panelWindow.isDestroyed()) {
     panelWindow.hide();
   }
-  await restoreCapturedFocusTarget('panel_closed');
-  clearFocusRestoreSession();
+  scheduleFocusRestore('panel_closed', true);
   return { ok: true };
 });
 
@@ -1103,10 +1164,20 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
     payload && typeof payload.captureShortcut === 'string'
       ? payload.captureShortcut.trim()
       : resolveConfiguredCaptureShortcut();
+  const sourceLanguageInput =
+    payload && typeof payload.sourceLanguage === 'string'
+      ? payload.sourceLanguage.trim()
+      : (config.selectedSourceLanguage || 'auto');
   const startCapture = Boolean(payload && payload.startCapture);
+  const supportedSourceLanguages = Array.isArray(config.productSpec.pipeline.source_languages)
+    ? config.productSpec.pipeline.source_languages
+    : ['auto'];
 
   if (!baseUrlInput) {
     return { ok: false, error: 'missing translation.base_url' };
+  }
+  if (!supportedSourceLanguages.includes(sourceLanguageInput)) {
+    return { ok: false, error: 'invalid pipeline.source_language' };
   }
 
   const normalizedBaseUrl = normalizeBaseUrl(baseUrlInput);
@@ -1135,13 +1206,25 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
         : {}),
       capture_shortcut: shortcutResult.shortcut,
     },
+    pipeline: {
+      ...(currentValues.pipeline && typeof currentValues.pipeline === 'object'
+        ? currentValues.pipeline
+        : {}),
+      source_language: sourceLanguageInput,
+    },
   });
+  config.selectedSourceLanguage = sourceLanguageInput;
+  config.productSpec.pipeline.selected_source_language = sourceLanguageInput;
+  if (config.runtimeBundle?.pipeline) {
+    config.runtimeBundle.pipeline.selected_source_language = sourceLanguageInput;
+  }
 
   appendStartupLog('setup-guide:config-saved', {
     configPath: saved.path,
     usingOfficialEndpoint: normalizedBaseUrl === OFFICIAL_OPENAI_BASE_URL,
     apiKeyPresent: Boolean(apiKeyInput),
     captureShortcut: shortcutResult.shortcut,
+    sourceLanguage: sourceLanguageInput,
     startCapture,
   });
 
@@ -1197,6 +1280,7 @@ app.whenReady().then(async () => {
     appendStartupLog('setup-guide:auto-open');
     showSetupGuide();
   }
+  createOverlayWindow();
   if (updateRuntime) {
     updateRuntime.scheduleStartupCheck();
   }

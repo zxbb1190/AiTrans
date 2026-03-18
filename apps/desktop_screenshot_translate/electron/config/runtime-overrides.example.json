@@ -8,6 +8,9 @@
   "desktop": {
     "capture_shortcut": ""
   },
+  "pipeline": {
+    "source_language": "auto"
+  },
   "ocr": {
     "tesseract_path": "",
     "tessdata_dir": ""

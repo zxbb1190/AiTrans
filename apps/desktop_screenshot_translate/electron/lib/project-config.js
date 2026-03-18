@@ -40,6 +40,20 @@ function extractEmbeddedJson(bundleText, variableName) {
   return JSON.parse(match[1]);
 }
 
+function resolveSelectedSourceLanguage(productSpec, runtimeOverrides) {
+  const supported = Array.isArray(productSpec?.pipeline?.source_languages)
+    ? productSpec.pipeline.source_languages
+    : ['auto'];
+  const override =
+    runtimeOverrides && typeof runtimeOverrides.pipeline?.source_language === 'string'
+      ? runtimeOverrides.pipeline.source_language.trim()
+      : '';
+  if (override && supported.includes(override)) {
+    return override;
+  }
+  return supported.includes('auto') ? 'auto' : supported[0];
+}
+
 function loadProjectConfig() {
   let generatedDir = null;
   let productSpecPath = null;
@@ -73,6 +87,9 @@ function loadProjectConfig() {
   const implementationConfig = extractEmbeddedJson(implementationBundleText, 'IMPLEMENTATION_CONFIG');
   const runtimeBundle = extractEmbeddedJson(implementationBundleText, 'RUNTIME_BUNDLE');
   const runtimeOverrides = loadRuntimeOverrides().values;
+  const selectedSourceLanguage = resolveSelectedSourceLanguage(productSpec, runtimeOverrides);
+  productSpec.pipeline.selected_source_language = selectedSourceLanguage;
+  runtimeBundle.pipeline.selected_source_language = selectedSourceLanguage;
   const shortcut = (
     process.env.AITRANS_CAPTURE_SHORTCUT
     || runtimeOverrides.desktop?.capture_shortcut
@@ -90,6 +107,7 @@ function loadProjectConfig() {
     manifest,
     implementationConfig,
     runtimeBundle,
+    selectedSourceLanguage,
     shortcut,
   };
 }
