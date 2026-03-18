@@ -96,6 +96,7 @@ secret_source = "setup_ui_managed_runtime_store_or_env"
 # 当前约定是：
 # - overlay 截图遮罩继续使用原生 HTML/JS，保持轻量
 # - panel 结果面板使用 `Vue 3 + Vite + .vue SFC`，承接后续更复杂的状态与交互
+# - 开发态热更新采用“panel 走 Vite HMR，Electron 宿主与原生页面变更时自动重启”的双路径
 # - 当前项目的结果面板信息层级与状态视图映射，以
 #   `projects/desktop_screenshot_translate/结果面板界面契约.md` 为实现收敛入口
 [presentation_runtime]
@@ -103,6 +104,7 @@ renderer = "floating_panel_vue_vite_v1"
 ui_framework = "vue3"
 overlay_profile = "frameless_transparent_always_on_top"
 clipboard_bridge = "native_clipboard"
+dev_reload_profile = "vite_panel_hmr_and_electron_restart"
 
 # [release] 细化打包与更新路径。
 # 它决定发布产物和自动更新策略，但不能更改产品层兼容矩阵与更新通道的语义。

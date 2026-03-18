@@ -22,6 +22,9 @@ contextBridge.exposeInMainWorld('aitransDesktop', {
   copyTranslation(text) {
     return ipcRenderer.invoke('panel:copy-translation', { text });
   },
+  readClipboardText() {
+    return ipcRenderer.invoke('panel:read-clipboard-text');
+  },
   closePanel() {
     return ipcRenderer.invoke('panel:close');
   },
@@ -30,6 +33,9 @@ contextBridge.exposeInMainWorld('aitransDesktop', {
   },
   retryTranslation() {
     return ipcRenderer.invoke('panel:retry-translation');
+  },
+  translateEditedSource(payload) {
+    return ipcRenderer.invoke('panel:translate-edited-source', payload);
   },
   getProjectSummary() {
     return ipcRenderer.invoke('panel:get-project-summary');

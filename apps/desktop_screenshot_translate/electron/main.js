@@ -147,6 +147,20 @@ function createTrayImage() {
   return image.resize({ width: 16, height: 16, quality: 'best' });
 }
 
+function resolvePanelRendererTarget() {
+  const devServerUrl = process.env.AITRANS_PANEL_DEV_SERVER_URL?.trim();
+  if (!devServerUrl) {
+    return {
+      kind: 'file',
+      target: path.join(__dirname, 'renderer', 'panel-dist', 'index.html'),
+    };
+  }
+  return {
+    kind: 'url',
+    target: devServerUrl.replace(/\/$/, ''),
+  };
+}
+
 function getOverlayDisplay() {
   return screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
 }
@@ -232,7 +246,13 @@ function createPanelWindow() {
       nodeIntegration: false,
     },
   });
-  panelWindow.loadFile(path.join(__dirname, 'renderer', 'panel-dist', 'index.html'));
+  const panelRendererTarget = resolvePanelRendererTarget();
+  if (panelRendererTarget.kind === 'url') {
+    appendStartupLog('panel:load-dev-server', { url: panelRendererTarget.target });
+    panelWindow.loadURL(panelRendererTarget.target);
+  } else {
+    panelWindow.loadFile(panelRendererTarget.target);
+  }
   panelWindow.webContents.on('did-fail-load', (_event, code, description, validatedUrl) => {
     console.error('[panel] load failed', { code, description, validatedUrl });
   });
@@ -846,6 +866,143 @@ function getFallbackSelection() {
   };
 }
 
+function buildSourceEditAuditContext() {
+  return {
+    captureSessionId: lastPipelineState?.captureMeta?.captureSessionId || `capture_${crypto.randomUUID()}`,
+    taskId: `task_${crypto.randomUUID()}`,
+  };
+}
+
+function buildSourceEditCaptureMeta(audit, sourceLanguage) {
+  return {
+    ...(lastPipelineState?.captureMeta || {}),
+    targetLanguage: config.productSpec.pipeline.target_language,
+    captureSessionId: audit.captureSessionId,
+    taskId: audit.taskId,
+    ocrProvider: lastPipelineState?.captureMeta?.ocrProvider || 'manual_source',
+    translationProvider: 'pending',
+    sourceMode: 'manual_source_edit',
+    sourceLanguage,
+  };
+}
+
+function resolveRequestedSourceLanguage(rawValue) {
+  const supported = Array.isArray(config.productSpec.pipeline.source_languages)
+    ? config.productSpec.pipeline.source_languages
+    : ['auto'];
+  const candidate = typeof rawValue === 'string' ? rawValue.trim() : '';
+  if (candidate && supported.includes(candidate)) {
+    return candidate;
+  }
+  return config.selectedSourceLanguage || 'auto';
+}
+
+async function translateFromSourceText(sourceText, requestedSourceLanguage, sourceMode = 'manual_source_edit') {
+  const normalizedSourceText = typeof sourceText === 'string' ? sourceText.trim() : '';
+  if (!normalizedSourceText) {
+    return { ok: false, error: 'missing source text for translation' };
+  }
+
+  const sourceLanguage = resolveRequestedSourceLanguage(requestedSourceLanguage);
+  const selection = lastPipelineState?.selection || getFallbackSelection();
+  const audit = buildSourceEditAuditContext();
+  const captureMeta = {
+    ...buildSourceEditCaptureMeta(audit, sourceLanguage),
+    sourceMode,
+  };
+
+  try {
+    appendPipelineEvent('trans_requested', audit, {
+      provider: config.implementationConfig.providers.translation_chain[0],
+      resultState: 'translation_processing',
+      stageStatus: 'translation_processing',
+      sourceLanguage,
+      sourceMode,
+    });
+    showPanel(buildStageResult(selection, {
+      sourceLanguage,
+      stageStatus: 'translation_processing',
+      sourceText: normalizedSourceText,
+      translatedText: '正在根据当前原文生成译文…',
+      capturePreviewDataUrl: lastPipelineState?.capturePreviewDataUrl || null,
+      captureMeta,
+    }));
+
+    const translationResult = await translateText(
+      normalizedSourceText,
+      config.productSpec,
+      config.implementationConfig,
+    );
+
+    rememberPipelineState(
+      selection,
+      {
+        dataUrl: lastPipelineState?.capturePreviewDataUrl || null,
+        size: {
+          width: lastPipelineState?.captureMeta?.width || null,
+          height: lastPipelineState?.captureMeta?.height || null,
+        },
+      },
+      {
+        provider: lastPipelineState?.captureMeta?.ocrProvider || 'manual_source',
+        diagnostics: {
+          ...(lastPipelineState?.captureMeta?.ocrDiagnostics || {}),
+          sourceMode,
+        },
+        text: normalizedSourceText,
+        sourceLanguage,
+      },
+      translationResult.translatedText,
+      translationResult,
+      audit,
+    );
+
+    showPanel(buildStageResult(selection, {
+      sourceLanguage,
+      stageStatus: 'translation_ready',
+      sourceText: normalizedSourceText,
+      translatedText: translationResult.translatedText,
+      capturePreviewDataUrl: lastPipelineState?.capturePreviewDataUrl || null,
+      captureMeta: {
+        ...captureMeta,
+        translationProvider: translationResult.provider,
+        translationDiagnostics: translationResult.diagnostics || null,
+      },
+    }));
+    appendPipelineEvent('result_rendered', audit, {
+      provider: translationResult.provider,
+      resultState: 'translation_ready',
+      stageStatus: 'translation_ready',
+      sourceLanguage,
+      sourceMode,
+    });
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    showPanel(buildStageResult(selection, {
+      sourceLanguage,
+      stageStatus: 'failed',
+      sourceText: normalizedSourceText,
+      translatedText: config.productSpec.presentation.copy.failure_title,
+      capturePreviewDataUrl: lastPipelineState?.capturePreviewDataUrl || null,
+      captureMeta: {
+        ...captureMeta,
+        errorSourceMode: sourceMode,
+      },
+      errorOrigin: message,
+    }));
+    appendPipelineEvent('failure_raised', audit, {
+      provider: lastPipelineState?.captureMeta?.translationProvider || null,
+      resultState: 'failed',
+      stageStatus: 'failed',
+      sourceLanguage,
+      sourceMode,
+      error: message,
+    });
+    return { ok: false, error: message };
+  }
+}
+
 function registerShortcuts() {
   const result = applyCaptureShortcut(resolveConfiguredCaptureShortcut());
   if (!result.ok) {
@@ -1010,6 +1167,13 @@ ipcMain.handle('panel:copy-translation', async (_event, payload) => {
   return { ok: true };
 });
 
+ipcMain.handle('panel:read-clipboard-text', async () => {
+  return {
+    ok: true,
+    text: clipboard.readText(),
+  };
+});
+
 ipcMain.handle('panel:close', async () => {
   if (panelWindow && !panelWindow.isDestroyed()) {
     panelWindow.hide();
@@ -1027,97 +1191,23 @@ ipcMain.handle('panel:retry-translation', async () => {
   if (!lastPipelineState || !lastPipelineState.sourceText) {
     return { ok: false, error: 'missing OCR source text for retry' };
   }
+  return translateFromSourceText(
+    lastPipelineState.sourceText,
+    lastPipelineState.sourceLanguage || config.selectedSourceLanguage || 'auto',
+    'retry_translation',
+  );
+});
 
-  try {
-    appendPipelineEvent('trans_requested', {
-      captureSessionId: lastPipelineState.captureMeta?.captureSessionId || null,
-      taskId: lastPipelineState.captureMeta?.taskId || null,
-    }, {
-      provider: config.implementationConfig.providers.translation_chain[0],
-      resultState: 'translation_processing',
-      stageStatus: 'translation_processing',
-      sourceLanguage: lastPipelineState.sourceLanguage || 'auto',
-    });
-    showPanel(buildStageResult(lastPipelineState.selection || getFallbackSelection(), {
-      sourceLanguage: lastPipelineState.sourceLanguage || 'auto',
-      stageStatus: 'translation_processing',
-      sourceText: lastPipelineState.sourceText,
-      translatedText: '正在重新调用翻译 provider…',
-      capturePreviewDataUrl: lastPipelineState.capturePreviewDataUrl,
-      captureMeta: {
-        ...lastPipelineState.captureMeta,
-        translationProvider: 'pending',
-      },
-    }));
-
-    const translationResult = await translateText(
-      lastPipelineState.sourceText,
-      config.productSpec,
-      config.implementationConfig,
-    );
-
-    rememberPipelineState(
-      lastPipelineState.selection || getFallbackSelection(),
-      { dataUrl: lastPipelineState.capturePreviewDataUrl, size: { width: lastPipelineState.captureMeta?.width, height: lastPipelineState.captureMeta?.height } },
-      {
-        provider: lastPipelineState.captureMeta?.ocrProvider,
-        diagnostics: lastPipelineState.captureMeta?.ocrDiagnostics || null,
-        text: lastPipelineState.sourceText,
-        sourceLanguage: lastPipelineState.sourceLanguage || 'auto',
-      },
-      translationResult.translatedText,
-      translationResult,
-      {
-        captureSessionId: lastPipelineState.captureMeta?.captureSessionId || null,
-        taskId: lastPipelineState.captureMeta?.taskId || null,
-      },
-    );
-
-    showPanel(buildStageResult(lastPipelineState.selection || getFallbackSelection(), {
-      sourceLanguage: lastPipelineState.sourceLanguage || 'auto',
-      stageStatus: 'translation_ready',
-      sourceText: lastPipelineState.sourceText,
-      translatedText: translationResult.translatedText,
-      capturePreviewDataUrl: lastPipelineState.capturePreviewDataUrl,
-      captureMeta: {
-        ...lastPipelineState.captureMeta,
-        translationProvider: translationResult.provider,
-        translationDiagnostics: translationResult.diagnostics || null,
-      },
-    }));
-    appendPipelineEvent('result_rendered', {
-      captureSessionId: lastPipelineState.captureMeta?.captureSessionId || null,
-      taskId: lastPipelineState.captureMeta?.taskId || null,
-    }, {
-      provider: translationResult.provider,
-      resultState: 'translation_ready',
-      stageStatus: 'translation_ready',
-      sourceLanguage: lastPipelineState.sourceLanguage || 'auto',
-    });
-    return { ok: true };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    showPanel(buildStageResult(lastPipelineState.selection || getFallbackSelection(), {
-      sourceLanguage: lastPipelineState.sourceLanguage || 'auto',
-      stageStatus: 'failed',
-      sourceText: lastPipelineState.sourceText,
-      translatedText: config.productSpec.presentation.copy.failure_title,
-      capturePreviewDataUrl: lastPipelineState.capturePreviewDataUrl,
-      captureMeta: lastPipelineState.captureMeta,
-      errorOrigin: message,
-    }));
-    appendPipelineEvent('failure_raised', {
-      captureSessionId: lastPipelineState.captureMeta?.captureSessionId || null,
-      taskId: lastPipelineState.captureMeta?.taskId || null,
-    }, {
-      provider: lastPipelineState.captureMeta?.translationProvider || lastPipelineState.captureMeta?.ocrProvider || null,
-      resultState: 'failed',
-      stageStatus: 'failed',
-      sourceLanguage: lastPipelineState.sourceLanguage || 'auto',
-      error: message,
-    });
-    return { ok: false, error: message };
-  }
+ipcMain.handle('panel:translate-edited-source', async (_event, payload) => {
+  const sourceText =
+    payload && typeof payload.sourceText === 'string'
+      ? payload.sourceText
+      : '';
+  const sourceLanguage =
+    payload && typeof payload.sourceLanguage === 'string'
+      ? payload.sourceLanguage
+      : config.selectedSourceLanguage || 'auto';
+  return translateFromSourceText(sourceText, sourceLanguage, 'manual_source_edit');
 });
 
 ipcMain.handle('panel:get-project-summary', async () => {

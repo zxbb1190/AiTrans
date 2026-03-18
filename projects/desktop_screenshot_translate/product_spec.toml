@@ -64,7 +64,7 @@ font_scale = "md"
 # 这里定义键盘主路径、阅读顺序和状态播报，不下沉到具体 aria 实现。
 [a11y]
 reading_order = ["tray_entry", "capture_overlay", "result_actions", "source_text", "translated_text"]
-keyboard_nav = ["start-capture", "cancel-capture", "copy-translation", "retry-translation", "close-panel"]
+keyboard_nav = ["start-capture", "cancel-capture", "copy-translation", "paste-source-text", "retry-translation", "close-panel"]
 announcements = ["capture started", "capture cancelled", "translation ready", "translation failed"]
 
 # [desktop] 固定桌面产品真相。
@@ -121,7 +121,7 @@ show_translated_text = true
 show_status = true
 show_error_reason = true
 default_pinned = false
-actions = ["copy_translation", "retry_translation", "close_panel", "recapture"]
+actions = ["copy_translation", "paste_source_text", "edit_source_text", "retry_translation", "close_panel", "recapture"]
 auto_hide = "manual_only"
 
 # [presentation.copy] 收纳结果面板上的直接文案。

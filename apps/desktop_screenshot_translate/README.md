@@ -39,6 +39,9 @@
    - `npm run doctor`
    - `npm run panel:build`
    - `npm run dev`
+   - 若你正在迭代面板 UI / 交互或主进程联调，优先使用：
+     - `npm run dev:hot`
+     - 其中 `panel-src` 走 Vite HMR，`main/preload/lib/renderer/setup/renderer/overlay` 变更会自动重启 Electron
 5. 若后续需要 Python sidecar 扩展，再额外启动：
    - `uv run python -m apps.desktop_screenshot_translate.python_sidecar.service.app`
 

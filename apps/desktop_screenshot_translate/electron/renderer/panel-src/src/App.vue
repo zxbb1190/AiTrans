@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 
 function createEmptyPayload() {
   return {
@@ -14,7 +14,7 @@ function createEmptyPayload() {
       stageStatus: 'idle',
       errorOrigin: null,
       capturePreviewDataUrl: null,
-      sourceText: '尚未捕获结果',
+      sourceText: '',
       translatedText: '完成截图后将在此显示译文结果。',
       sourceLanguage: 'auto',
       selection: {
@@ -32,7 +32,14 @@ const appState = reactive({
   copyButtonLabel: '复制译文',
   retrying: false,
   detailsExpanded: false,
+  liveTranslationPending: false,
 });
+
+const sourceDraft = ref('');
+const lastSubmittedSource = ref('');
+let sourceDraftSyncing = false;
+let liveTranslateTimer = null;
+let queuedSourceText = '';
 
 const STAGE_LABELS = {
   idle: '待命',
@@ -73,18 +80,20 @@ const providerRows = computed(() => {
   if (meta?.autoRetryCount) {
     rows.push({ label: 'OCR 自动重试', value: `${meta.autoRetryCount} 次` });
   }
+  if (meta?.sourceMode === 'manual_source_edit') {
+    rows.push({ label: '输入来源', value: '面板原文修订 / 粘贴文本' });
+  }
   return rows;
 });
 const isBusy = computed(() =>
-  ['capturing', 'ocr_processing', 'translation_processing'].includes(appState.payload.result.stageStatus),
+  ['capturing', 'ocr_processing', 'translation_processing'].includes(appState.payload.result.stageStatus) || appState.liveTranslationPending,
 );
 const canCopy = computed(() => !isBusy.value && Boolean(appState.payload.result.translatedText));
-const canRetry = computed(() => !isBusy.value && Boolean(appState.payload.result.sourceText));
+const canRetry = computed(() => Boolean(sourceDraft.value.trim()) && !appState.retrying);
 const showFailure = computed(() => appState.payload.result.stageStatus === 'failed');
 const translatedText = computed(() =>
   appState.payload.result.translatedText || appState.payload.product.copy.empty_translation,
 );
-const sourceText = computed(() => appState.payload.result.sourceText || '暂无原文');
 const failureSummary = computed(() => appState.payload.result.errorOrigin || '主链执行失败，请检查 OCR、翻译端点或当前 Windows 权限状态。');
 const auditRows = computed(() => {
   const meta = appState.payload.result.captureMeta;
@@ -125,6 +134,92 @@ const hasDetails = computed(() => {
 const translationHeadline = computed(() =>
   isBusy.value ? '正在生成译文' : `目标：${targetLanguageText.value}`,
 );
+const normalizedDraft = computed(() => sourceDraft.value.trim());
+const normalizedPayloadSource = computed(() => (appState.payload.result.sourceText || '').trim());
+const isSourceDirty = computed(() => normalizedDraft.value !== normalizedPayloadSource.value);
+const sourceEditorHint = computed(() => {
+  if (appState.liveTranslationPending) {
+    return '正在根据当前原文重新翻译…';
+  }
+  if (!normalizedDraft.value) {
+    return '可直接粘贴一段文本，或在这里修正 OCR 原文后自动翻译。';
+  }
+  if (isSourceDirty.value) {
+    return '停止输入后会自动重译，也可以手动点击“重试翻译”。';
+  }
+  return '这里的原文可以直接编辑；修改后会触发新的翻译结果。';
+});
+
+function syncSourceDraft(nextValue) {
+  sourceDraftSyncing = true;
+  sourceDraft.value = nextValue || '';
+  lastSubmittedSource.value = (nextValue || '').trim();
+  queueMicrotask(() => {
+    sourceDraftSyncing = false;
+  });
+}
+
+function clearLiveTranslateTimer() {
+  if (liveTranslateTimer) {
+    window.clearTimeout(liveTranslateTimer);
+    liveTranslateTimer = null;
+  }
+}
+
+async function requestEditedTranslation(sourceText) {
+  const normalized = typeof sourceText === 'string' ? sourceText.trim() : '';
+  if (!normalized) {
+    return;
+  }
+  if (appState.liveTranslationPending) {
+    queuedSourceText = normalized;
+    return;
+  }
+  clearLiveTranslateTimer();
+  appState.liveTranslationPending = true;
+  lastSubmittedSource.value = normalized;
+  try {
+    await window.aitransDesktop.translateEditedSource({
+      sourceText: normalized,
+      sourceLanguage: sourceLanguageText.value,
+    });
+  } finally {
+    appState.liveTranslationPending = false;
+    if (queuedSourceText && queuedSourceText !== normalized) {
+      const nextSource = queuedSourceText;
+      queuedSourceText = '';
+      void requestEditedTranslation(nextSource);
+    }
+  }
+}
+
+function scheduleEditedTranslation() {
+  clearLiveTranslateTimer();
+  if (!normalizedDraft.value) {
+    queuedSourceText = '';
+    return;
+  }
+  if (
+    ['capturing', 'ocr_processing'].includes(appState.payload.result.stageStatus)
+    || normalizedDraft.value === lastSubmittedSource.value
+  ) {
+    return;
+  }
+  liveTranslateTimer = window.setTimeout(() => {
+    void requestEditedTranslation(normalizedDraft.value);
+  }, 650);
+}
+
+watch(() => appState.payload.result.sourceText, (nextValue) => {
+  syncSourceDraft(nextValue);
+});
+
+watch(sourceDraft, () => {
+  if (sourceDraftSyncing) {
+    return;
+  }
+  scheduleEditedTranslation();
+});
 
 async function handleCopy() {
   if (!canCopy.value) {
@@ -135,6 +230,20 @@ async function handleCopy() {
   window.setTimeout(() => {
     appState.copyButtonLabel = '复制译文';
   }, 1600);
+}
+
+async function handlePasteSource() {
+  const result = await window.aitransDesktop.readClipboardText();
+  if (!result?.ok || typeof result.text !== 'string') {
+    return;
+  }
+  const nextText = result.text.trim();
+  if (!nextText) {
+    return;
+  }
+  sourceDraft.value = nextText;
+  queuedSourceText = '';
+  await requestEditedTranslation(nextText);
 }
 
 async function handleClose() {
@@ -151,7 +260,7 @@ async function handleRetryTranslation() {
   }
   appState.retrying = true;
   try {
-    await window.aitransDesktop.retryTranslation();
+    await requestEditedTranslation(normalizedDraft.value);
   } finally {
     appState.retrying = false;
   }
@@ -169,12 +278,17 @@ window.aitransDesktop.onPanelData((payload) => {
   appState.copyButtonLabel = '复制译文';
   appState.retrying = false;
   appState.detailsExpanded = false;
+  syncSourceDraft(payload?.result?.sourceText || '');
 });
 
 window.aitransDesktop.getProjectSummary().then((summary) => {
   if (appState.payload.result.stageStatus === 'idle') {
     appState.payload.result.shortcut = summary.shortcut;
   }
+});
+
+onBeforeUnmount(() => {
+  clearLiveTranslateTimer();
 });
 </script>
 
@@ -187,7 +301,7 @@ window.aitransDesktop.getProjectSummary().then((summary) => {
           <h1>{{ appState.payload.product.displayName }}</h1>
           <span class="status-badge" :data-state="appState.payload.result.stageStatus">{{ statusText }}</span>
         </div>
-        <p class="status-summary" aria-live="polite">{{ statusSummary }}</p>
+        <!-- <p class="status-summary" aria-live="polite">{{ statusSummary }}</p> -->
       </div>
       <div class="header-actions">
         <span class="meta-chip">源 {{ sourceLanguageText }}</span>
@@ -202,8 +316,11 @@ window.aitransDesktop.getProjectSummary().then((summary) => {
       <button class="primary-btn" :disabled="!canCopy" @click="handleCopy">
         {{ isBusy ? '处理中…' : appState.copyButtonLabel }}
       </button>
+      <!-- <button class="secondary-btn" :disabled="appState.liveTranslationPending" @click="handlePasteSource">
+        粘贴原文
+      </button> -->
       <button class="secondary-btn" :disabled="!canRetry || appState.retrying" @click="handleRetryTranslation">
-        {{ appState.retrying ? '重试中…' : (appState.payload.product.copy.retry_label || '重试翻译') }}
+        {{ appState.retrying ? '重译中…' : (appState.payload.product.copy.retry_label || '重试翻译') }}
       </button>
       <button class="secondary-btn secondary-btn--ghost" :disabled="isBusy" @click="handleRecapture">
         {{ appState.payload.product.copy.recapture_label || '重新截图' }}
@@ -221,7 +338,14 @@ window.aitransDesktop.getProjectSummary().then((summary) => {
           <div class="card-label">原文</div>
           <div class="card-subtle">{{ selectionText }}</div>
         </div>
-        <pre class="content-body">{{ sourceText }}</pre>
+        <textarea
+          v-model="sourceDraft"
+          class="content-editor"
+          spellcheck="false"
+          :disabled="appState.payload.result.stageStatus === 'capturing' || appState.payload.result.stageStatus === 'ocr_processing'"
+          placeholder="可在此修正 OCR 原文，也可直接粘贴文本进行翻译。"
+        />
+        <!-- <div class="editor-hint">{{ sourceEditorHint }}</div> -->
       </article>
 
       <article class="result-card result-card--translated">
