@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AiTrans Anchor</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        user-select: none;
+      }
+
+      .anchor {
+        width: 52px;
+        height: 52px;
+        border-radius: 18px;
+        border: 1px solid rgba(15, 118, 110, 0.18);
+        background:
+          radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.9), transparent 32%),
+          linear-gradient(180deg, rgba(15, 118, 110, 0.98), rgba(13, 90, 84, 0.96));
+        box-shadow: 0 18px 32px rgba(5, 26, 24, 0.26);
+        color: #f2fffb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+        font-size: 17px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="anchor" class="anchor" title="打开 AiTrans 对话浮窗" aria-label="打开 AiTrans 对话浮窗">AI</div>
+    <script src="./anchor.js"></script>
+  </body>
+</html>

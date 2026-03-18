@@ -18,6 +18,8 @@
 # 它决定运行时和桥接方式，不改写产品层已经承诺的托盘/快捷键/悬浮面板体验。
 # 当前项目关于托盘菜单收敛、首次配置界面主路径与降级提示的实现收敛入口，
 # 以 `projects/desktop_screenshot_translate/桌面入口与配置界面契约.md` 为准。
+# 当前项目关于 AI 对话浮窗、悬浮入口与会话缓存的公开交互，
+# 以 `projects/desktop_screenshot_translate/对话浮窗界面契约.md` 为准。
 # 当前 Windows 路径补充：
 # - `focus_restore = true` 在本实现中定义为“最佳努力恢复截图前前台窗口”
 # - 进入截图 overlay 前，需要先记录当前前台窗口是否属于外部应用
@@ -95,10 +97,13 @@ secret_source = "setup_ui_managed_runtime_store_or_env"
 # 它决定浮层渲染方案，不改变产品层动作集合和面板语义。
 # 当前约定是：
 # - overlay 截图遮罩继续使用原生 HTML/JS，保持轻量
-# - panel 结果面板使用 `Vue 3 + Vite + .vue SFC`，承接后续更复杂的状态与交互
+# - panel 从“结果面板”升级为“AI 对话浮窗”，使用 `Vue 3 + Vite + .vue SFC`
 # - 开发态热更新采用“panel 走 Vite HMR，Electron 宿主与原生页面变更时自动重启”的双路径
-# - 当前项目的结果面板信息层级与状态视图映射，以
-#   `projects/desktop_screenshot_translate/结果面板界面契约.md` 为实现收敛入口
+# - 面向 C 端公开面的对话线程默认不展示执行信息、Provider 细节和诊断模块
+# - 截图应进入当前会话线程，AI 回复承接原文与译文，不再弹出脱节的独立结果面板
+# - 当前项目的浮窗结构、消息类型、动作优先级与会话缓存约束，以
+#   `projects/desktop_screenshot_translate/对话浮窗界面契约.md` 为实现收敛入口
+# - 当前会话缓存实现应由桌面宿主主进程落到本地文件缓存，而不是由渲染层 `localStorage` 单独持有
 [presentation_runtime]
 renderer = "floating_panel_vue_vite_v1"
 ui_framework = "vue3"

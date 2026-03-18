@@ -23,6 +23,7 @@ const {
   resolveOpenAiBaseUrl,
 } = require('./lib/provider-runtime');
 const { createWindowStateStore } = require('./lib/window-state');
+const { createConversationStore } = require('./lib/conversation-store');
 const {
   isWindowsFocusSupported,
   restoreForegroundWindow,
@@ -92,10 +93,12 @@ try {
 }
 
 const stateStore = createWindowStateStore(app, stateNamespace);
+const conversationStore = createConversationStore(app, stateNamespace);
 
 app.setAppUserModelId('com.aitrans.desktop_screenshot_translate');
 
 let tray = null;
+let anchorWindow = null;
 let overlayWindow = null;
 let panelWindow = null;
 let setupWindow = null;
@@ -145,6 +148,56 @@ function createTrayImage() {
     return nativeImage.createEmpty();
   }
   return image.resize({ width: 16, height: 16, quality: 'best' });
+}
+
+function createAnchorWindow() {
+  const savedState = stateStore.load().anchor;
+  if (anchorWindow && !anchorWindow.isDestroyed()) {
+    return anchorWindow;
+  }
+
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const defaultBounds = {
+    width: 64,
+    height: 64,
+    x: primaryDisplay.workArea.x + primaryDisplay.workArea.width - 88,
+    y: primaryDisplay.workArea.y + primaryDisplay.workArea.height - 124,
+  };
+
+  anchorWindow = new BrowserWindow({
+    width: savedState?.width || defaultBounds.width,
+    height: savedState?.height || defaultBounds.height,
+    x: savedState?.x ?? defaultBounds.x,
+    y: savedState?.y ?? defaultBounds.y,
+    show: false,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    backgroundColor: '#00000000',
+    icon: getWindowIconPath(),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  anchorWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  anchorWindow.setAlwaysOnTop(true, 'floating');
+  anchorWindow.loadFile(path.join(__dirname, 'renderer', 'anchor', 'index.html'));
+  anchorWindow.on('moved', () => {
+    if (!anchorWindow || anchorWindow.isDestroyed()) {
+      return;
+    }
+    stateStore.save('anchor', anchorWindow.getBounds());
+  });
+  anchorWindow.on('closed', () => {
+    anchorWindow = null;
+  });
+  return anchorWindow;
 }
 
 function resolvePanelRendererTarget() {
@@ -273,6 +326,58 @@ function createPanelWindow() {
   return panelWindow;
 }
 
+function getPanelPayload(result = null) {
+  return {
+    product: {
+      displayName: config.productSpec.project.display_name,
+      presentation: config.productSpec.presentation,
+      copy: config.productSpec.presentation.copy,
+      conversation: config.productSpec.conversation || {},
+      surface: config.productSpec.surface || {},
+    },
+    result,
+  };
+}
+
+function showConversationWindow() {
+  clearFocusRestoreSession();
+  const window = createPanelWindow();
+  const payload = getPanelPayload(null);
+
+  const sendPayload = () => {
+    window.webContents.send('panel:set-data', payload);
+    window.show();
+    window.focus();
+  };
+
+  if (window.webContents.isLoadingMainFrame()) {
+    window.webContents.once('did-finish-load', sendPayload);
+  } else {
+    sendPayload();
+  }
+}
+
+function toggleConversationWindow() {
+  if (panelWindow && !panelWindow.isDestroyed() && panelWindow.isVisible()) {
+    panelWindow.hide();
+    return;
+  }
+  showConversationWindow();
+}
+
+function sendPanelCommand(command, payload = {}) {
+  const window = createPanelWindow();
+  const dispatch = () => {
+    window.webContents.send('panel:command', { command, payload });
+  };
+
+  if (window.webContents.isLoadingMainFrame()) {
+    window.webContents.once('did-finish-load', dispatch);
+  } else {
+    dispatch();
+  }
+}
+
 function focusBestAvailableWindow() {
   clearFocusRestoreSession();
   if (setupWindow && !setupWindow.isDestroyed()) {
@@ -289,7 +394,7 @@ function focusBestAvailableWindow() {
     showSetupGuide();
     return;
   }
-  showPanel(buildStubResult(lastSelection || getFallbackSelection()));
+  showConversationWindow();
 }
 
 function setShortcutCapability(available, message = null) {
@@ -488,6 +593,9 @@ function buildTrayMenu() {
   const settingsLabel = guideState.configured ? '设置与连接' : '完成首次配置';
   const template = [
     { label: '开始截图翻译', click: () => showOverlay() },
+    { label: '打开对话浮窗', click: () => showConversationWindow() },
+    { label: '新聊天', click: () => { showConversationWindow(); sendPanelCommand('new_chat'); } },
+    { label: '清空记录', click: () => { showConversationWindow(); sendPanelCommand('clear_history'); } },
     { label: settingsLabel, click: () => showSetupGuide() },
     {
       label: runtimeCapabilities.shortcutAvailable === false
@@ -541,6 +649,17 @@ function buildTrayMenu() {
   );
 
   return Menu.buildFromTemplate(template);
+}
+
+function showEntryMenu(targetWindow = null) {
+  const menu = buildTrayMenu();
+  if (targetWindow && !targetWindow.isDestroyed()) {
+    menu.popup({ window: targetWindow });
+    return;
+  }
+  if (tray) {
+    tray.popUpContextMenu(menu);
+  }
 }
 
 function refreshTrayMenu() {
@@ -796,14 +915,7 @@ function showSetupGuide() {
 
 function showPanel(result) {
   const window = createPanelWindow();
-  const payload = {
-    product: {
-      displayName: config.productSpec.project.display_name,
-      presentation: config.productSpec.presentation,
-      copy: config.productSpec.presentation.copy,
-    },
-    result,
-  };
+  const payload = getPanelPayload(result);
 
   const sendPayload = () => {
     window.webContents.send('panel:set-data', payload);
@@ -849,7 +961,7 @@ function createTray() {
   appendStartupLog('tray:created');
   refreshTrayMenu();
   tray.on('click', () => {
-    tray.popUpContextMenu(buildTrayMenu());
+    showEntryMenu();
   });
   tray.on('double-click', () => showOverlay());
 }
@@ -897,7 +1009,12 @@ function resolveRequestedSourceLanguage(rawValue) {
   return config.selectedSourceLanguage || 'auto';
 }
 
-async function translateFromSourceText(sourceText, requestedSourceLanguage, sourceMode = 'manual_source_edit') {
+async function translateFromSourceText(
+  sourceText,
+  requestedSourceLanguage,
+  sourceMode = 'manual_source_edit',
+  options = {},
+) {
   const normalizedSourceText = typeof sourceText === 'string' ? sourceText.trim() : '';
   if (!normalizedSourceText) {
     return { ok: false, error: 'missing source text for translation' };
@@ -906,9 +1023,15 @@ async function translateFromSourceText(sourceText, requestedSourceLanguage, sour
   const sourceLanguage = resolveRequestedSourceLanguage(requestedSourceLanguage);
   const selection = lastPipelineState?.selection || getFallbackSelection();
   const audit = buildSourceEditAuditContext();
+  const conversationRequestId =
+    typeof options.conversationRequestId === 'string' && options.conversationRequestId.trim()
+      ? options.conversationRequestId.trim()
+      : null;
+
   const captureMeta = {
     ...buildSourceEditCaptureMeta(audit, sourceLanguage),
     sourceMode,
+    conversationRequestId,
   };
 
   try {
@@ -1029,6 +1152,11 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
       stageStatus: 'capturing',
       sourceText: '正在抓取选区位图…',
       translatedText: '正在从 Windows 桌面获取截图区域，请稍候。',
+      captureMeta: {
+        captureSessionId: audit.captureSessionId,
+        taskId: audit.taskId,
+        targetLanguage: config.productSpec.pipeline.target_language,
+      },
     }));
 
     const { capture, ocrResult, retries } = await captureAndRecognize(selection);
@@ -1167,6 +1295,32 @@ ipcMain.handle('panel:copy-translation', async (_event, payload) => {
   return { ok: true };
 });
 
+ipcMain.on('panel:load-conversation-state-sync', (event) => {
+  const session = conversationStore.load();
+  event.returnValue = {
+    ok: true,
+    session,
+    path: conversationStore.getPath(),
+  };
+});
+
+ipcMain.handle('panel:save-conversation-state', async (_event, payload) => {
+  const saved = conversationStore.save(payload);
+  return {
+    ok: true,
+    path: saved.path,
+    session: saved.session,
+  };
+});
+
+ipcMain.handle('panel:clear-conversation-state', async () => {
+  const cleared = conversationStore.clear();
+  return {
+    ok: true,
+    path: cleared.path,
+  };
+});
+
 ipcMain.handle('panel:read-clipboard-text', async () => {
   return {
     ok: true,
@@ -1187,14 +1341,27 @@ ipcMain.handle('panel:recapture', async () => {
   return { ok: true };
 });
 
-ipcMain.handle('panel:retry-translation', async () => {
-  if (!lastPipelineState || !lastPipelineState.sourceText) {
+ipcMain.handle('panel:retry-translation', async (_event, payload) => {
+  const sourceText =
+    payload && typeof payload.sourceText === 'string' && payload.sourceText.trim()
+      ? payload.sourceText
+      : lastPipelineState?.sourceText || '';
+  const sourceLanguage =
+    payload && typeof payload.sourceLanguage === 'string'
+      ? payload.sourceLanguage
+      : lastPipelineState?.sourceLanguage || config.selectedSourceLanguage || 'auto';
+  const conversationRequestId =
+    payload && typeof payload.conversationRequestId === 'string'
+      ? payload.conversationRequestId
+      : null;
+  if (!sourceText.trim()) {
     return { ok: false, error: 'missing OCR source text for retry' };
   }
   return translateFromSourceText(
-    lastPipelineState.sourceText,
-    lastPipelineState.sourceLanguage || config.selectedSourceLanguage || 'auto',
+    sourceText,
+    sourceLanguage,
     'retry_translation',
+    { conversationRequestId },
   );
 });
 
@@ -1207,7 +1374,46 @@ ipcMain.handle('panel:translate-edited-source', async (_event, payload) => {
     payload && typeof payload.sourceLanguage === 'string'
       ? payload.sourceLanguage
       : config.selectedSourceLanguage || 'auto';
-  return translateFromSourceText(sourceText, sourceLanguage, 'manual_source_edit');
+  const conversationRequestId =
+    payload && typeof payload.conversationRequestId === 'string'
+      ? payload.conversationRequestId
+      : null;
+  return translateFromSourceText(sourceText, sourceLanguage, 'manual_source_edit', {
+    conversationRequestId,
+  });
+});
+
+ipcMain.handle('panel:send-text-message', async (_event, payload) => {
+  const sourceText =
+    payload && typeof payload.text === 'string'
+      ? payload.text
+      : '';
+  const sourceLanguage =
+    payload && typeof payload.sourceLanguage === 'string'
+      ? payload.sourceLanguage
+      : config.selectedSourceLanguage || 'auto';
+  const conversationRequestId =
+    payload && typeof payload.conversationRequestId === 'string'
+      ? payload.conversationRequestId
+      : null;
+  return translateFromSourceText(sourceText, sourceLanguage, 'text_chat', {
+    conversationRequestId,
+  });
+});
+
+ipcMain.handle('panel:open-setup', async () => {
+  showSetupGuide();
+  return { ok: true };
+});
+
+ipcMain.handle('anchor:toggle-panel', async () => {
+  toggleConversationWindow();
+  return { ok: true };
+});
+
+ipcMain.handle('anchor:open-menu', async () => {
+  showEntryMenu(anchorWindow);
+  return { ok: true };
 });
 
 ipcMain.handle('panel:get-project-summary', async () => {
@@ -1357,6 +1563,8 @@ app.whenReady().then(async () => {
   });
   createTray();
   createPanelWindow();
+  const anchor = createAnchorWindow();
+  anchor.show();
   await probeAndStoreScreenCaptureCapability();
   try {
     registerShortcuts();
@@ -1379,6 +1587,10 @@ app.whenReady().then(async () => {
 app.on('activate', () => {
   if (!panelWindow || panelWindow.isDestroyed()) {
     createPanelWindow();
+  }
+  if (!anchorWindow || anchorWindow.isDestroyed()) {
+    const anchor = createAnchorWindow();
+    anchor.show();
   }
 });
 

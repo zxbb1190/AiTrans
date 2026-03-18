@@ -15,7 +15,7 @@
 project_id = "desktop_screenshot_translate"
 template = "desktop_screenshot_translate"
 display_name = "AiTrans 截图翻译"
-description = "A desktop screenshot translation tool compiled from framework standards, one product truth, and one implementation path."
+description = "An AI-style desktop translation assistant that turns screenshots and text into a local conversation thread."
 version = "0.1.3"
 
 # [framework] 声明这个产品实例依附于哪些共同结构语言。
@@ -33,22 +33,22 @@ preset = "desktop_capture_translate_panel"
 # 它描述“从哪里进入、结果怎样出现、整体呈现形态是什么”，
 # 但不涉及某个前端组件树或桌面窗口库。
 [surface]
-shell = "tray_hotkey_capture_overlay"
-layout_variant = "single_result_floating_panel"
-entry_mode = "tray_and_shortcut"
-result_mode = "floating_panel"
+shell = "tray_hotkey_floating_chat_assistant"
+layout_variant = "expandable_ai_chat_floating_window"
+entry_mode = "tray_shortcut_and_floating_anchor"
+result_mode = "conversation_floating_window"
 density = "comfortable"
 
 # [surface.copy] 收纳壳体直接向用户说出的文案。
 # 这些文案会塑造用户对“这是不是一个一键截图翻译工具”的第一认知。
 [surface.copy]
 app_name = "AiTrans 截图翻译"
-tagline = "截一块，立刻看到译文"
-capture_hint = "按下截图快捷键后拖选区域，松开即可开始识别和翻译；按 Enter 或双击可直接整屏截图。"
-empty_title = "准备截图"
-empty_copy = "从托盘或全局快捷键开始，拖选一个区域后自动输出译文。"
-processing_title = "正在翻译"
-processing_copy = "正在识别文字并生成译文，结果会在悬浮面板中出现。"
+tagline = "像和 AI 对话一样截图翻译与继续追问"
+capture_hint = "按下截图快捷键后拖选区域，截图会作为一条消息进入对话；按 Enter 或双击可直接整屏截图。"
+empty_title = "开始对话"
+empty_copy = "从托盘、悬浮入口或快捷键开始截图，也可以直接输入文本让 AI 翻译。"
+processing_title = "AI 正在回复"
+processing_copy = "截图或输入文本后，AI 会在对话里回复原文与译文。"
 
 # [visual] 固定视觉语义，而不是实现 token。
 # 这里讨论的是产品气质、明暗、圆角和视觉密度，不直接写 CSS 或设计工具导出值。
@@ -63,9 +63,9 @@ font_scale = "md"
 # [a11y] 固定产品层的可访问体验。
 # 这里定义键盘主路径、阅读顺序和状态播报，不下沉到具体 aria 实现。
 [a11y]
-reading_order = ["tray_entry", "capture_overlay", "result_actions", "source_text", "translated_text"]
-keyboard_nav = ["start-capture", "cancel-capture", "copy-translation", "paste-source-text", "retry-translation", "close-panel"]
-announcements = ["capture started", "capture cancelled", "translation ready", "translation failed"]
+reading_order = ["floating_anchor", "chat_timeline", "composer", "message_actions"]
+keyboard_nav = ["toggle-chat-window", "start-capture", "cancel-capture", "send-message", "copy-translation", "retry-translation", "new-chat", "clear-history", "close-panel", "recapture"]
+announcements = ["capture started", "capture cancelled", "reply ready", "translation failed", "history cleared"]
 
 # [desktop] 固定桌面产品真相。
 # 这一段定义用户可见的平台承诺、入口方式和权限降级体验，
@@ -74,12 +74,12 @@ announcements = ["capture started", "capture cancelled", "translation ready", "t
 # 由 `projects/desktop_screenshot_translate/桌面入口与配置界面契约.md` 补充承接。
 [desktop]
 platforms = ["windows", "macos"]
-entry_points = ["tray", "global_shortcut"]
+entry_points = ["tray", "global_shortcut", "floating_anchor"]
 single_instance = true
 permissions = ["screen_recording", "accessibility"]
 degrade_policy = "permission_guided_downgrade"
 hotkey_behavior = "rebindable"
-window_strategy = "hidden_shell_plus_overlay_panel"
+window_strategy = "hidden_shell_plus_floating_chat_window"
 focus_restore = true
 
 # [capture] 固定截图体验真相。
@@ -92,8 +92,22 @@ cancel_methods = ["esc", "right_click"]
 include_cursor = false
 multi_display = true
 high_dpi = true
-session_policy = "one_capture_one_session"
+session_policy = "capture_inserts_message_into_active_conversation"
 image_format = "png_bitmap"
+
+# [conversation] 固定 AI 对话交互真相。
+# 这里定义截图和文本如何进入同一会话、消息线程如何组织、会话记录是否落地。
+# 它不决定数据库、状态库、Vue store 或 Electron 存储 API。
+[conversation]
+window_variant = "floating_ai_chat_assistant"
+message_types = ["user_screenshot", "user_text", "assistant_translation", "assistant_reply"]
+capture_as_message = true
+direct_chat = true
+history_persistence = "local_session_cache"
+restore_last_session_on_startup = true
+new_chat_policy = "confirm_then_reset_local_session"
+clear_history_policy = "confirm_then_delete_local_cache"
+preview_mode = "foldable_capture_preview"
 
 # [pipeline] 固定识别翻译链路对用户承诺的结果语义。
 # 这里定义目标语言、交付字段、回退策略和总时延预算；
@@ -112,16 +126,16 @@ ocr_confidence_visible = false
 # [presentation] 固定结果交付面真相。
 # 它回答结果面板默认展示什么、有哪些动作、是否允许拖拽与关闭；
 # 不决定窗口类、DOM 结构或 CSS 布局细节。
-# 当前项目的更细结果面板首屏层级、状态映射与动作优先级，
-# 由 `projects/desktop_screenshot_translate/结果面板界面契约.md` 补充承接。
+# 当前项目的更细 AI 对话浮窗层级、消息类型、动作优先级与会话缓存约束，
+# 由 `projects/desktop_screenshot_translate/对话浮窗界面契约.md` 补充承接。
 [presentation]
-panel_variant = "floating_compact_dual_column"
+panel_variant = "floating_ai_chat_thread"
 show_source_text = true
 show_translated_text = true
 show_status = true
 show_error_reason = true
 default_pinned = false
-actions = ["copy_translation", "paste_source_text", "edit_source_text", "retry_translation", "close_panel", "recapture"]
+actions = ["send_text_message", "copy_translation", "edit_source_text", "retry_translation", "close_panel", "recapture", "new_chat", "clear_history", "toggle_preview"]
 auto_hide = "manual_only"
 
 # [presentation.copy] 收纳结果面板上的直接文案。
@@ -131,16 +145,23 @@ copy_success = "译文已复制"
 retry_label = "重试翻译"
 close_label = "关闭"
 recapture_label = "重新截图"
+new_chat_label = "新聊天"
+clear_history_label = "清空记录"
+send_label = "发送"
 failure_title = "翻译失败"
 empty_translation = "未识别到可翻译文本"
+clear_confirm_title = "清空对话并删除本地记录"
+clear_confirm_copy = "此操作会删除当前对话与本地缓存记录，是否继续？"
+new_chat_confirm_title = "开始新聊天"
+new_chat_confirm_copy = "当前对话将被清空并删除本地记录，然后开启新会话。"
 
 # [governance] 固定产品层可感知的治理真相。
 # 这里定义隐私姿态、更新通道、兼容矩阵和性能预算；
 # 但不定义日志 SDK、更新服务或密钥存放实现。
 [governance]
-event_scope = ["capture", "ocr", "translation", "render", "release"]
-audit_fields = ["capture_session_id", "task_id", "provider", "result_state"]
-privacy_mode = "sensitive_text_not_persisted_by_default"
+event_scope = ["conversation", "capture", "ocr", "translation", "render", "release"]
+audit_fields = ["conversation_session_id", "capture_session_id", "task_id", "provider", "result_state"]
+privacy_mode = "local_session_cache_with_user_clear_control"
 update_channel = "stable"
 compat_matrix = ["windows-11+", "macos-13+"]
 offline_policy = "allow_local_capture_and_local_ocr_only"

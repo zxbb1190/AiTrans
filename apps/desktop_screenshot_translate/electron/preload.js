@@ -13,6 +13,18 @@ contextBridge.exposeInMainWorld('aitransDesktop', {
   onPanelData(callback) {
     return subscribe('panel:set-data', callback);
   },
+  onPanelCommand(callback) {
+    return subscribe('panel:command', callback);
+  },
+  loadConversationState() {
+    return ipcRenderer.sendSync('panel:load-conversation-state-sync');
+  },
+  saveConversationState(payload) {
+    return ipcRenderer.invoke('panel:save-conversation-state', payload);
+  },
+  clearConversationState() {
+    return ipcRenderer.invoke('panel:clear-conversation-state');
+  },
   submitSelection(selection) {
     return ipcRenderer.invoke('overlay:submit-selection', selection);
   },
@@ -31,14 +43,26 @@ contextBridge.exposeInMainWorld('aitransDesktop', {
   recapture() {
     return ipcRenderer.invoke('panel:recapture');
   },
-  retryTranslation() {
-    return ipcRenderer.invoke('panel:retry-translation');
+  retryTranslation(payload) {
+    return ipcRenderer.invoke('panel:retry-translation', payload);
   },
   translateEditedSource(payload) {
     return ipcRenderer.invoke('panel:translate-edited-source', payload);
   },
+  sendTextMessage(payload) {
+    return ipcRenderer.invoke('panel:send-text-message', payload);
+  },
+  openSetupGuide() {
+    return ipcRenderer.invoke('panel:open-setup');
+  },
   getProjectSummary() {
     return ipcRenderer.invoke('panel:get-project-summary');
+  },
+  toggleChatWindow() {
+    return ipcRenderer.invoke('anchor:toggle-panel');
+  },
+  openEntryMenu() {
+    return ipcRenderer.invoke('anchor:open-menu');
   },
   onSetupData(callback) {
     return subscribe('setup:set-data', callback);
