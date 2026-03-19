@@ -126,6 +126,9 @@ const captureUiState = {
 };
 const CAPTURE_SETTLE_MS = 180;
 const RETRYABLE_OCR_ERROR_FRAGMENT = 'tesseract returned empty OCR text';
+const PANEL_WIDTH = 460;
+const PANEL_HEIGHT = 680;
+const PANEL_GAP = 14;
 
 process.on('uncaughtException', (error) => {
   appendStartupLog('process:uncaughtException', { message: error.message, stack: error.stack });
@@ -193,6 +196,9 @@ function createAnchorWindow() {
       return;
     }
     stateStore.save('anchor', anchorWindow.getBounds());
+    if (panelWindow && !panelWindow.isDestroyed() && panelWindow.isVisible()) {
+      positionPanelWindow();
+    }
   });
   anchorWindow.on('closed', () => {
     anchorWindow = null;
@@ -272,23 +278,20 @@ function createOverlayWindow() {
 }
 
 function createPanelWindow() {
-  const savedState = stateStore.load().panel;
   if (panelWindow && !panelWindow.isDestroyed()) {
     return panelWindow;
   }
 
   panelWindow = new BrowserWindow({
-    width: savedState?.width || 560,
-    height: savedState?.height || 420,
-    minWidth: 480,
-    minHeight: 340,
-    x: savedState?.x,
-    y: savedState?.y,
+    width: PANEL_WIDTH,
+    height: PANEL_HEIGHT,
+    minWidth: PANEL_WIDTH,
+    minHeight: PANEL_HEIGHT,
     show: false,
     frame: false,
     transparent: false,
-    resizable: true,
-    movable: true,
+    resizable: false,
+    movable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
     backgroundColor: '#f4f8f6',
@@ -318,12 +321,53 @@ function createPanelWindow() {
       panelWindow.hide();
     }
   });
-  panelWindow.on('moved', savePanelBounds);
-  panelWindow.on('resized', savePanelBounds);
   panelWindow.on('closed', () => {
     panelWindow = null;
   });
   return panelWindow;
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function computeAnchoredPanelBounds() {
+  const anchor = createAnchorWindow();
+  const anchorBounds = anchor.getBounds();
+  const display = screen.getDisplayMatching(anchorBounds);
+  const workArea = display.workArea;
+
+  const spaceRight = workArea.x + workArea.width - (anchorBounds.x + anchorBounds.width);
+  const spaceLeft = anchorBounds.x - workArea.x;
+  const spaceBelow = workArea.y + workArea.height - (anchorBounds.y + anchorBounds.height);
+  const spaceAbove = anchorBounds.y - workArea.y;
+
+  let x;
+  if (spaceRight >= PANEL_WIDTH + PANEL_GAP || spaceRight >= spaceLeft) {
+    x = anchorBounds.x + anchorBounds.width + PANEL_GAP;
+  } else {
+    x = anchorBounds.x - PANEL_WIDTH - PANEL_GAP;
+  }
+
+  let y;
+  if (spaceBelow >= PANEL_HEIGHT || spaceBelow >= spaceAbove) {
+    y = anchorBounds.y;
+  } else {
+    y = anchorBounds.y + anchorBounds.height - PANEL_HEIGHT;
+  }
+
+  return {
+    x: clamp(x, workArea.x, workArea.x + workArea.width - PANEL_WIDTH),
+    y: clamp(y, workArea.y, workArea.y + workArea.height - PANEL_HEIGHT),
+    width: PANEL_WIDTH,
+    height: PANEL_HEIGHT,
+  };
+}
+
+function positionPanelWindow() {
+  const window = createPanelWindow();
+  window.setBounds(computeAnchoredPanelBounds(), false);
+  return window;
 }
 
 function getPanelPayload(result = null) {
@@ -341,7 +385,7 @@ function getPanelPayload(result = null) {
 
 function showConversationWindow() {
   clearFocusRestoreSession();
-  const window = createPanelWindow();
+  const window = positionPanelWindow();
   const payload = getPanelPayload(null);
 
   const sendPayload = () => {
@@ -435,13 +479,6 @@ function createSetupWindow() {
     setupWindow = null;
   });
   return setupWindow;
-}
-
-function savePanelBounds() {
-  if (!panelWindow || panelWindow.isDestroyed()) {
-    return;
-  }
-  stateStore.save('panel', panelWindow.getBounds());
 }
 
 function isFocusRestoreEnabled() {
@@ -914,7 +951,7 @@ function showSetupGuide() {
 }
 
 function showPanel(result) {
-  const window = createPanelWindow();
+  const window = positionPanelWindow();
   const payload = getPanelPayload(result);
 
   const sendPayload = () => {
@@ -1414,6 +1451,33 @@ ipcMain.handle('anchor:toggle-panel', async () => {
 ipcMain.handle('anchor:open-menu', async () => {
   showEntryMenu(anchorWindow);
   return { ok: true };
+});
+
+ipcMain.handle('anchor:get-bounds', async () => {
+  if (!anchorWindow || anchorWindow.isDestroyed()) {
+    return { ok: false, error: 'anchor window unavailable' };
+  }
+  return {
+    ok: true,
+    bounds: anchorWindow.getBounds(),
+  };
+});
+
+ipcMain.handle('anchor:set-position', async (_event, payload) => {
+  if (!anchorWindow || anchorWindow.isDestroyed()) {
+    return { ok: false, error: 'anchor window unavailable' };
+  }
+  const x = Number.isFinite(payload?.x) ? Math.round(payload.x) : anchorWindow.getBounds().x;
+  const y = Number.isFinite(payload?.y) ? Math.round(payload.y) : anchorWindow.getBounds().y;
+  anchorWindow.setPosition(x, y);
+  stateStore.save('anchor', anchorWindow.getBounds());
+  if (panelWindow && !panelWindow.isDestroyed() && panelWindow.isVisible()) {
+    positionPanelWindow();
+  }
+  return {
+    ok: true,
+    bounds: anchorWindow.getBounds(),
+  };
 });
 
 ipcMain.handle('panel:get-project-summary', async () => {

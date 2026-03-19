@@ -64,6 +64,12 @@ contextBridge.exposeInMainWorld('aitransDesktop', {
   openEntryMenu() {
     return ipcRenderer.invoke('anchor:open-menu');
   },
+  getAnchorBounds() {
+    return ipcRenderer.invoke('anchor:get-bounds');
+  },
+  setAnchorPosition(payload) {
+    return ipcRenderer.invoke('anchor:set-position', payload);
+  },
   onSetupData(callback) {
     return subscribe('setup:set-data', callback);
   },

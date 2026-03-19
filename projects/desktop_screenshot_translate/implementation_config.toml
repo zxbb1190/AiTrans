@@ -104,6 +104,8 @@ secret_source = "setup_ui_managed_runtime_store_or_env"
 # - 当前项目的浮窗结构、消息类型、动作优先级与会话缓存约束，以
 #   `projects/desktop_screenshot_translate/对话浮窗界面契约.md` 为实现收敛入口
 # - 当前会话缓存实现应由桌面宿主主进程落到本地文件缓存，而不是由渲染层 `localStorage` 单独持有
+# - 悬浮小图标应直接复用产品 logo 资源，不使用开发态字母占位图
+# - 对话浮窗应作为锚点浮窗跟随悬浮小图标定位，不提供独立拖拽与缩放
 [presentation_runtime]
 renderer = "floating_panel_vue_vite_v1"
 ui_framework = "vue3"

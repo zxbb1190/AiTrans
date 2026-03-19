@@ -1,10 +1,12 @@
 <script setup>
-import { nextTick, onBeforeUnmount, reactive, ref } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 const editTimers = new Map();
 const copyResetTimers = new Map();
 const threadRef = ref(null);
 let persistTimer = null;
+let threadMutationObserver = null;
+const scrollBurstTimers = new Set();
 
 function createEmptyPayload() {
   return {
@@ -145,8 +147,47 @@ function scrollThreadToBottom() {
     if (!threadRef.value) {
       return;
     }
-    threadRef.value.scrollTop = threadRef.value.scrollHeight;
+    const performScroll = () => {
+      if (!threadRef.value) {
+        return;
+      }
+      const lastMessage = threadRef.value.querySelector('.message:last-of-type');
+      if (lastMessage && typeof lastMessage.scrollIntoView === 'function') {
+        lastMessage.scrollIntoView({ block: 'end' });
+      }
+      threadRef.value.scrollTop = threadRef.value.scrollHeight;
+    };
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        performScroll();
+      });
+    });
   });
+}
+
+function scheduleScrollBurst() {
+  scrollThreadToBottom();
+  for (const delay of [40, 140, 280]) {
+    const timer = window.setTimeout(() => {
+      scrollBurstTimers.delete(timer);
+      scrollThreadToBottom();
+    }, delay);
+    scrollBurstTimers.add(timer);
+  }
+}
+
+function conversationScrollSignature() {
+  return appState.session.messages
+    .map((message) => [
+      message.id,
+      message.stageStatus,
+      message.text,
+      message.translatedText,
+      message.sourceDraft,
+      message.previewExpanded ? 'preview-open' : 'preview-closed',
+    ].join(':'))
+    .join('|');
 }
 
 const appState = reactive({
@@ -186,7 +227,7 @@ function upsertMessage(nextMessage) {
     appState.session.messages.push(normalized);
   }
   persistConversation();
-  scrollThreadToBottom();
+  scheduleScrollBurst();
   return appState.session.messages.find((item) => item.id === normalized.id);
 }
 
@@ -471,6 +512,14 @@ window.aitransDesktop.onPanelCommand(async ({ command }) => {
 });
 
 onBeforeUnmount(() => {
+  if (threadMutationObserver) {
+    threadMutationObserver.disconnect();
+    threadMutationObserver = null;
+  }
+  for (const timer of scrollBurstTimers.values()) {
+    window.clearTimeout(timer);
+  }
+  scrollBurstTimers.clear();
   if (persistTimer) {
     window.clearTimeout(persistTimer);
     persistTimer = null;
@@ -483,33 +532,43 @@ onBeforeUnmount(() => {
     window.clearTimeout(timer);
   }
 });
+
+onMounted(() => {
+  scheduleScrollBurst();
+  if (threadRef.value) {
+    threadMutationObserver = new MutationObserver(() => {
+      scheduleScrollBurst();
+    });
+    threadMutationObserver.observe(threadRef.value, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  }
+});
+
+watch(
+  () => conversationScrollSignature(),
+  () => {
+    scheduleScrollBurst();
+  },
+);
 </script>
 
 <template>
   <main class="chat-shell">
-    <header class="chat-header">
-      <div class="chat-title">
-        <div class="chat-brand">AiTrans</div>
-        <h1>{{ appState.payload.product.displayName }}</h1>
-      </div>
-      <div class="chat-actions">
-        <button class="header-btn" type="button" @click="handleNewChat">
-          {{ appState.payload.product.copy.new_chat_label }}
-        </button>
-        <button class="header-btn" type="button" @click="handleClearHistory">
-          {{ appState.payload.product.copy.clear_history_label }}
-        </button>
-        <button class="icon-btn" type="button" title="设置与连接" aria-label="设置与连接" @click="handleOpenSetup">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11.38 1.52a1 1 0 0 0-1.76 0l-.56 1.12a7.21 7.21 0 0 0-1.2.5l-1.2-.4a1 1 0 0 0-1.23.57l-.58 1.4a1 1 0 0 0 .34 1.2l.94.73a7.3 7.3 0 0 0 0 1l-.94.73a1 1 0 0 0-.34 1.2l.58 1.4a1 1 0 0 0 1.22.56l1.21-.4c.38.22.78.39 1.2.5l.56 1.13a1 1 0 0 0 1.76 0l.56-1.12c.42-.12.82-.29 1.2-.5l1.2.4a1 1 0 0 0 1.23-.57l.58-1.4a1 1 0 0 0-.34-1.2l-.94-.73a7.3 7.3 0 0 0 0-1l.94-.73a1 1 0 0 0 .34-1.2l-.58-1.4a1 1 0 0 0-1.22-.56l-1.21.4a7.2 7.2 0 0 0-1.2-.5l-.56-1.13ZM10 12.25A2.25 2.25 0 1 1 10 7.75a2.25 2.25 0 0 1 0 4.5Z"/></svg>
-        </button>
-        <button class="icon-btn" type="button" title="关闭" aria-label="关闭" @click="handleClose">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.22 5.22a.75.75 0 0 1 1.06 0L10 8.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L11.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06L10 11.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L8.94 10 5.22 6.28a.75.75 0 0 1 0-1.06Z"/></svg>
-        </button>
-      </div>
-    </header>
+    <div class="chat-utility-bar">
+      <button class="utility-btn" type="button" title="设置与连接" aria-label="设置与连接" @click="handleOpenSetup">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11.38 1.52a1 1 0 0 0-1.76 0l-.56 1.12a7.21 7.21 0 0 0-1.2.5l-1.2-.4a1 1 0 0 0-1.23.57l-.58 1.4a1 1 0 0 0 .34 1.2l.94.73a7.3 7.3 0 0 0 0 1l-.94.73a1 1 0 0 0-.34 1.2l.58 1.4a1 1 0 0 0 1.22.56l1.21-.4c.38.22.78.39 1.2.5l.56 1.13a1 1 0 0 0 1.76 0l.56-1.12c.42-.12.82-.29 1.2-.5l1.2.4a1 1 0 0 0 1.23-.57l.58-1.4a1 1 0 0 0-.34-1.2l-.94-.73a7.3 7.3 0 0 0 0-1l.94-.73a1 1 0 0 0 .34-1.2l-.58-1.4a1 1 0 0 0-1.22-.56l-1.21.4a7.2 7.2 0 0 0-1.2-.5l-.56-1.13ZM10 12.25A2.25 2.25 0 1 1 10 7.75a2.25 2.25 0 0 1 0 4.5Z"/></svg>
+      </button>
+      <button class="utility-btn" type="button" title="关闭" aria-label="关闭" @click="handleClose">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.22 5.22a.75.75 0 0 1 1.06 0L10 8.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L11.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06L10 11.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L8.94 10 5.22 6.28a.75.75 0 0 1 0-1.06Z"/></svg>
+      </button>
+    </div>
 
     <section ref="threadRef" class="chat-thread">
       <div v-if="appState.session.messages.length === 0" class="empty-state">
+        <div class="empty-brand">AiTrans</div>
         <div class="empty-title">{{ appState.payload.product.displayName }}</div>
         <p>从快捷键、托盘或悬浮入口开始截图，也可以直接输入要翻译的内容。</p>
       </div>
@@ -547,6 +606,7 @@ onBeforeUnmount(() => {
             class="capture-preview"
             :src="message.previewDataUrl"
             alt="capture preview"
+            @load="scrollThreadToBottom"
           />
         </div>
 
@@ -614,12 +674,25 @@ onBeforeUnmount(() => {
         spellcheck="false"
         placeholder="输入你想翻译或继续追问的内容…"
       />
-      <div class="composer-actions">
-        <button class="header-btn" type="button" @click="handleRecapture">
-          {{ appState.payload.product.copy.recapture_label }}
+      <div class="composer-toolbar">
+        <button
+          class="composer-icon-btn"
+          type="button"
+          title="重新截图"
+          aria-label="重新截图"
+          @click="handleRecapture"
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.75 6.5a2.25 2.25 0 0 1 2.25-2.25h1.54l.63-.94A1.5 1.5 0 0 1 9.42 2.5h1.16c.5 0 .97.25 1.25.67l.63.94H14a2.25 2.25 0 0 1 2.25 2.25v7A2.25 2.25 0 0 1 14 15.75H6a2.25 2.25 0 0 1-2.25-2.25v-7ZM10 13.5a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Zm0-1.5a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5Z"/></svg>
         </button>
-        <button class="send-btn" type="button" @click="handleSendMessage">
-          {{ appState.payload.product.copy.send_label }}
+        <div class="composer-spacer"></div>
+        <button
+          class="composer-send-btn"
+          type="button"
+          title="发送"
+          aria-label="发送"
+          @click="handleSendMessage"
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.28 9.2 15.4 3.8c.9-.4 1.8.48 1.4 1.38l-5.4 12.14c-.42.93-1.78.86-2.1-.1l-1.16-3.47-3.47-1.16c-.96-.32-1.03-1.68-.1-2.1Zm5.82 3.02.9 2.69 4.2-9.44-9.44 4.2 2.69.9 3.36-3.36a.75.75 0 0 1 1.06 1.06l-3.36 3.36Z"/></svg>
         </button>
       </div>
     </footer>
