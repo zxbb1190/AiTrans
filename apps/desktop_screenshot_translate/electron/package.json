@@ -1,6 +1,6 @@
 {
   "name": "desktop-screenshot-translate-electron",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "author": "AiTrans",
   "description": "Windows MVP Electron shell for AiTrans screenshot translation.",
