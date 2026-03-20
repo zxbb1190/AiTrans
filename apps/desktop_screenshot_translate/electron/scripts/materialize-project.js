@@ -9,6 +9,14 @@ const GENERATED_ARTIFACTS = [
   'implementation_bundle.py',
 ];
 
+const PROJECT_METADATA_KEYS = [
+  'project_id',
+  'template',
+  'display_name',
+  'description',
+  'version',
+];
+
 function resolveAppRoot() {
   return path.resolve(__dirname, '..');
 }
@@ -39,6 +47,13 @@ function resolveSourceReleaseNotesDir() {
   );
 }
 
+function resolveSourceProductSpecPath() {
+  return (
+    resolveOptionalInputPath(process.env.AITRANS_PRODUCT_SPEC_SOURCE)
+    || resolveLegacySourceDir('projects', 'desktop_screenshot_translate', 'product_spec.toml')
+  );
+}
+
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
 }
@@ -66,6 +81,78 @@ function copyRequiredArtifacts(sourceDir, targetDir) {
     const targetPath = path.join(targetDir, name);
     fs.copyFileSync(sourcePath, targetPath);
     console.log(`[OK] copied ${sourcePath} -> ${targetPath}`);
+  }
+}
+
+function parseProjectMetadataFromToml(productSpecPath) {
+  const text = fs.readFileSync(productSpecPath, 'utf-8');
+  const sectionMatch = text.match(/^\[project\]\s*([\s\S]*?)(?=^\[|\Z)/m);
+  if (!sectionMatch) {
+    throw new Error(`missing [project] section in ${productSpecPath}`);
+  }
+
+  const section = sectionMatch[1];
+  const metadata = {};
+
+  for (const key of PROJECT_METADATA_KEYS) {
+    const pattern = new RegExp(`^${key}\\s*=\\s*\"([^\"]+)\"`, 'm');
+    const match = section.match(pattern);
+    if (match) {
+      metadata[key] = match[1].trim();
+    }
+  }
+
+  return metadata;
+}
+
+function synchronizeProjectMetadata(targetDir, metadata) {
+  const productSpecPath = path.join(targetDir, 'product_spec.json');
+  const implementationBundlePath = path.join(targetDir, 'implementation_bundle.py');
+
+  if (fs.existsSync(productSpecPath)) {
+    const productSpec = JSON.parse(fs.readFileSync(productSpecPath, 'utf-8'));
+    productSpec.project = {
+      ...(productSpec.project || {}),
+      ...metadata,
+    };
+    fs.writeFileSync(productSpecPath, `${JSON.stringify(productSpec, null, 2)}\n`, 'utf-8');
+    console.log(`[OK] synchronized product metadata -> ${productSpecPath}`);
+  }
+
+  if (fs.existsSync(implementationBundlePath)) {
+    const text = fs.readFileSync(implementationBundlePath, 'utf-8');
+    const names = ['PRODUCT_SPEC', 'RUNTIME_BUNDLE'];
+    const parsed = {};
+
+    for (const name of names) {
+      const pattern = new RegExp(`${name} = json\\.loads\\(r'''([\\s\\S]*?)'''\\)`);
+      const match = text.match(pattern);
+      if (!match) {
+        throw new Error(`missing ${name} payload in ${implementationBundlePath}`);
+      }
+      parsed[name] = JSON.parse(match[1]);
+    }
+
+    parsed.PRODUCT_SPEC.project = {
+      ...(parsed.PRODUCT_SPEC.project || {}),
+      ...metadata,
+    };
+    parsed.RUNTIME_BUNDLE.project = {
+      ...(parsed.RUNTIME_BUNDLE.project || {}),
+      ...metadata,
+    };
+
+    let output = text;
+    for (const name of names) {
+      const pattern = new RegExp(`${name} = json\\.loads\\(r'''([\\s\\S]*?)'''\\)`);
+      output = output.replace(
+        pattern,
+        `${name} = json.loads(r'''${JSON.stringify(parsed[name])}''')`,
+      );
+    }
+
+    fs.writeFileSync(implementationBundlePath, output, 'utf-8');
+    console.log(`[OK] synchronized embedded project metadata -> ${implementationBundlePath}`);
   }
 }
 
@@ -180,6 +267,7 @@ function main() {
   const localReleaseNotesDir = getReleaseNotesDir();
   const sourceGeneratedDir = resolveSourceGeneratedDir();
   const sourceReleaseNotesDir = resolveSourceReleaseNotesDir();
+  const sourceProductSpecPath = resolveSourceProductSpecPath();
 
   console.log('desktop_screenshot_translate standalone materializer');
   console.log(`app root: ${resolveAppRoot()}`);
@@ -187,6 +275,12 @@ function main() {
   if (sourceGeneratedDir) {
     console.log(`[INFO] syncing generated artifacts from: ${sourceGeneratedDir}`);
     copyRequiredArtifacts(sourceGeneratedDir, localGeneratedDir);
+    if (sourceProductSpecPath && fs.existsSync(sourceProductSpecPath)) {
+      const metadata = parseProjectMetadataFromToml(sourceProductSpecPath);
+      synchronizeProjectMetadata(localGeneratedDir, metadata);
+    } else {
+      console.log('[WARN] source product_spec.toml not found; keeping copied generated project metadata as-is');
+    }
     sanitizeImplementationBundle(path.join(localGeneratedDir, 'implementation_bundle.py'));
     sanitizeGenerationManifest(localGeneratedDir);
   } else {

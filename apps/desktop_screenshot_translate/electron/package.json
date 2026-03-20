@@ -1,6 +1,6 @@
 {
   "name": "desktop-screenshot-translate-electron",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "private": true,
   "author": "AiTrans",
   "description": "Windows MVP Electron shell for AiTrans screenshot translation.",
@@ -11,6 +11,7 @@
   },
   "scripts": {
     "clean:dist": "node scripts/clean-dist.js",
+    "clean:portable-staging": "node scripts/clean-portable-staging.js",
     "materialize:project": "node scripts/materialize-project.js",
     "doctor": "node scripts/doctor.js",
     "release:check": "node scripts/release-check.js",
@@ -21,12 +22,12 @@
     "dev": "npm run panel:build && electron .",
     "dev:hot": "node scripts/dev-runner.js",
     "dev:doctor": "npm run doctor && npm run dev",
-    "pack:win:raw": "npm run materialize:project && npm run panel:build && npm run release:check && electron-builder --win portable -c.artifactName=desktop-screenshot-translate-${version}-${arch}-portable.${ext}",
+    "pack:win:raw": "npm run clean:portable-staging && npm run materialize:project && npm run panel:build && npm run release:check && electron-builder --win portable -c.artifactName=desktop-screenshot-translate-${version}-${arch}-portable.${ext}",
     "dist:win:raw": "npm run materialize:project && npm run panel:build && npm run release:check && electron-builder --win nsis",
     "pack:win": "npm run clean:dist && npm run pack:win:raw",
     "dist:win": "npm run clean:dist && npm run dist:win:raw",
     "release:win": "npm run clean:dist && npm run dist:win:raw && npm run pack:win:raw && npm run release:manifest",
-    "check": "node --check main.js && node --check preload.js && node --check lib/project-config.js && node --check lib/window-state.js && node --check lib/conversation-store.js && node --check lib/local-pipeline.js && node --check lib/provider-runtime.js && node --check lib/runtime-overrides.js && node --check lib/ocr-adapters.js && node --check lib/translation-adapters.js && node --check lib/windows-focus.js && node --check lib/update-runtime.js && node --check renderer/anchor/anchor.js && node --check renderer/overlay/overlay.js && node --check renderer/setup/setup.js && node --check scripts/clean-dist.js && node --check scripts/dev-runner.js && node --check scripts/doctor.js && node --check scripts/materialize-project.js && node --check scripts/release-check.js && node --check scripts/release-manifest.js && node --check scripts/stage-tesseract.js && vite build --config vite.panel.config.mjs"
+    "check": "node --check main.js && node --check preload.js && node --check lib/project-config.js && node --check lib/window-state.js && node --check lib/conversation-store.js && node --check lib/local-pipeline.js && node --check lib/provider-runtime.js && node --check lib/runtime-overrides.js && node --check lib/ocr-adapters.js && node --check lib/translation-adapters.js && node --check lib/windows-focus.js && node --check lib/update-runtime.js && node --check renderer/anchor/anchor.js && node --check renderer/overlay/overlay.js && node --check renderer/setup/setup.js && node --check scripts/clean-dist.js && node --check scripts/clean-portable-staging.js && node --check scripts/dev-runner.js && node --check scripts/doctor.js && node --check scripts/materialize-project.js && node --check scripts/release-check.js && node --check scripts/release-manifest.js && node --check scripts/stage-tesseract.js && vite build --config vite.panel.config.mjs"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",
