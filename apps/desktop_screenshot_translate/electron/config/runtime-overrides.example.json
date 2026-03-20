@@ -6,7 +6,8 @@
     "model_note": "Runtime uses the translation model embedded in project-generated/implementation_bundle.py."
   },
   "desktop": {
-    "capture_shortcut": ""
+    "capture_shortcut": "",
+    "send_shortcut": "enter"
   },
   "pipeline": {
     "source_language": "auto"

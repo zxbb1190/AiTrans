@@ -106,6 +106,8 @@ secret_source = "setup_ui_managed_runtime_store_or_env"
 # - 当前会话缓存实现应由桌面宿主主进程落到本地文件缓存，而不是由渲染层 `localStorage` 单独持有
 # - 悬浮小图标应直接复用产品 logo 资源，不使用开发态字母占位图
 # - 对话浮窗应作为锚点浮窗跟随悬浮小图标定位，不提供独立拖拽与缩放
+# - 发送消息快捷键应由设置界面直接管理，并持久化到运行时覆盖中的 `desktop.send_shortcut`
+# - 默认发送快捷键为 `Enter`；若用户改成 `Ctrl+Enter` 或 `Shift+Enter`，未命中的组合键应继续用于换行
 [presentation_runtime]
 renderer = "floating_panel_vue_vite_v1"
 ui_framework = "vue3"

@@ -4,6 +4,7 @@ import { nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 const editTimers = new Map();
 const copyResetTimers = new Map();
 const threadRef = ref(null);
+const composerComposing = ref(false);
 let persistTimer = null;
 let threadMutationObserver = null;
 const scrollBurstTimers = new Set();
@@ -26,7 +27,10 @@ function createEmptyPayload() {
         new_chat_confirm_title: '开始新聊天',
         new_chat_confirm_copy: '当前对话将被清空并删除本地记录，然后开启新会话。',
       },
-      conversation: {},
+      conversation: {
+        sendShortcut: 'enter',
+        sendShortcutOptions: ['enter', 'ctrl_enter', 'shift_enter'],
+      },
     },
     result: null,
   };
@@ -213,6 +217,40 @@ function mergeIncomingPayload(payload) {
       },
     },
   };
+}
+
+function resolvedSendShortcut() {
+  const candidate = appState.payload.product.conversation?.sendShortcut || 'enter';
+  return ['enter', 'ctrl_enter', 'shift_enter'].includes(candidate) ? candidate : 'enter';
+}
+
+function handleComposerKeydown(event) {
+  if (event.key !== 'Enter') {
+    return;
+  }
+  if (event.isComposing || composerComposing.value) {
+    return;
+  }
+
+  const shortcut = resolvedSendShortcut();
+  const ctrlLike = event.ctrlKey || event.metaKey;
+  const shift = event.shiftKey;
+  let matched = false;
+
+  if (shortcut === 'enter') {
+    matched = !ctrlLike && !shift && !event.altKey;
+  } else if (shortcut === 'ctrl_enter') {
+    matched = ctrlLike && !shift && !event.altKey;
+  } else if (shortcut === 'shift_enter') {
+    matched = shift && !ctrlLike && !event.altKey;
+  }
+
+  if (!matched) {
+    return;
+  }
+
+  event.preventDefault();
+  void handleSendMessage();
 }
 
 function upsertMessage(nextMessage) {
@@ -673,6 +711,9 @@ watch(
         class="composer-input"
         spellcheck="false"
         placeholder="输入你想翻译或继续追问的内容…"
+        @keydown="handleComposerKeydown"
+        @compositionstart="composerComposing = true"
+        @compositionend="composerComposing = false"
       />
       <div class="composer-toolbar">
         <button

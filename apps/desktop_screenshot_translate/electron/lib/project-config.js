@@ -54,6 +54,18 @@ function resolveSelectedSourceLanguage(productSpec, runtimeOverrides) {
   return supported.includes('auto') ? 'auto' : supported[0];
 }
 
+function resolveSelectedSendShortcut(runtimeOverrides) {
+  const supported = ['enter', 'ctrl_enter', 'shift_enter'];
+  const override =
+    runtimeOverrides && typeof runtimeOverrides.desktop?.send_shortcut === 'string'
+      ? runtimeOverrides.desktop.send_shortcut.trim()
+      : '';
+  if (override && supported.includes(override)) {
+    return override;
+  }
+  return 'enter';
+}
+
 function loadProjectConfig() {
   let generatedDir = null;
   let productSpecPath = null;
@@ -88,8 +100,21 @@ function loadProjectConfig() {
   const runtimeBundle = extractEmbeddedJson(implementationBundleText, 'RUNTIME_BUNDLE');
   const runtimeOverrides = loadRuntimeOverrides().values;
   const selectedSourceLanguage = resolveSelectedSourceLanguage(productSpec, runtimeOverrides);
+  const selectedSendShortcut = resolveSelectedSendShortcut(runtimeOverrides);
   productSpec.pipeline.selected_source_language = selectedSourceLanguage;
+  if (!productSpec.conversation || typeof productSpec.conversation !== 'object') {
+    productSpec.conversation = {};
+  }
+  productSpec.conversation.selected_send_shortcut = selectedSendShortcut;
+  productSpec.conversation.send_shortcut_options = ['enter', 'ctrl_enter', 'shift_enter'];
   runtimeBundle.pipeline.selected_source_language = selectedSourceLanguage;
+  runtimeBundle.conversation = {
+    ...(runtimeBundle.conversation && typeof runtimeBundle.conversation === 'object'
+      ? runtimeBundle.conversation
+      : {}),
+    selected_send_shortcut: selectedSendShortcut,
+    send_shortcut_options: ['enter', 'ctrl_enter', 'shift_enter'],
+  };
   const shortcut = (
     process.env.AITRANS_CAPTURE_SHORTCUT
     || runtimeOverrides.desktop?.capture_shortcut
@@ -108,6 +133,7 @@ function loadProjectConfig() {
     implementationConfig,
     runtimeBundle,
     selectedSourceLanguage,
+    selectedSendShortcut,
     shortcut,
   };
 }

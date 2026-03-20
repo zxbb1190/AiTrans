@@ -140,6 +140,7 @@ function ensureRuntimeOverridesTemplate() {
     },
     desktop: {
       capture_shortcut: '',
+      send_shortcut: 'enter',
     },
     pipeline: {
       source_language: 'auto',

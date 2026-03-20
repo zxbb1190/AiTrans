@@ -297,6 +297,15 @@
             <input id="captureShortcut" type="text" placeholder="例如 CommandOrControl+Shift+1" />
             <small>快捷键支持重绑；保存后会立即重新注册到当前运行中的应用。</small>
           </div>
+          <div class="field">
+            <label for="sendShortcut">发送快捷键</label>
+            <select id="sendShortcut">
+              <option value="enter">Enter（默认）</option>
+              <option value="ctrl_enter">Ctrl+Enter</option>
+              <option value="shift_enter">Shift+Enter</option>
+            </select>
+            <small>默认用 Enter 发送；未命中的组合键继续用于换行。输入法选词阶段不会因为回车而误发送。</small>
+          </div>
           <div class="footer">
             <div class="subtle">保存后立即生效，不需要重新安装。</div>
             <div class="footer-actions">

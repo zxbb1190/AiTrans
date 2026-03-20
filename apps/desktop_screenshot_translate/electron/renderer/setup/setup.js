@@ -17,11 +17,13 @@ function syncForm(guide) {
   const baseUrlInput = document.getElementById('baseUrl');
   const apiKeyInput = document.getElementById('apiKey');
   const captureShortcutInput = document.getElementById('captureShortcut');
+  const sendShortcutInput = document.getElementById('sendShortcut');
   const sourceLanguageInput = document.getElementById('sourceLanguage');
   const runtimeDraft = guide?.runtimeDraft || {};
   const desktopDraft = guide?.desktopDraft || {};
   const pipelineDraft = guide?.pipelineDraft || {};
   const pipelineOptions = Array.isArray(guide?.pipelineOptions) ? guide.pipelineOptions : ['auto', 'zh', 'en', 'ja'];
+  const sendShortcutOptions = Array.isArray(guide?.sendShortcutOptions) ? guide.sendShortcutOptions : ['enter', 'ctrl_enter', 'shift_enter'];
 
   const currentSourceLanguage = sourceLanguageInput.value;
   sourceLanguageInput.innerHTML = '';
@@ -46,6 +48,24 @@ function syncForm(guide) {
   }
   if (document.activeElement !== captureShortcutInput) {
     captureShortcutInput.value = desktopDraft.captureShortcut || 'CommandOrControl+Shift+1';
+  }
+  const currentSendShortcut = sendShortcutInput.value;
+  sendShortcutInput.innerHTML = '';
+  for (const option of sendShortcutOptions) {
+    const element = document.createElement('option');
+    element.value = option;
+    element.textContent = option === 'enter'
+      ? 'Enter（默认）'
+      : option === 'ctrl_enter'
+        ? 'Ctrl+Enter'
+        : option === 'shift_enter'
+          ? 'Shift+Enter'
+          : option;
+    sendShortcutInput.appendChild(element);
+  }
+  const nextSendShortcut = desktopDraft.sendShortcut || 'enter';
+  if (document.activeElement !== sendShortcutInput || !sendShortcutOptions.includes(currentSendShortcut)) {
+    sendShortcutInput.value = sendShortcutOptions.includes(nextSendShortcut) ? nextSendShortcut : 'enter';
   }
 }
 
@@ -106,6 +126,7 @@ async function saveConfig(startCapture) {
   const baseUrl = document.getElementById('baseUrl').value.trim();
   const apiKey = document.getElementById('apiKey').value.trim();
   const captureShortcut = document.getElementById('captureShortcut').value.trim();
+  const sendShortcut = document.getElementById('sendShortcut').value;
   const sourceLanguage = document.getElementById('sourceLanguage').value;
 
   saveButton.disabled = true;
@@ -117,6 +138,7 @@ async function saveConfig(startCapture) {
       baseUrl,
       apiKey,
       captureShortcut,
+      sendShortcut,
       sourceLanguage,
       startCapture,
     });

@@ -129,6 +129,7 @@ const RETRYABLE_OCR_ERROR_FRAGMENT = 'tesseract returned empty OCR text';
 const PANEL_WIDTH = 460;
 const PANEL_HEIGHT = 680;
 const PANEL_GAP = 14;
+const SUPPORTED_SEND_SHORTCUTS = ['enter', 'ctrl_enter', 'shift_enter'];
 
 process.on('uncaughtException', (error) => {
   appendStartupLog('process:uncaughtException', { message: error.message, stack: error.stack });
@@ -376,7 +377,11 @@ function getPanelPayload(result = null) {
       displayName: config.productSpec.project.display_name,
       presentation: config.productSpec.presentation,
       copy: config.productSpec.presentation.copy,
-      conversation: config.productSpec.conversation || {},
+      conversation: {
+        ...(config.productSpec.conversation || {}),
+        sendShortcut: config.selectedSendShortcut || 'enter',
+        sendShortcutOptions: SUPPORTED_SEND_SHORTCUTS,
+      },
       surface: config.productSpec.surface || {},
     },
     result,
@@ -622,6 +627,16 @@ function resolveConfiguredCaptureShortcut() {
     || 'CommandOrControl+Shift+1'
   ).trim();
   return configuredShortcut || 'CommandOrControl+Shift+1';
+}
+
+function resolveConfiguredSendShortcut() {
+  const overrides = loadRuntimeOverrides().values;
+  const configuredShortcut = (
+    overrides.desktop?.send_shortcut
+    || config.selectedSendShortcut
+    || 'enter'
+  ).trim();
+  return SUPPORTED_SEND_SHORTCUTS.includes(configuredShortcut) ? configuredShortcut : 'enter';
 }
 
 function buildTrayMenu() {
@@ -894,6 +909,10 @@ function getSetupGuideState() {
         typeof desktopOverrides.capture_shortcut === 'string' && desktopOverrides.capture_shortcut.trim()
           ? desktopOverrides.capture_shortcut.trim()
           : currentCaptureShortcut || config.shortcut,
+      sendShortcut:
+        typeof desktopOverrides.send_shortcut === 'string' && desktopOverrides.send_shortcut.trim()
+          ? desktopOverrides.send_shortcut.trim()
+          : config.selectedSendShortcut || 'enter',
     },
     pipelineDraft: {
       sourceLanguage:
@@ -904,6 +923,7 @@ function getSetupGuideState() {
     pipelineOptions: Array.isArray(config.productSpec.pipeline.source_languages)
       ? config.productSpec.pipeline.source_languages
       : ['auto'],
+    sendShortcutOptions: SUPPORTED_SEND_SHORTCUTS,
     capabilities: {
       shortcutAvailable: runtimeCapabilities.shortcutAvailable !== false,
       shortcutMessage: runtimeCapabilities.shortcutMessage,
@@ -1524,6 +1544,10 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
     payload && typeof payload.captureShortcut === 'string'
       ? payload.captureShortcut.trim()
       : resolveConfiguredCaptureShortcut();
+  const sendShortcutInput =
+    payload && typeof payload.sendShortcut === 'string'
+      ? payload.sendShortcut.trim()
+      : resolveConfiguredSendShortcut();
   const sourceLanguageInput =
     payload && typeof payload.sourceLanguage === 'string'
       ? payload.sourceLanguage.trim()
@@ -1538,6 +1562,9 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
   }
   if (!supportedSourceLanguages.includes(sourceLanguageInput)) {
     return { ok: false, error: 'invalid pipeline.source_language' };
+  }
+  if (!SUPPORTED_SEND_SHORTCUTS.includes(sendShortcutInput)) {
+    return { ok: false, error: 'invalid desktop.send_shortcut' };
   }
 
   const normalizedBaseUrl = normalizeBaseUrl(baseUrlInput);
@@ -1565,6 +1592,7 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
         ? currentValues.desktop
         : {}),
       capture_shortcut: shortcutResult.shortcut,
+      send_shortcut: sendShortcutInput,
     },
     pipeline: {
       ...(currentValues.pipeline && typeof currentValues.pipeline === 'object'
@@ -1574,9 +1602,24 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
     },
   });
   config.selectedSourceLanguage = sourceLanguageInput;
+  config.selectedSendShortcut = sendShortcutInput;
   config.productSpec.pipeline.selected_source_language = sourceLanguageInput;
+  if (!config.productSpec.conversation || typeof config.productSpec.conversation !== 'object') {
+    config.productSpec.conversation = {};
+  }
+  config.productSpec.conversation.selected_send_shortcut = sendShortcutInput;
+  config.productSpec.conversation.send_shortcut_options = SUPPORTED_SEND_SHORTCUTS;
   if (config.runtimeBundle?.pipeline) {
     config.runtimeBundle.pipeline.selected_source_language = sourceLanguageInput;
+  }
+  if (config.runtimeBundle) {
+    config.runtimeBundle.conversation = {
+      ...(config.runtimeBundle.conversation && typeof config.runtimeBundle.conversation === 'object'
+        ? config.runtimeBundle.conversation
+        : {}),
+      selected_send_shortcut: sendShortcutInput,
+      send_shortcut_options: SUPPORTED_SEND_SHORTCUTS,
+    };
   }
 
   appendStartupLog('setup-guide:config-saved', {
@@ -1584,6 +1627,7 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
     usingOfficialEndpoint: normalizedBaseUrl === OFFICIAL_OPENAI_BASE_URL,
     apiKeyPresent: Boolean(apiKeyInput),
     captureShortcut: shortcutResult.shortcut,
+    sendShortcut: sendShortcutInput,
     sourceLanguage: sourceLanguageInput,
     startCapture,
   });
