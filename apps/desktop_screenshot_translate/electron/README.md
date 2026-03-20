@@ -48,6 +48,32 @@ npm run dist:win
 
 Artifacts are written to `dist/`.
 
+## Automated Releases
+
+The standalone repo includes `.github/workflows/release.yml`. Pushing a tag like `v0.2.2` will:
+
+- verify that `package.json` is also `0.2.2`
+- verify that `release-notes/0.2.2.md` exists
+- build the Windows installer and portable package on `windows-latest`
+- create or update the matching GitHub Release
+- upload `.exe`, `.blockmap`, `stable.yml`, and `release-manifest-*.json`
+
+Recommended release flow:
+
+```bash
+npm run materialize:project
+npm run check
+npm run doctor
+npm run release:check
+git add package.json release-notes/0.2.2.md project-generated
+git commit -m "release: v0.2.2"
+git push origin main
+git tag v0.2.2
+git push origin v0.2.2
+```
+
+If the tag and `package.json` version do not match, the workflow fails early on purpose.
+
 ## Publish This As A Separate Repo
 
 If you are splitting from a larger monorepo, a common workflow is:

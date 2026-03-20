@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Verify tag and release notes
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $tag = "${{ github.ref_name }}"
+          if ("v$version" -ne $tag) {
+            throw "Tag $tag does not match package.json version v$version"
+          }
+
+          $notesPath = "release-notes/$version.md"
+          if (-not (Test-Path $notesPath)) {
+            throw "Missing release notes: $notesPath"
+          }
+
+          "PACKAGE_VERSION=$version" >> $env:GITHUB_ENV
+          "RELEASE_NOTES_PATH=$notesPath" >> $env:GITHUB_ENV
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate project
+        run: |
+          npm run materialize:project
+          npm run check
+          npm run release:check
+
+      - name: Build release artifacts
+        run: npm run release:win
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = "${{ env.PACKAGE_VERSION }}"
+          $notesPath = "${{ env.RELEASE_NOTES_PATH }}"
+          $title = "AiTrans $version"
+          $assets = @(
+            "dist/desktop-screenshot-translate-$version-x64.exe",
+            "dist/desktop-screenshot-translate-$version-x64.exe.blockmap",
+            "dist/desktop-screenshot-translate-$version-x64-portable.exe",
+            "dist/stable.yml",
+            "dist/release-manifest-$version.json"
+          )
+
+          foreach ($asset in $assets) {
+            if (-not (Test-Path $asset)) {
+              throw "Missing release asset: $asset"
+            }
+          }
+
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $assets --clobber
+            gh release edit $tag --title $title --notes-file $notesPath --latest
+          } else {
+            gh release create $tag $assets --title $title --notes-file $notesPath --verify-tag --latest
+          }
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-assets-${{ env.PACKAGE_VERSION }}
+          if-no-files-found: error
+          path: |
+            dist/desktop-screenshot-translate-${{ env.PACKAGE_VERSION }}-x64.exe
+            dist/desktop-screenshot-translate-${{ env.PACKAGE_VERSION }}-x64.exe.blockmap
+            dist/desktop-screenshot-translate-${{ env.PACKAGE_VERSION }}-x64-portable.exe
+            dist/stable.yml
+            dist/release-manifest-${{ env.PACKAGE_VERSION }}.json
