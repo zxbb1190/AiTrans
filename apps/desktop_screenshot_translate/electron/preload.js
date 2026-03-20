@@ -40,6 +40,9 @@ contextBridge.exposeInMainWorld('aitransDesktop', {
   closePanel() {
     return ipcRenderer.invoke('panel:close');
   },
+  setPanelPinned(payload) {
+    return ipcRenderer.invoke('panel:set-pinned', payload);
+  },
   recapture() {
     return ipcRenderer.invoke('panel:recapture');
   },

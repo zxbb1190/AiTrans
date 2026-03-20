@@ -88,6 +88,11 @@ textarea {
   color: #d8e2ee;
 }
 
+.utility-btn.is-active {
+  background: rgba(93, 234, 210, 0.18);
+  color: #9bf3e3;
+}
+
 .utility-btn svg,
 .icon-btn svg {
   width: 16px;

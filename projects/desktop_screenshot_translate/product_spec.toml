@@ -140,6 +140,7 @@ default_pinned = false
 actions = ["send_text_message", "copy_translation", "edit_source_text", "retry_translation", "close_panel", "recapture", "new_chat", "clear_history", "toggle_preview"]
 auto_hide = "manual_only"
 anchored_to_floating_entry = true
+pin_behavior = "blur_collapse_unless_pinned"
 
 # [presentation.copy] 收纳结果面板上的直接文案。
 # 如果动作不变但提示语要调整，应优先改这里而不是混进实现层。

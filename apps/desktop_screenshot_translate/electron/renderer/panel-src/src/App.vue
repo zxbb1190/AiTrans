@@ -30,6 +30,7 @@ function createEmptyPayload() {
       conversation: {
         sendShortcut: 'enter',
         sendShortcutOptions: ['enter', 'ctrl_enter', 'shift_enter'],
+        panelPinned: false,
       },
     },
     result: null,
@@ -523,6 +524,17 @@ async function handleOpenSetup() {
   await window.aitransDesktop.openSetupGuide();
 }
 
+async function handleTogglePinned() {
+  const nextPinned = !Boolean(appState.payload.product.conversation?.panelPinned);
+  const result = await window.aitransDesktop.setPanelPinned({ pinned: nextPinned });
+  if (result?.ok) {
+    appState.payload.product.conversation = {
+      ...(appState.payload.product.conversation || {}),
+      panelPinned: Boolean(result.pinned),
+    };
+  }
+}
+
 function togglePreview(message) {
   message.previewExpanded = !message.previewExpanded;
   persistConversation();
@@ -596,6 +608,16 @@ watch(
 <template>
   <main class="chat-shell">
     <div class="chat-utility-bar">
+      <button
+        class="utility-btn"
+        :class="{ 'is-active': Boolean(appState.payload.product.conversation?.panelPinned) }"
+        type="button"
+        :title="appState.payload.product.conversation?.panelPinned ? '取消固定' : '固定对话窗'"
+        :aria-label="appState.payload.product.conversation?.panelPinned ? '取消固定' : '固定对话窗'"
+        @click="handleTogglePinned"
+      >
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.78 2.72a.75.75 0 0 1 1.06 0l3.44 3.44a.75.75 0 0 1-1.06 1.06l-.6-.6-2.87 2.87v2.76a.75.75 0 0 1-.22.53l-1.5 1.5a.75.75 0 0 1-1.28-.53V10.8L6.96 8l-1.99 1.99a.75.75 0 1 1-1.06-1.06L5.9 6.94 3.1 4.15a.75.75 0 0 1 .53-1.28h2.76l2.87-2.87-.6-.6a.75.75 0 0 1 0-1.06l.62-.62a.75.75 0 0 1 1.06 0l2.44 2.44Z"/></svg>
+      </button>
       <button class="utility-btn" type="button" title="设置与连接" aria-label="设置与连接" @click="handleOpenSetup">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11.38 1.52a1 1 0 0 0-1.76 0l-.56 1.12a7.21 7.21 0 0 0-1.2.5l-1.2-.4a1 1 0 0 0-1.23.57l-.58 1.4a1 1 0 0 0 .34 1.2l.94.73a7.3 7.3 0 0 0 0 1l-.94.73a1 1 0 0 0-.34 1.2l.58 1.4a1 1 0 0 0 1.22.56l1.21-.4c.38.22.78.39 1.2.5l.56 1.13a1 1 0 0 0 1.76 0l.56-1.12c.42-.12.82-.29 1.2-.5l1.2.4a1 1 0 0 0 1.23-.57l.58-1.4a1 1 0 0 0-.34-1.2l-.94-.73a7.3 7.3 0 0 0 0-1l.94-.73a1 1 0 0 0 .34-1.2l-.58-1.4a1 1 0 0 0-1.22-.56l-1.21.4a7.2 7.2 0 0 0-1.2-.5l-.56-1.13ZM10 12.25A2.25 2.25 0 1 1 10 7.75a2.25 2.25 0 0 1 0 4.5Z"/></svg>
       </button>

@@ -124,6 +124,9 @@ const captureUiState = {
   overlayVisible: false,
   pipelineBusy: false,
 };
+const panelUiState = {
+  pinned: Boolean(stateStore.load().panelPreferences?.pinned),
+};
 const CAPTURE_SETTLE_MS = 180;
 const RETRYABLE_OCR_ERROR_FRAGMENT = 'tesseract returned empty OCR text';
 const PANEL_WIDTH = 460;
@@ -225,6 +228,24 @@ function getOverlayDisplay() {
   return screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
 }
 
+function getVirtualOverlayBounds() {
+  const displays = screen.getAllDisplays();
+  const xs = displays.map((item) => item.bounds.x);
+  const ys = displays.map((item) => item.bounds.y);
+  const rights = displays.map((item) => item.bounds.x + item.bounds.width);
+  const bottoms = displays.map((item) => item.bounds.y + item.bounds.height);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  const right = Math.max(...rights);
+  const bottom = Math.max(...bottoms);
+  return {
+    x,
+    y,
+    width: right - x,
+    height: bottom - y,
+  };
+}
+
 function createAuditContext(selection) {
   return {
     captureSessionId: `capture_${crypto.randomUUID()}`,
@@ -235,17 +256,17 @@ function createAuditContext(selection) {
 }
 
 function createOverlayWindow() {
-  const display = getOverlayDisplay();
+  const bounds = getVirtualOverlayBounds();
   if (overlayWindow && !overlayWindow.isDestroyed()) {
-    overlayWindow.setBounds(display.bounds);
+    overlayWindow.setBounds(bounds);
     return overlayWindow;
   }
 
   overlayWindow = new BrowserWindow({
-    x: display.bounds.x,
-    y: display.bounds.y,
-    width: display.bounds.width,
-    height: display.bounds.height,
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
     frame: false,
     show: false,
     transparent: true,
@@ -293,7 +314,7 @@ function createPanelWindow() {
     transparent: false,
     resizable: false,
     movable: false,
-    alwaysOnTop: true,
+    alwaysOnTop: panelUiState.pinned,
     skipTaskbar: true,
     backgroundColor: '#f4f8f6',
     icon: getWindowIconPath(),
@@ -316,6 +337,14 @@ function createPanelWindow() {
   panelWindow.webContents.on('render-process-gone', (_event, details) => {
     console.error('[panel] render process gone', details);
   });
+  panelWindow.on('blur', () => {
+    if (app.isQuitting || panelUiState.pinned) {
+      return;
+    }
+    if (panelWindow && !panelWindow.isDestroyed() && panelWindow.isVisible()) {
+      panelWindow.hide();
+    }
+  });
   panelWindow.on('close', (event) => {
     if (!app.isQuitting) {
       event.preventDefault();
@@ -325,6 +354,7 @@ function createPanelWindow() {
   panelWindow.on('closed', () => {
     panelWindow = null;
   });
+  applyPanelPinnedState(panelUiState.pinned, { persist: false });
   return panelWindow;
 }
 
@@ -371,6 +401,18 @@ function positionPanelWindow() {
   return window;
 }
 
+function applyPanelPinnedState(nextPinned, { persist = true } = {}) {
+  panelUiState.pinned = Boolean(nextPinned);
+  if (persist) {
+    stateStore.save('panelPreferences', { pinned: panelUiState.pinned });
+  }
+  if (panelWindow && !panelWindow.isDestroyed()) {
+    panelWindow.setAlwaysOnTop(panelUiState.pinned, panelUiState.pinned ? 'floating' : 'normal');
+    panelWindow.setVisibleOnAllWorkspaces(panelUiState.pinned, { visibleOnFullScreen: true });
+  }
+  return panelUiState.pinned;
+}
+
 function getPanelPayload(result = null) {
   return {
     product: {
@@ -381,6 +423,7 @@ function getPanelPayload(result = null) {
         ...(config.productSpec.conversation || {}),
         sendShortcut: config.selectedSendShortcut || 'enter',
         sendShortcutOptions: SUPPORTED_SEND_SHORTCUTS,
+        panelPinned: panelUiState.pinned,
       },
       surface: config.productSpec.surface || {},
     },
@@ -818,15 +861,19 @@ async function showOverlay() {
   }
   captureExternalFocusTarget();
   const display = getOverlayDisplay();
+  const overlayBounds = getVirtualOverlayBounds();
+  const displays = screen.getAllDisplays();
   const window = createOverlayWindow();
   hideAuxiliaryWindowsForCapture();
-  window.setBounds(display.bounds);
+  window.setBounds(overlayBounds);
   window.show();
   window.focus();
 
   const payload = {
     hint: config.productSpec.surface.copy.capture_hint,
     display,
+    displays,
+    overlayBounds,
     modes: config.productSpec.capture.modes,
   };
   if (window.webContents.isLoadingMainFrame()) {
@@ -1198,7 +1245,6 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.hide();
   }
-  scheduleFocusRestore('capture_submitted');
   try {
     appendPipelineEvent('capture_started', audit, {
       resultState: 'capturing',
@@ -1345,6 +1391,15 @@ ipcMain.handle('overlay:cancel', async () => {
   captureUiState.pipelineBusy = false;
   scheduleFocusRestore('capture_cancelled', true);
   return { ok: true };
+});
+
+ipcMain.handle('panel:set-pinned', async (_event, payload) => {
+  const nextPinned = Boolean(payload?.pinned);
+  const pinned = applyPanelPinnedState(nextPinned);
+  if (panelWindow && !panelWindow.isDestroyed()) {
+    panelWindow.webContents.send('panel:set-data', getPanelPayload(null));
+  }
+  return { ok: true, pinned };
 });
 
 ipcMain.handle('panel:copy-translation', async (_event, payload) => {

@@ -2,6 +2,8 @@ const selectionBox = document.getElementById('selection-box');
 const hintCopy = document.getElementById('hint-copy');
 
 let activeDisplay = null;
+let availableDisplays = [];
+let overlayBounds = null;
 let dragStart = null;
 let dragCurrent = null;
 let availableModes = [];
@@ -29,13 +31,20 @@ function buildSelection() {
   const top = Math.min(dragStart.y, dragCurrent.y);
   const width = Math.abs(dragCurrent.x - dragStart.x);
   const height = Math.abs(dragCurrent.y - dragStart.y);
+  const absoluteX = (overlayBounds?.x || 0) + left;
+  const absoluteY = (overlayBounds?.y || 0) + top;
+  const centerPoint = {
+    x: absoluteX + Math.max(1, width) / 2,
+    y: absoluteY + Math.max(1, height) / 2,
+  };
+  const targetDisplay = resolveDisplayForScreenPoint(centerPoint.x, centerPoint.y) || activeDisplay;
   return {
-    displayId: activeDisplay?.id ?? 'unknown',
-    x: (activeDisplay?.bounds?.x || 0) + left,
-    y: (activeDisplay?.bounds?.y || 0) + top,
+    displayId: targetDisplay?.id ?? activeDisplay?.id ?? 'unknown',
+    x: absoluteX,
+    y: absoluteY,
     width,
     height,
-    scaleFactor: activeDisplay?.scaleFactor ?? 1,
+    scaleFactor: targetDisplay?.scaleFactor ?? activeDisplay?.scaleFactor ?? 1,
   };
 }
 
@@ -44,18 +53,39 @@ function supportsMode(mode) {
 }
 
 function buildFullscreenSelection() {
+  const targetDisplay = activeDisplay || availableDisplays[0] || null;
   return {
-    displayId: activeDisplay?.id ?? 'unknown',
-    x: activeDisplay?.bounds?.x || 0,
-    y: activeDisplay?.bounds?.y || 0,
-    width: activeDisplay?.bounds?.width || window.innerWidth,
-    height: activeDisplay?.bounds?.height || window.innerHeight,
-    scaleFactor: activeDisplay?.scaleFactor ?? 1,
+    displayId: targetDisplay?.id ?? 'unknown',
+    x: targetDisplay?.bounds?.x || 0,
+    y: targetDisplay?.bounds?.y || 0,
+    width: targetDisplay?.bounds?.width || window.innerWidth,
+    height: targetDisplay?.bounds?.height || window.innerHeight,
+    scaleFactor: targetDisplay?.scaleFactor ?? 1,
   };
+}
+
+function resolveDisplayForScreenPoint(screenX, screenY) {
+  return availableDisplays.find((item) => {
+    const bounds = item?.bounds;
+    return bounds
+      && screenX >= bounds.x
+      && screenX < bounds.x + bounds.width
+      && screenY >= bounds.y
+      && screenY < bounds.y + bounds.height;
+  }) || null;
+}
+
+function updateActiveDisplayFromPointer(event) {
+  const nextDisplay = resolveDisplayForScreenPoint(event.screenX, event.screenY);
+  if (nextDisplay) {
+    activeDisplay = nextDisplay;
+  }
 }
 
 window.aitransDesktop.onOverlayStart((payload) => {
   activeDisplay = payload.display;
+  availableDisplays = Array.isArray(payload.displays) ? payload.displays : (payload.display ? [payload.display] : []);
+  overlayBounds = payload.overlayBounds || null;
   availableModes = Array.isArray(payload.modes) ? payload.modes : [];
   interactionLocked = false;
   hintCopy.textContent = payload.hint;
@@ -71,6 +101,7 @@ window.addEventListener('pointerdown', (event) => {
   if (event.button !== 0) {
     return;
   }
+  updateActiveDisplayFromPointer(event);
   dragStart = { x: event.clientX, y: event.clientY };
   dragCurrent = { x: event.clientX, y: event.clientY };
   updateSelectionBox();
@@ -80,6 +111,7 @@ window.addEventListener('pointermove', (event) => {
   if (interactionLocked) {
     return;
   }
+  updateActiveDisplayFromPointer(event);
   if (!dragStart) {
     return;
   }
