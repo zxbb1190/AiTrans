@@ -126,6 +126,8 @@ const captureUiState = {
 };
 const panelUiState = {
   pinned: Boolean(stateStore.load().panelPreferences?.pinned),
+  blurGuardUntil: 0,
+  temporaryTopmostTimer: null,
 };
 const CAPTURE_SETTLE_MS = 180;
 const RETRYABLE_OCR_ERROR_FRAGMENT = 'tesseract returned empty OCR text';
@@ -341,6 +343,9 @@ function createPanelWindow() {
     if (app.isQuitting || panelUiState.pinned) {
       return;
     }
+    if (Date.now() < panelUiState.blurGuardUntil) {
+      return;
+    }
     if (panelWindow && !panelWindow.isDestroyed() && panelWindow.isVisible()) {
       panelWindow.hide();
     }
@@ -352,6 +357,10 @@ function createPanelWindow() {
     }
   });
   panelWindow.on('closed', () => {
+    if (panelUiState.temporaryTopmostTimer) {
+      clearTimeout(panelUiState.temporaryTopmostTimer);
+      panelUiState.temporaryTopmostTimer = null;
+    }
     panelWindow = null;
   });
   applyPanelPinnedState(panelUiState.pinned, { persist: false });
@@ -406,11 +415,35 @@ function applyPanelPinnedState(nextPinned, { persist = true } = {}) {
   if (persist) {
     stateStore.save('panelPreferences', { pinned: panelUiState.pinned });
   }
+  if (panelUiState.pinned && panelUiState.temporaryTopmostTimer) {
+    clearTimeout(panelUiState.temporaryTopmostTimer);
+    panelUiState.temporaryTopmostTimer = null;
+  }
   if (panelWindow && !panelWindow.isDestroyed()) {
     panelWindow.setAlwaysOnTop(panelUiState.pinned, panelUiState.pinned ? 'floating' : 'normal');
     panelWindow.setVisibleOnAllWorkspaces(panelUiState.pinned, { visibleOnFullScreen: true });
   }
   return panelUiState.pinned;
+}
+
+function preparePanelForAutoOpen() {
+  panelUiState.blurGuardUntil = Date.now() + 700;
+  if (!panelWindow || panelWindow.isDestroyed() || panelUiState.pinned) {
+    return;
+  }
+  panelWindow.setAlwaysOnTop(true, 'floating');
+  panelWindow.setVisibleOnAllWorkspaces(false, { visibleOnFullScreen: true });
+  if (panelUiState.temporaryTopmostTimer) {
+    clearTimeout(panelUiState.temporaryTopmostTimer);
+  }
+  panelUiState.temporaryTopmostTimer = setTimeout(() => {
+    panelUiState.temporaryTopmostTimer = null;
+    if (!panelWindow || panelWindow.isDestroyed() || panelUiState.pinned) {
+      return;
+    }
+    panelWindow.setAlwaysOnTop(false, 'normal');
+    panelWindow.setVisibleOnAllWorkspaces(false, { visibleOnFullScreen: true });
+  }, 1200);
 }
 
 function getPanelPayload(result = null) {
@@ -437,6 +470,7 @@ function showConversationWindow() {
   const payload = getPanelPayload(null);
 
   const sendPayload = () => {
+    panelUiState.blurGuardUntil = Date.now() + 300;
     window.webContents.send('panel:set-data', payload);
     window.show();
     window.focus();
@@ -1022,11 +1056,8 @@ function showPanel(result) {
   const payload = getPanelPayload(result);
 
   const sendPayload = () => {
+    preparePanelForAutoOpen();
     window.webContents.send('panel:set-data', payload);
-    if (focusRestoreState.preferInactivePanel && typeof window.showInactive === 'function') {
-      window.showInactive();
-      return;
-    }
     window.show();
     window.focus();
   };

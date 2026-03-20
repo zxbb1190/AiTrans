@@ -11,6 +11,7 @@ const OCR_ACCEPT_SCORE = 10;
 const OCR_ACCEPT_TEXT_LENGTH = 5;
 const OCR_DENSE_BLOCK_ACCEPT_SCORE = 26;
 const OCR_DENSE_BLOCK_ACCEPT_TEXT_LENGTH = 48;
+const LATIN_WHITELIST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_/.:';
 
 const TESSERACT_LANGUAGE_MAP = {
   auto: null,
@@ -76,6 +77,58 @@ function detectSourceLanguageFromText(text) {
   return {
     code: 'auto',
     strategy: 'heuristic_post_ocr',
+  };
+}
+
+function computeScriptDistribution(text) {
+  let latin = 0;
+  let kana = 0;
+  let han = 0;
+  let digits = 0;
+  let other = 0;
+
+  for (const char of text || '') {
+    const codePoint = char.codePointAt(0) || 0;
+    if (
+      (codePoint >= 0x41 && codePoint <= 0x5A)
+      || (codePoint >= 0x61 && codePoint <= 0x7A)
+      || (codePoint >= 0x00C0 && codePoint <= 0x024F)
+    ) {
+      latin += 1;
+      continue;
+    }
+    if (codePoint >= 0x30 && codePoint <= 0x39) {
+      digits += 1;
+      continue;
+    }
+    if (
+      (codePoint >= 0x3040 && codePoint <= 0x309F)
+      || (codePoint >= 0x30A0 && codePoint <= 0x30FF)
+      || (codePoint >= 0x31F0 && codePoint <= 0x31FF)
+    ) {
+      kana += 1;
+      continue;
+    }
+    if (
+      (codePoint >= 0x3400 && codePoint <= 0x4DBF)
+      || (codePoint >= 0x4E00 && codePoint <= 0x9FFF)
+      || (codePoint >= 0xF900 && codePoint <= 0xFAFF)
+    ) {
+      han += 1;
+      continue;
+    }
+    if (!/\s/u.test(char)) {
+      other += 1;
+    }
+  }
+
+  return {
+    latin,
+    kana,
+    han,
+    digits,
+    other,
+    total: latin + kana + han + digits + other,
   };
 }
 
@@ -181,6 +234,17 @@ function buildPsmCandidates(capture) {
   return [6, 4, 3];
 }
 
+function looksLikeLatinSingleLine(capture) {
+  if (getCaptureLayoutProfile(capture) !== 'single_line') {
+    return false;
+  }
+
+  const width = capture?.size?.width || 0;
+  const height = capture?.size?.height || 0;
+  const ratio = height > 0 ? width / height : 1;
+  return width >= 180 && ratio >= 3.2;
+}
+
 function scoreRecognizedText(text) {
   if (typeof text !== 'string') {
     return -Infinity;
@@ -232,8 +296,19 @@ function scoreRecognizedText(text) {
   const whitespaceRuns = (normalized.match(/\s+/gu) || []).length;
   const lengthBonus = Math.min(18, normalized.length * 0.08);
   const structureBonus = Math.min(6, lineCount * 1.2) + Math.min(4, whitespaceRuns * 0.35);
+  const scriptDistribution = computeScriptDistribution(normalized);
+  const uppercaseOnly = /^[A-Z0-9][A-Z0-9\s\-_/.:]*$/u.test(normalized);
+  const latinHeavy =
+    scriptDistribution.total > 0
+    && (scriptDistribution.latin + scriptDistribution.digits) / scriptDistribution.total >= 0.8;
+  const latinBonus = latinHeavy ? 3.5 : 0;
+  const uppercaseBonus = uppercaseOnly ? 2.5 : 0;
+  const mixedPenalty =
+    scriptDistribution.han > 0 && scriptDistribution.latin > 0 && normalized.length <= 16
+      ? 3
+      : 0;
 
-  return signal - noise + lengthBonus + structureBonus;
+  return signal - noise + lengthBonus + structureBonus + latinBonus + uppercaseBonus - mixedPenalty;
 }
 
 function getElectronNativeImage() {
@@ -333,6 +408,9 @@ function buildCaptureVariants(capture) {
   }
 
   const layoutProfile = getCaptureLayoutProfile(capture);
+  if (looksLikeLatinSingleLine(capture)) {
+    return [variants[1], variants[0], variants[2], variants[3]].filter(Boolean);
+  }
   if (layoutProfile === 'single_line') {
     return [variants[2], variants[3], variants[1], variants[0]].filter(Boolean);
   }
@@ -348,6 +426,7 @@ function buildRecognitionAttempts(capture, productSpec) {
   const variants = buildCaptureVariants(capture);
   const attempts = [];
   const layoutProfile = getCaptureLayoutProfile(capture);
+  const latinSingleLine = looksLikeLatinSingleLine(capture);
   const seen = new Set();
 
   function pushAttempt(languageProfile, variant, psm) {
@@ -363,6 +442,24 @@ function buildRecognitionAttempts(capture, productSpec) {
       languageProfile,
       variant,
       psm,
+      latinWhitelist: false,
+    });
+  }
+
+  function pushLatinAttempt(languageProfile, variant, psm) {
+    if (!languageProfile || !variant || typeof psm !== 'number') {
+      return;
+    }
+    const token = `${languageProfile.languages}|${variant.name}|${psm}|latin`;
+    if (seen.has(token)) {
+      return;
+    }
+    seen.add(token);
+    attempts.push({
+      languageProfile,
+      variant,
+      psm,
+      latinWhitelist: true,
     });
   }
 
@@ -380,6 +477,26 @@ function buildRecognitionAttempts(capture, productSpec) {
         }
       }
     }
+    return attempts;
+  }
+
+  if (latinSingleLine) {
+    const englishProfile = languageProfiles.find((profile) => profile.languages === 'eng') || languageProfiles[0];
+    const englishFallbackProfile = languageProfiles.find((profile) => profile.languages.includes('eng')) || englishProfile;
+    const primaryVariant = variants[0];
+    const secondaryVariant = variants[1] || variants[0];
+    const grayscaleVariant = variants.find((variant) => variant.name === 'upscaled_grayscale') || secondaryVariant;
+
+    pushLatinAttempt(englishProfile, primaryVariant, 7);
+    pushLatinAttempt(englishProfile, secondaryVariant, 7);
+    pushAttempt(englishProfile, primaryVariant, 7);
+    pushAttempt(englishProfile, secondaryVariant, 7);
+    pushAttempt(englishProfile, primaryVariant, 6);
+    pushLatinAttempt(englishProfile, grayscaleVariant, 7);
+    pushAttempt(englishFallbackProfile, primaryVariant, 7);
+    pushAttempt(englishFallbackProfile, secondaryVariant, 6);
+    pushAttempt(languageProfiles[0], primaryVariant, 7);
+    pushAttempt(languageProfiles[0], secondaryVariant, 6);
     return attempts;
   }
 
@@ -440,6 +557,9 @@ async function recognizeWithTesseract(imagePath, attempt, implementationConfig) 
     '-c',
     'user_defined_dpi=300',
   ];
+  if (attempt.latinWhitelist) {
+    args.push('-c', `tessedit_char_whitelist=${LATIN_WHITELIST}`);
+  }
   if (tessdataDir) {
     args.push('--tessdata-dir', tessdataDir);
   }
@@ -466,6 +586,7 @@ async function recognizeWithTesseract(imagePath, attempt, implementationConfig) 
       executable,
       executableSource: source,
       tessdataDir,
+      latinWhitelist: attempt.latinWhitelist,
       stderr: (result.stderr || '').trim(),
       sourceLanguageDetection: sourceLanguage.strategy,
       textScore: scoreRecognizedText(text),
