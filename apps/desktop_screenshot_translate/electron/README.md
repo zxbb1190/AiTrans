@@ -1,87 +1,91 @@
-# AiTrans Screenshot Translate Electron
+# AiTrans Screenshot Translate
 
-Windows-first Electron desktop app for screenshot OCR and translation.
+[中文说明](./README.zh-CN.md)
 
-This directory is prepared to be published as its own repository. The app keeps the generated runtime inputs it needs under `project-generated/` and the public release notes it needs under `release-notes/`, so it can build without the rest of the private monorepo.
+AiTrans is a Windows desktop app for screenshot translation and AI-assisted follow-up chat.
+This README is for end users first: installation, first-time setup, daily usage, and update behavior.
 
-## What Is Included
+## What AiTrans Can Do
 
-- Electron main process, preload bridge, tray and overlay flows
-- Vue 3 + Vite result panel UI
-- Bundled Tesseract runtime under `vendor/tesseract/`
-- Generated runtime inputs under `project-generated/`
-- Release notes used by packaging under `release-notes/`
+- Capture a screen region and extract the source text
+- Translate the captured content through an OpenAI-compatible endpoint
+- Continue the same task in a lightweight AI chat window
+- Keep the current conversation in local cache until you start a new chat or clear history
 
-## Quick Start
+## Install
 
-Windows is the primary development and packaging target.
+Choose one package:
 
-```bash
-npm install
-npm run doctor
-npm run panel:build
-npm run dev
-```
+- Installer: `desktop-screenshot-translate-<version>-x64.exe`
+- Portable: `desktop-screenshot-translate-<version>-x64-portable.exe`
 
-## Standalone Asset Sync
+The installer build is recommended for most users.
 
-`npm run materialize:project` keeps `project-generated/` and `release-notes/` ready for this standalone repo.
+## First Launch
 
-- When this project still lives inside the original monorepo layout, the script auto-detects the legacy source directories and copies the latest generated artifacts here.
-- When this project is already split into its own repo, keep the local copies committed, or point the script at an external source with:
+On first launch, AiTrans will:
 
-```bash
-AITRANS_PROJECT_GENERATED_SOURCE=/path/to/generated
-AITRANS_RELEASE_NOTES_SOURCE=/path/to/release-notes
-npm run materialize:project
-```
+- show a floating anchor icon on the desktop
+- create a local runtime config file
+- open the setup window if translation settings are missing
 
-The sync step intentionally keeps only the generated files the Electron app needs for runtime and packaging.
+Please configure at least:
 
-## Packaging
+- `base_url`
+- `api_key`
 
-```bash
-npm run materialize:project
-npm run release:check
-npm run dist:win
-```
+A local OpenAI-compatible service is supported.
 
-Artifacts are written to `dist/`.
+## Recommended Settings
 
-## Automated Releases
+In **Settings & Connection**, check these first:
 
-The standalone repo includes `.github/workflows/release.yml`. Pushing a tag like `v0.2.2` will:
+- translation service `base_url`
+- translation service `api_key`
+- source language: auto / Chinese / English / Japanese
+- capture shortcut
+- send shortcut
 
-- verify that `package.json` is also `0.2.2`
-- verify that `release-notes/0.2.2.md` exists
-- build the Windows installer and portable package on `windows-latest`
-- create or update the matching GitHub Release
-- upload `.exe`, `.blockmap`, `stable.yml`, and `release-manifest-*.json`
+## How To Use
 
-Recommended release flow:
+### Screenshot Translation
 
-```bash
-npm run materialize:project
-npm run check
-npm run doctor
-npm run release:check
-git add package.json release-notes/0.2.2.md project-generated
-git commit -m "release: v0.2.2"
-git push origin main
-git tag v0.2.2
-git push origin v0.2.2
-```
+- Click the floating anchor or use the capture shortcut
+- Drag to select a region
+- On multi-display setups, move the pointer to another screen to switch the active capture target
+- After capture completes, the conversation window should reopen with the result
 
-If the tag and `package.json` version do not match, the workflow fails early on purpose.
+### Conversation Window
 
-## Publish This As A Separate Repo
+- A screenshot becomes a user message in the current thread
+- The assistant reply includes source text and translated text
+- You can keep typing in the bottom composer for follow-up translation or discussion
+- When unpinned, the window collapses on blur
+- When pinned, it stays visible
 
-If you are splitting from a larger monorepo, a common workflow is:
+### Floating Anchor
 
-```bash
-git subtree split --prefix=apps/desktop_screenshot_translate/electron -b public/electron
-git remote add public https://github.com/<you>/<repo>.git
-git push -u public public/electron:main
-```
+- Left click: expand or collapse the conversation window
+- Drag: move the floating anchor
+- Right click: open actions such as new chat, clear history, settings, and update check
 
-Before publishing, review the bundled binaries in `vendor/tesseract/` and choose a license file for the new public repo.
+## Local Cache
+
+- The current conversation is stored locally
+- Choosing **New Chat** or **Clear History** asks for confirmation before removing the cached session
+
+## OCR And Translation Notes
+
+- OCR uses the bundled local runtime
+- Translation uses an OpenAI-compatible API path
+- If clear single-line English text is recognized poorly, try setting the source language to **English** before capturing again
+
+## Updates
+
+- The installer build supports update checking
+- The portable build does not auto-update
+- If an update source is configured, you can trigger an update check from the right-click menu
+
+## Need Development Or Packaging Docs?
+
+For development, packaging, and release workflows, use the monorepo docs instead of this user guide.
