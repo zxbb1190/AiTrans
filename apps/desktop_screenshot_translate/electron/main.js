@@ -1,4 +1,4 @@
-const fs = require('node:fs');
+﻿const fs = require('node:fs');
 const crypto = require('node:crypto');
 const path = require('node:path');
 const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, clipboard, screen, shell, dialog } = require('electron');
@@ -56,7 +56,7 @@ function resolveLogFilePath() {
 
 function appendStartupLog(message, extra) {
   const logFile = resolveLogFilePath();
-  const line = `[${new Date().toISOString()}] ${message}${extra ? ` ${JSON.stringify(extra)}` : ''}\n`;
+  const line = '[' + new Date().toISOString() + '] ' + message + (extra ? ' ' + JSON.stringify(extra) : '') + '\n';
   fs.appendFileSync(logFile, line, 'utf-8');
 }
 
@@ -82,7 +82,7 @@ function appendPipelineEvent(eventName, audit, details = {}) {
     shortcut: currentCaptureShortcut || config?.shortcut || null,
     details,
   };
-  fs.appendFileSync(resolveEventLogFilePath(), `${JSON.stringify(record)}\n`, 'utf-8');
+  fs.appendFileSync(resolveEventLogFilePath(), JSON.stringify(record) + '\n', 'utf-8');
 }
 
 let config;
@@ -93,7 +93,7 @@ try {
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
   appendStartupLog('boot:loadProjectConfig:failed', { message });
-  dialog.showErrorBox('AiTrans startup failed', `${message}\n\n日志位置：${resolveLogFilePath()}`);
+  dialog.showErrorBox('AiTrans startup failed', message + '\n\n日志位置：' + resolveLogFilePath());
   throw error;
 }
 
@@ -255,8 +255,8 @@ function getVirtualOverlayBounds() {
 
 function createAuditContext(selection) {
   return {
-    captureSessionId: `capture_${crypto.randomUUID()}`,
-    taskId: `task_${crypto.randomUUID()}`,
+    captureSessionId: 'capture_' + crypto.randomUUID(),
+    taskId: 'task_' + crypto.randomUUID(),
     selection,
     startedAt: Date.now(),
   };
@@ -552,7 +552,7 @@ function createSetupWindow() {
     minimizable: false,
     maximizable: false,
     autoHideMenuBar: true,
-    title: `${config.productSpec.project.display_name} 首次配置`,
+    title: config.productSpec.project.display_name + ' 首次配置', 
     backgroundColor: '#ecf8f4',
     icon: getWindowIconPath(),
     webPreferences: {
@@ -725,6 +725,7 @@ function buildTrayMenu() {
   const updateState = updateRuntime ? updateRuntime.getState() : null;
   const guideState = getSetupGuideState();
   const settingsLabel = guideState.configured ? '设置与连接' : '完成首次配置';
+  const versionLabel = '版本：v' + app.getVersion();
   const template = [
     { label: '开始截图翻译', click: () => showOverlay() },
     { label: '打开对话浮窗', click: () => showConversationWindow() },
@@ -734,7 +735,11 @@ function buildTrayMenu() {
     {
       label: runtimeCapabilities.shortcutAvailable === false
         ? '快捷键暂不可用，当前已降级为托盘入口'
-        : `快捷键：${currentCaptureShortcut || config.shortcut}`,
+        : '快捷键：' + (currentCaptureShortcut || config.shortcut),
+      enabled: false,
+    },
+    {
+      label: versionLabel,
       enabled: false,
     },
   ];
@@ -828,7 +833,7 @@ function applyCaptureShortcut(nextShortcut) {
           config.shortcut = previousShortcut;
           setShortcutCapability(true, null);
           refreshTrayMenu();
-          return { ok: false, error: `invalid shortcut: ${message}` };
+          return { ok: false, error: 'invalid shortcut: ' + message };
         }
       } catch {
         // fall through to degraded tray-only mode
@@ -837,7 +842,7 @@ function applyCaptureShortcut(nextShortcut) {
     currentCaptureShortcut = null;
     setShortcutCapability(false, message);
     refreshTrayMenu();
-    return { ok: false, error: `invalid shortcut: ${message}` };
+    return { ok: false, error: 'invalid shortcut: ' + message };
   }
 
   currentCaptureShortcut = normalized;
@@ -927,7 +932,7 @@ async function showOverlay() {
 function buildStubResult(selection) {
   return {
     sourceText: '等待本地主链输出结果。',
-    translatedText: '纯 Electron 主链已启用，下一次截图会进入本地截图、OCR 和翻译 provider 流程。',
+    translatedText: 'Electron 主链已启用，下一次截图会进入本地截图、OCR 和翻译 provider 流程。',
     sourceLanguage: 'auto',
     stageStatus: 'idle',
     errorOrigin: null,
@@ -1170,17 +1175,17 @@ function extractProviderErrorContext(rawMessage) {
 
 function getTranslationServiceLabel() {
   const service = resolveTranslationService();
-  return getTranslationServicePreset(service)?.label || '当前翻译服务';
+  return getTranslationServicePreset(service)?.label || '褰撳墠缈昏瘧鏈嶅姟';
 }
 
 function buildTechnicalErrorDetail(rawMessage) {
   const info = extractProviderErrorContext(rawMessage);
   const parts = [];
   if (info.status) {
-    parts.push(`HTTP ${info.status}`);
+    parts.push('HTTP ' + info.status);
   }
   if (info.code) {
-    parts.push(`代码 ${info.code}`);
+    parts.push('代码 ' + info.code);
   }
   if (info.payloadMessage) {
     parts.push(info.payloadMessage);
@@ -1189,11 +1194,11 @@ function buildTechnicalErrorDetail(rawMessage) {
   } else if (info.raw) {
     parts.push(info.raw);
   }
-  const detail = collapseWhitespace(parts.join(' · '));
+  const detail = collapseWhitespace(parts.join(' 路 '));
   if (!detail) {
     return '未返回更详细的错误信息。';
   }
-  return detail.length > 320 ? `${detail.slice(0, 317)}…` : detail;
+  return detail.length > 320 ? detail.slice(0, 317) + '…' : detail;
 }
 
 function summarizePipelineFailure(rawMessage) {
@@ -1209,7 +1214,7 @@ function summarizePipelineFailure(rawMessage) {
     baseUrl,
   ].filter(Boolean).join(' ')).toLowerCase();
 
-  let summary = `模型调用失败，请检查 ${serviceLabel} 的服务地址、模型名称和 API Key。`;
+  let summary = '模型调用失败，请检查 ' + serviceLabel + ' 的服务地址、模型名称和 API Key。';
 
   if (
     /tesseract returned empty ocr text|no ocr provider succeeded|empty ocr text|ocr 未返回|未识别到可翻译文本/.test(haystack)
@@ -1225,26 +1230,26 @@ function summarizePipelineFailure(rawMessage) {
     || info.status === 403
     || /invalid api key|authentication|unauthorized|forbidden|鉴权|未授权|permission denied|api key/.test(haystack)
   ) {
-    summary = `${serviceLabel} 的 API Key 无效、已过期或没有调用权限，请检查设置。`;
+    summary = serviceLabel + ' 的 API Key 无效、已过期或没有调用权限，请检查设置。';
   } else if (
     normalizedBaseUrl.endsWith('/chat/completions')
     || normalizedBaseUrl.endsWith('/responses')
     || /chat\/completions\/chat\/completions|responses\/responses/.test(haystack)
   ) {
-    summary = `${serviceLabel} 服务地址填写过深，请填写到服务根路径，不要直接填完整接口地址。`;
+    summary = serviceLabel + ' 服务地址填写过深，请填写到服务根路径，不要直接填完整接口地址。';
   } else if (
     /model_not_found|unknown model|invalid model|does not exist|not found/.test(haystack)
     && /model|glm|gpt|qwen|deepseek/.test(haystack)
   ) {
-    summary = `当前模型名称不可用，请检查 ${serviceLabel} 的模型名是否填写正确。`;
+    summary = '当前模型名称不可用，请检查 ' + serviceLabel + ' 的模型名是否填写正确。';
   } else if (
     /timeout|timed out|aborterror|aborted|etimedout|socket hang up/.test(haystack)
   ) {
-    summary = `${serviceLabel} 响应超时，请稍后重试。`;
+    summary = serviceLabel + ' 响应超时，请稍后重试。';
   } else if (
     /fetch failed|network error|econnrefused|enotfound|certificate|socket|connect|connection refused|self signed|unable to verify|dns/.test(haystack)
   ) {
-    summary = `无法连接到 ${serviceLabel}，请检查网络、代理或服务地址。`;
+    summary = '无法连接 ' + serviceLabel + '，请检查网络、代理或服务地址。';
   } else if (
     /no desktop capture source available|screen capture unavailable|desktopcapturer/.test(haystack)
   ) {
@@ -1320,8 +1325,8 @@ function getFallbackSelection() {
 
 function buildSourceEditAuditContext() {
   return {
-    captureSessionId: lastPipelineState?.captureMeta?.captureSessionId || `capture_${crypto.randomUUID()}`,
-    taskId: `task_${crypto.randomUUID()}`,
+    captureSessionId: lastPipelineState?.captureMeta?.captureSessionId || 'capture_' + crypto.randomUUID(),
+    taskId: 'task_' + crypto.randomUUID(),
   };
 }
 
@@ -1386,7 +1391,7 @@ async function translateFromSourceText(
       sourceLanguage,
       stageStatus: 'translation_processing',
       sourceText: normalizedSourceText,
-      translatedText: '正在根据当前原文生成译文…',
+      translatedText: '正在根据当前原文生成译文。',
       capturePreviewDataUrl: lastPipelineState?.capturePreviewDataUrl || null,
       captureMeta,
     }));
@@ -1508,7 +1513,7 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
     showPanel(buildStageResult(selection, {
       sourceLanguage: 'auto',
       stageStatus: 'capturing',
-      sourceText: '正在抓取选区位图…',
+      sourceText: '正在抓取选区位图。',
       translatedText: '正在从 Windows 桌面获取截图区域，请稍候。',
       captureMeta: {
         captureSessionId: audit.captureSessionId,
@@ -1530,8 +1535,8 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
     showPanel(buildStageResult(selection, {
       sourceLanguage: ocrResult.sourceLanguage || 'auto',
       stageStatus: 'ocr_processing',
-      sourceText: retries > 0 ? '截图已稳定，正在执行本地 OCR…' : '截图完成，正在执行本地 OCR…',
-      translatedText: retries > 0 ? '首次识别未返回文本，已自动重试一次并继续…' : 'OCR 完成后将进入翻译阶段…',
+      sourceText: retries > 0 ? '截图已稳定，正在执行本地 OCR。' : '截图完成，正在执行本地 OCR。', 
+      translatedText: retries > 0 ? '首次识别未返回文本，已自动重试一次并继续。' : 'OCR 完成后将进入翻译阶段。', 
       capturePreviewDataUrl: capture.dataUrl,
       captureMeta: {
         width: capture.size.width,
@@ -1557,7 +1562,7 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
       sourceLanguage: ocrResult.sourceLanguage || 'auto',
       stageStatus: 'translation_processing',
       sourceText: recognizedText || 'OCR 未返回可用文本。',
-      translatedText: '正在调用翻译 provider…',
+      translatedText: '正在调用翻译 provider。',
       capturePreviewDataUrl: capture.dataUrl,
       captureMeta: {
         width: capture.size.width,
@@ -1918,7 +1923,7 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
 
   const normalizedBaseUrl = normalizeBaseUrl(rawBaseUrl);
   if ((translationPreset.requiresApiKey || normalizedBaseUrl === OFFICIAL_OPENAI_BASE_URL) && !effectiveApiKey) {
-    return { ok: false, error: `${translationPreset.label} requires api_key` };
+    return { ok: false, error: translationPreset.label + ' requires api_key' };
   }
 
   const shortcutResult = applyCaptureShortcut(shortcutInput);
@@ -2047,7 +2052,7 @@ app.whenReady().then(async () => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     appendStartupLog('shortcut:register-failed', { message });
-    dialog.showErrorBox('AiTrans 快捷键注册失败', `${message}\n\n请在首次配置窗口中重新设置快捷键。`);
+    dialog.showErrorBox('AiTrans 快捷键注册失败', message + '\n\n请在首次配置窗口中重新设置快捷键。');
     showSetupGuide();
   }
   if (shouldAutoOpenSetupGuide()) {
@@ -2078,3 +2083,7 @@ app.on('will-quit', () => {
 app.on('window-all-closed', () => {
   // Keep the tray app alive; explicit quit is exposed via tray menu.
 });
+
+
+
+
