@@ -729,7 +729,7 @@ function buildTrayMenu() {
     { label: '开始截图翻译', click: () => showOverlay() },
     { label: '打开对话浮窗', click: () => showConversationWindow() },
     { label: '新聊天', click: () => { showConversationWindow(); sendPanelCommand('new_chat'); } },
-    { label: '清空记录', click: () => { showConversationWindow(); sendPanelCommand('clear_history'); } },
+    { label: '聊天历史', click: () => { showConversationWindow(); sendPanelCommand('open_history'); } },
     { label: settingsLabel, click: () => showSetupGuide() },
     {
       label: runtimeCapabilities.shortcutAvailable === false
@@ -1681,10 +1681,10 @@ ipcMain.handle('panel:copy-translation', async (_event, payload) => {
 });
 
 ipcMain.on('panel:load-conversation-state-sync', (event) => {
-  const session = conversationStore.load();
+  const state = conversationStore.load();
   event.returnValue = {
     ok: true,
-    session,
+    state,
     path: conversationStore.getPath(),
   };
 });
@@ -1694,7 +1694,7 @@ ipcMain.handle('panel:save-conversation-state', async (_event, payload) => {
   return {
     ok: true,
     path: saved.path,
-    session: saved.session,
+    state: saved.state,
   };
 });
 

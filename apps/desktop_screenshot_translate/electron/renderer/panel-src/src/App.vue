@@ -20,12 +20,17 @@ function createEmptyPayload() {
         recapture_label: '重新截图',
         close_label: '关闭',
         new_chat_label: '新聊天',
-        clear_history_label: '清空记录',
+        history_label: '聊天历史',
+        history_empty: '暂无历史对话',
+        delete_history_label: '删除记录',
+        clear_history_label: '清空所有聊天',
         send_label: '发送',
-        clear_confirm_title: '清空对话并删除本地记录',
-        clear_confirm_copy: '此操作会删除当前对话与本地缓存记录，是否继续？',
+        clear_confirm_title: '清空所有聊天记录',
+        clear_confirm_copy: '此操作会删除当前对话和全部历史记录，是否继续？',
+        delete_confirm_title: '删除这条聊天记录',
+        delete_confirm_copy: '此操作会删除所选历史记录，是否继续？',
         new_chat_confirm_title: '开始新聊天',
-        new_chat_confirm_copy: '当前对话将被清空并删除本地记录，然后开启新会话。',
+        new_chat_confirm_copy: '当前对话会保留到历史记录中，并开启新会话。',
       },
       conversation: {
         sendShortcut: 'enter',
@@ -38,8 +43,11 @@ function createEmptyPayload() {
 }
 
 function createSession(sessionId = buildId('session')) {
+  const now = new Date().toISOString();
   return {
     sessionId,
+    createdAt: now,
+    updatedAt: now,
     messages: [],
     composerText: '',
   };
@@ -48,6 +56,134 @@ function createSession(sessionId = buildId('session')) {
 function buildId(prefix) {
   const generator = globalThis.crypto?.randomUUID?.bind(globalThis.crypto);
   return `${prefix}_${generator ? generator() : `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`}`;
+}
+
+
+function normalizeSession(session) {
+  if (!session || typeof session !== 'object') {
+    return createSession();
+  }
+  const normalizedMessages = Array.isArray(session.messages)
+    ? session.messages.map(normalizeMessage)
+    : [];
+  const createdAt = typeof session.createdAt === 'string' && session.createdAt ? session.createdAt : new Date().toISOString();
+  const updatedAt = typeof session.updatedAt === 'string' && session.updatedAt ? session.updatedAt : createdAt;
+  return {
+    sessionId: session.sessionId || buildId('session'),
+    createdAt,
+    updatedAt,
+    messages: normalizedMessages,
+    composerText: typeof session.composerText === 'string' ? session.composerText : '',
+  };
+}
+
+function normalizeConversationState(rawState) {
+  if (!rawState || typeof rawState !== 'object') {
+    return {
+      activeSession: createSession(),
+      historySessions: [],
+    };
+  }
+
+  if (rawState.activeSession || Array.isArray(rawState.historySessions)) {
+    const activeSession = normalizeSession(rawState.activeSession);
+    const historySessions = Array.isArray(rawState.historySessions)
+      ? rawState.historySessions
+          .map(normalizeSession)
+          .filter((session) => session.sessionId !== activeSession.sessionId)
+      : [];
+    return {
+      activeSession,
+      historySessions,
+    };
+  }
+
+  return {
+    activeSession: normalizeSession(rawState),
+    historySessions: [],
+  };
+}
+
+function cloneSession(session) {
+  return normalizeSession(JSON.parse(JSON.stringify(session)));
+}
+
+function sortHistorySessions(sessions) {
+  return sessions.sort((left, right) => Date.parse(right.updatedAt || 0) - Date.parse(left.updatedAt || 0));
+}
+
+function touchSession(session) {
+  if (!session) {
+    return;
+  }
+  const now = new Date().toISOString();
+  if (!session.createdAt) {
+    session.createdAt = now;
+  }
+  session.updatedAt = now;
+}
+
+function sessionHasContent(session) {
+  if (!session) {
+    return false;
+  }
+  return session.messages.length > 0 || Boolean((session.composerText || '').trim());
+}
+
+function buildSessionTitle(session) {
+  const firstUserMessage = session.messages.find((message) => message.role === 'user');
+  const raw = (
+    firstUserMessage?.text
+    || firstUserMessage?.sourceText
+    || firstUserMessage?.translatedText
+    || ''
+  ).replace(/\s+/g, ' ').trim();
+  if (!raw) {
+    return '未命名对话';
+  }
+  return raw.length > 20 ? `${raw.slice(0, 20)}…` : raw;
+}
+
+function formatSessionTime(session) {
+  const source = session?.updatedAt || session?.createdAt;
+  if (!source) {
+    return '';
+  }
+  const date = new Date(source);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString();
+}
+
+function upsertHistorySession(session) {
+  if (!session) {
+    return;
+  }
+  const snapshot = cloneSession(session);
+  touchSession(snapshot);
+  const index = appState.historySessions.findIndex((item) => item.sessionId === snapshot.sessionId);
+  if (index >= 0) {
+    appState.historySessions[index] = snapshot;
+  } else {
+    appState.historySessions.unshift(snapshot);
+  }
+  sortHistorySessions(appState.historySessions);
+}
+
+function archiveCurrentSession(options = {}) {
+  const excludedSessionId = options.excludedSessionId || null;
+  if (!sessionHasContent(appState.session)) {
+    return;
+  }
+  if (excludedSessionId && appState.session.sessionId === excludedSessionId) {
+    return;
+  }
+  upsertHistorySession(appState.session);
+}
+
+function removeHistorySession(sessionId) {
+  const index = appState.historySessions.findIndex((item) => item.sessionId === sessionId);
+  if (index >= 0) {
+    appState.historySessions.splice(index, 1);
+  }
 }
 
 function normalizeMessage(message) {
@@ -77,46 +213,20 @@ function normalizeMessage(message) {
 function loadConversationCache() {
   try {
     const response = window.aitransDesktop.loadConversationState();
-    if (!response?.ok || !response.session) {
-      return createSession();
+    if (!response?.ok) {
+      return normalizeConversationState(null);
     }
-    return {
-      sessionId: response.session.sessionId || buildId('session'),
-      composerText: typeof response.session.composerText === 'string' ? response.session.composerText : '',
-      messages: Array.isArray(response.session.messages)
-        ? response.session.messages.map(normalizeMessage)
-        : [],
-    };
+    return normalizeConversationState(response.state || response.session || null);
   } catch {
-    return createSession();
+    return normalizeConversationState(null);
   }
 }
 
 function createConversationSnapshot() {
+  touchSession(appState.session);
   return {
-    sessionId: appState.session.sessionId,
-    composerText: appState.session.composerText,
-    messages: appState.session.messages.map((message) => ({
-      id: message.id,
-      role: message.role,
-      kind: message.kind,
-      requestId: message.requestId,
-      captureSessionId: message.captureSessionId,
-      createdAt: message.createdAt,
-      stageStatus: message.stageStatus,
-      text: message.text,
-      sourceText: message.sourceText,
-      sourceDraft: message.sourceDraft,
-      lastSubmittedSource: message.lastSubmittedSource,
-      translatedText: message.translatedText,
-      sourceLanguage: message.sourceLanguage,
-      targetLanguage: message.targetLanguage,
-      previewDataUrl: message.previewDataUrl,
-      previewExpanded: message.previewExpanded,
-      errorSummary: message.errorSummary,
-      errorOrigin: message.errorOrigin,
-      copyFeedback: message.copyFeedback,
-    })),
+    activeSession: cloneSession(appState.session),
+    historySessions: appState.historySessions.map((session) => cloneSession(session)),
   };
 }
 
@@ -197,9 +307,12 @@ function conversationScrollSignature() {
     .join('|');
 }
 
+const loadedConversationState = loadConversationCache();
 const appState = reactive({
   payload: createEmptyPayload(),
-  session: loadConversationCache(),
+  session: loadedConversationState.activeSession,
+  historySessions: loadedConversationState.historySessions,
+  historyOpen: false,
 });
 
 function mergeIncomingPayload(payload) {
@@ -267,6 +380,7 @@ function upsertMessage(nextMessage) {
   } else {
     appState.session.messages.push(normalized);
   }
+  touchSession(appState.session);
   persistConversation();
   scheduleScrollBurst();
   return appState.session.messages.find((item) => item.id === normalized.id);
@@ -378,30 +492,74 @@ function ingestResult(result) {
   });
 }
 
-async function resetConversation() {
+async function startNewChatSession() {
+  archiveCurrentSession();
   appState.session = createSession();
-  await clearConversationCache();
+  appState.historyOpen = false;
   persistConversation({ immediate: true });
+  scheduleScrollBurst();
 }
 
 async function handleNewChat() {
   const copy = appState.payload.product.copy;
-  const confirmed = window.confirm(`${copy.new_chat_confirm_title}\n\n${copy.new_chat_confirm_copy}`);
+  const confirmed = window.confirm(`${copy.new_chat_confirm_title}
+
+${copy.new_chat_confirm_copy}`);
   if (!confirmed) {
     return;
   }
-  await resetConversation();
+  await startNewChatSession();
+}
+
+async function handleOpenHistoryPanel() {
+  appState.historyOpen = true;
+  await nextTick();
+}
+
+function handleCloseHistoryPanel() {
+  appState.historyOpen = false;
+}
+
+async function handleOpenHistorySession(sessionId) {
+  const nextSession = appState.historySessions.find((session) => session.sessionId === sessionId);
+  if (!nextSession) {
+    return;
+  }
+  removeHistorySession(sessionId);
+  archiveCurrentSession({ excludedSessionId: sessionId });
+  appState.session = cloneSession(nextSession);
+  appState.historyOpen = false;
+  persistConversation({ immediate: true });
+  scheduleScrollBurst();
+}
+
+async function handleDeleteHistorySession(sessionId) {
+  const copy = appState.payload.product.copy;
+  const confirmed = window.confirm(`${copy.delete_confirm_title}
+
+${copy.delete_confirm_copy}`);
+  if (!confirmed) {
+    return;
+  }
+  removeHistorySession(sessionId);
+  persistConversation({ immediate: true });
 }
 
 async function handleClearHistory() {
   const copy = appState.payload.product.copy;
-  const confirmed = window.confirm(`${copy.clear_confirm_title}\n\n${copy.clear_confirm_copy}`);
+  const confirmed = window.confirm(`${copy.clear_confirm_title}
+
+${copy.clear_confirm_copy}`);
   if (!confirmed) {
     return;
   }
-  await resetConversation();
+  appState.historySessions = [];
+  appState.session = createSession();
+  await clearConversationCache();
+  persistConversation({ immediate: true });
+  appState.historyOpen = false;
+  scheduleScrollBurst();
 }
-
 async function handleCopy(message) {
   if (!message.translatedText) {
     return;
@@ -555,8 +713,8 @@ window.aitransDesktop.onPanelCommand(async ({ command }) => {
     await handleNewChat();
     return;
   }
-  if (command === 'clear_history') {
-    await handleClearHistory();
+  if (command === 'open_history' || command === 'clear_history') {
+    await handleOpenHistoryPanel();
     return;
   }
   if (command === 'open_setup') {
@@ -610,7 +768,20 @@ watch(
 
 <template>
   <main class="chat-shell">
-    <div class="chat-utility-bar">
+    <div v-if="appState.historyOpen" class="chat-utility-bar chat-utility-bar--history">
+      <button class="utility-btn utility-btn--label" type="button" title="返回对话" aria-label="返回对话" @click="handleCloseHistoryPanel">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11.78 4.22a.75.75 0 0 1 0 1.06L7.56 9.5h8.19a.75.75 0 0 1 0 1.5H7.56l4.22 4.22a.75.75 0 1 1-1.06 1.06l-5.5-5.5a.75.75 0 0 1 0-1.06l5.5-5.5a.75.75 0 0 1 1.06 0Z"/></svg>
+        <span>返回</span>
+      </button>
+      <button class="utility-btn utility-btn--label" type="button" :title="appState.payload.product.copy.new_chat_label" :aria-label="appState.payload.product.copy.new_chat_label" @click="handleNewChat">
+        <span>{{ appState.payload.product.copy.new_chat_label }}</span>
+      </button>
+      <button class="utility-btn utility-btn--label utility-btn--danger" type="button" :title="appState.payload.product.copy.clear_history_label" :aria-label="appState.payload.product.copy.clear_history_label" @click="handleClearHistory">
+        <span>{{ appState.payload.product.copy.clear_history_label }}</span>
+      </button>
+    </div>
+
+    <div v-else class="chat-utility-bar">
       <button
         class="utility-btn"
         :class="{ 'is-active': Boolean(appState.payload.product.conversation?.panelPinned) }"
@@ -621,6 +792,9 @@ watch(
       >
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.78 2.72a.75.75 0 0 1 1.06 0l3.44 3.44a.75.75 0 0 1-1.06 1.06l-.6-.6-2.87 2.87v2.76a.75.75 0 0 1-.22.53l-1.5 1.5a.75.75 0 0 1-1.28-.53V10.8L6.96 8l-1.99 1.99a.75.75 0 1 1-1.06-1.06L5.9 6.94 3.1 4.15a.75.75 0 0 1 .53-1.28h2.76l2.87-2.87-.6-.6a.75.75 0 0 1 0-1.06l.62-.62a.75.75 0 0 1 1.06 0l2.44 2.44Z"/></svg>
       </button>
+      <button class="utility-btn" type="button" :title="appState.payload.product.copy.history_label" :aria-label="appState.payload.product.copy.history_label" @click="handleOpenHistoryPanel">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.75a7.25 7.25 0 1 0 7.25 7.25A7.26 7.26 0 0 0 10 2.75Zm0 1.5A5.75 5.75 0 1 1 4.25 10 5.76 5.76 0 0 1 10 4.25Zm-.75 2.5a.75.75 0 0 1 1.5 0v3.19l2.23 1.49a.75.75 0 1 1-.84 1.24l-2.56-1.71A.75.75 0 0 1 9.25 10V6.75Z"/></svg>
+      </button>
       <button class="utility-btn" type="button" title="设置与连接" aria-label="设置与连接" @click="handleOpenSetup">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11.38 1.52a1 1 0 0 0-1.76 0l-.56 1.12a7.21 7.21 0 0 0-1.2.5l-1.2-.4a1 1 0 0 0-1.23.57l-.58 1.4a1 1 0 0 0 .34 1.2l.94.73a7.3 7.3 0 0 0 0 1l-.94.73a1 1 0 0 0-.34 1.2l.58 1.4a1 1 0 0 0 1.22.56l1.21-.4c.38.22.78.39 1.2.5l.56 1.13a1 1 0 0 0 1.76 0l.56-1.12c.42-.12.82-.29 1.2-.5l1.2.4a1 1 0 0 0 1.23-.57l.58-1.4a1 1 0 0 0-.34-1.2l-.94-.73a7.3 7.3 0 0 0 0-1l.94-.73a1 1 0 0 0 .34-1.2l-.58-1.4a1 1 0 0 0-1.22-.56l-1.21.4a7.2 7.2 0 0 0-1.2-.5l-.56-1.13ZM10 12.25A2.25 2.25 0 1 1 10 7.75a2.25 2.25 0 0 1 0 4.5Z"/></svg>
       </button>
@@ -629,141 +803,180 @@ watch(
       </button>
     </div>
 
-    <section ref="threadRef" class="chat-thread">
-      <div v-if="appState.session.messages.length === 0" class="empty-state">
-        <div class="empty-brand">AiTrans</div>
-        <div class="empty-title">{{ appState.payload.product.displayName }}</div>
-        <p>从快捷键、托盘或悬浮入口开始截图，也可以直接输入要翻译的内容。</p>
+    <aside v-if="appState.historyOpen" class="history-panel history-panel--full">
+      <div class="history-panel__header">
+        <div>
+          <div class="history-panel__title">{{ appState.payload.product.copy.history_label }}</div>
+          <div class="history-panel__subtitle">{{ appState.historySessions.length }} 条历史记录</div>
+        </div>
       </div>
-
-      <article
-        v-for="message in appState.session.messages"
-        :key="message.id"
-        class="message"
-        :data-role="message.role"
-        :data-kind="message.kind"
-      >
-        <div class="message-meta">
-          <span class="message-role">{{ message.role === 'user' ? '你' : 'AI' }}</span>
-          <span class="message-stage">{{ stageLabel(message.stageStatus) }}</span>
-        </div>
-
-        <div v-if="message.kind === 'user_text'" class="bubble bubble--user">
-          {{ message.text }}
-        </div>
-
-        <div v-else-if="message.kind === 'user_screenshot'" class="bubble bubble--user bubble--capture">
-          <div class="capture-label">{{ message.text || '已发送截图' }}</div>
+      <div v-if="appState.historySessions.length === 0" class="history-empty">{{ appState.payload.product.copy.history_empty }}</div>
+      <div v-else class="history-list history-list--full">
+        <article
+          v-for="session in appState.historySessions"
+          :key="session.sessionId"
+          class="history-item"
+        >
           <button
-            v-if="message.previewDataUrl"
-            class="preview-toggle"
+            class="history-item__open"
             type="button"
-            :aria-expanded="message.previewExpanded ? 'true' : 'false'"
-            @click="togglePreview(message)"
+            @click="handleOpenHistorySession(session.sessionId)"
           >
-            <span>截图结果预览</span>
-            <span>{{ message.previewExpanded ? '收起' : '展开' }}</span>
+            <div class="history-item__content">
+              <div class="history-item__title">{{ buildSessionTitle(session) }}</div>
+              <div class="history-item__meta">{{ formatSessionTime(session) }}</div>
+            </div>
           </button>
-          <img
-            v-if="message.previewExpanded && message.previewDataUrl"
-            class="capture-preview"
-            :src="message.previewDataUrl"
-            alt="capture preview"
-            @load="scrollThreadToBottom"
-          />
+          <button
+            class="icon-btn icon-btn--small history-item__delete"
+            type="button"
+            :title="appState.payload.product.copy.delete_history_label"
+            :aria-label="appState.payload.product.copy.delete_history_label"
+            @click="handleDeleteHistorySession(session.sessionId)"
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 2.75A1.75 1.75 0 0 0 5.75 4.5v.25H3.5a.75.75 0 0 0 0 1.5h.69l.72 9.03A2 2 0 0 0 6.9 17.25h6.2a2 2 0 0 0 1.99-1.97l.72-9.03h.69a.75.75 0 0 0 0-1.5h-2.25V4.5A1.75 1.75 0 0 0 12.5 2.75h-5Zm0 1.5h5a.25.25 0 0 1 .25.25v.25h-5.5V4.5a.25.25 0 0 1 .25-.25Zm-1.1 2 1.48 8.79a.5.5 0 0 0 .49.41h3.26a.5.5 0 0 0 .49-.41l1.48-8.79H6.4Z"/></svg>
+          </button>
+        </article>
+      </div>
+    </aside>
+
+    <template v-else>
+      <section ref="threadRef" class="chat-thread">
+        <div v-if="appState.session.messages.length === 0" class="empty-state">
+          <div class="empty-brand">AiTrans</div>
+          <div class="empty-title">{{ appState.payload.product.displayName }}</div>
+          <p>从快捷键、托盘或悬浮入口开始截图，也可以直接输入要翻译的内容。</p>
         </div>
 
-        <div v-else-if="message.kind === 'assistant_translation'" class="bubble bubble--assistant">
-          <div class="translation-card">
-            <div class="translation-head">
-              <div class="translation-label">原文</div>
-              <div class="translation-actions">
-                <button
-                  class="icon-btn icon-btn--small"
-                  type="button"
-                  title="重新截图"
-                  aria-label="重新截图"
-                  @click="handleRecapture"
-                >
-                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10a5.5 5.5 0 0 1 9.39-3.89L15.5 7.7V4.5h-3.2l1.35 1.35A4.5 4.5 0 1 0 14.5 10h1.5A6 6 0 1 1 4.5 10Z"/></svg>
-                </button>
-              </div>
-            </div>
-            <textarea
-              v-model="message.sourceDraft"
-              class="source-editor"
-              spellcheck="false"
-              :disabled="message.stageStatus === 'capturing' || message.stageStatus === 'ocr_processing'"
-              @input="handleAssistantSourceInput(message)"
-            />
+        <article
+          v-for="message in appState.session.messages"
+          :key="message.id"
+          class="message"
+          :data-role="message.role"
+          :data-kind="message.kind"
+        >
+          <div class="message-meta">
+            <span class="message-role">{{ message.role === 'user' ? '你' : 'AI' }}</span>
+            <span class="message-stage">{{ stageLabel(message.stageStatus) }}</span>
+          </div>
 
-            <div class="translation-head translation-head--secondary">
-              <div class="translation-label">译文</div>
-              <div class="translation-actions">
-                <button
-                  class="icon-btn icon-btn--small"
-                  type="button"
-                  title="复制译文"
-                  aria-label="复制译文"
-                  @click="handleCopy(message)"
-                >
-                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.75 2A2.75 2.75 0 0 0 4 4.75v7.5A2.75 2.75 0 0 0 6.75 15h4.5A2.75 2.75 0 0 0 14 12.25v-7.5A2.75 2.75 0 0 0 11.25 2h-4.5Zm-1.25 2.75c0-.69.56-1.25 1.25-1.25h4.5c.69 0 1.25.56 1.25 1.25v7.5c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-7.5ZM9 16.5H7.5a3.5 3.5 0 0 1-3.5-3.5V6.5a.75.75 0 0 0-1.5 0V13A5 5 0 0 0 7.5 18H9a.75.75 0 0 0 0-1.5Z"/></svg>
-                </button>
-                <button
-                  class="icon-btn icon-btn--small"
-                  type="button"
-                  title="重试翻译"
-                  aria-label="重试翻译"
-                  @click="handleRetryTranslation(message)"
-                >
-                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5a6.5 6.5 0 1 1-5.89 9.24.75.75 0 1 1 1.36-.64A5 5 0 1 0 6.8 6.01L8.5 7.7H5V4.2l.74.74A6.47 6.47 0 0 1 10 3.5Z"/></svg>
-                </button>
-              </div>
-            </div>
-            <div class="translation-output">{{ message.translatedText || appState.payload.product.copy.empty_translation }}</div>
-            <div v-if="message.copyFeedback" class="message-feedback">{{ message.copyFeedback }}</div>
-            <div
-              v-if="message.stageStatus === 'failed' && message.errorOrigin && message.errorOrigin !== (message.errorSummary || message.translatedText)"
-              class="message-error"
+          <div v-if="message.kind === 'user_text'" class="bubble bubble--user">
+            {{ message.text }}
+          </div>
+
+          <div v-else-if="message.kind === 'user_screenshot'" class="bubble bubble--user bubble--capture">
+            <div class="capture-label">{{ message.text || '已发送截图' }}</div>
+            <button
+              v-if="message.previewDataUrl"
+              class="preview-toggle"
+              type="button"
+              :aria-expanded="message.previewExpanded ? 'true' : 'false'"
+              @click="togglePreview(message)"
             >
-              详细信息：{{ message.errorOrigin }}
+              <span>截图结果预览</span>
+              <span>{{ message.previewExpanded ? '收起' : '展开' }}</span>
+            </button>
+            <img
+              v-if="message.previewExpanded && message.previewDataUrl"
+              class="capture-preview"
+              :src="message.previewDataUrl"
+              alt="capture preview"
+              @load="scrollThreadToBottom"
+            />
+          </div>
+
+          <div v-else-if="message.kind === 'assistant_translation'" class="bubble bubble--assistant">
+            <div class="translation-card">
+              <div class="translation-head">
+                <div class="translation-label">原文</div>
+                <div class="translation-actions">
+                  <button
+                    class="icon-btn icon-btn--small"
+                    type="button"
+                    title="重新截图"
+                    aria-label="重新截图"
+                    @click="handleRecapture"
+                  >
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10a5.5 5.5 0 0 1 9.39-3.89L15.5 7.7V4.5h-3.2l1.35 1.35A4.5 4.5 0 1 0 14.5 10h1.5A6 6 0 1 1 4.5 10Z"/></svg>
+                  </button>
+                </div>
+              </div>
+              <textarea
+                v-model="message.sourceDraft"
+                class="source-editor"
+                spellcheck="false"
+                :disabled="message.stageStatus === 'capturing' || message.stageStatus === 'ocr_processing'"
+                @input="handleAssistantSourceInput(message)"
+              />
+
+              <div class="translation-head translation-head--secondary">
+                <div class="translation-label">译文</div>
+                <div class="translation-actions">
+                  <button
+                    class="icon-btn icon-btn--small"
+                    type="button"
+                    title="复制译文"
+                    aria-label="复制译文"
+                    @click="handleCopy(message)"
+                  >
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.75 2A2.75 2.75 0 0 0 4 4.75v7.5A2.75 2.75 0 0 0 6.75 15h4.5A2.75 2.75 0 0 0 14 12.25v-7.5A2.75 2.75 0 0 0 11.25 2h-4.5Zm-1.25 2.75c0-.69.56-1.25 1.25-1.25h4.5c.69 0 1.25.56 1.25 1.25v7.5c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-7.5ZM9 16.5H7.5a3.5 3.5 0 0 1-3.5-3.5V6.5a.75.75 0 0 0-1.5 0V13A5 5 0 0 0 7.5 18H9a.75.75 0 0 0 0-1.5Z"/></svg>
+                  </button>
+                  <button
+                    class="icon-btn icon-btn--small"
+                    type="button"
+                    title="重试翻译"
+                    aria-label="重试翻译"
+                    @click="handleRetryTranslation(message)"
+                  >
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5a6.5 6.5 0 1 1-5.89 9.24.75.75 0 1 1 1.36-.64A5 5 0 1 0 6.8 6.01L8.5 7.7H5V4.2l.74.74A6.47 6.47 0 0 1 10 3.5Z"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="translation-output">{{ message.translatedText || appState.payload.product.copy.empty_translation }}</div>
+              <div v-if="message.copyFeedback" class="message-feedback">{{ message.copyFeedback }}</div>
+              <div
+                v-if="message.stageStatus === 'failed' && message.errorOrigin && message.errorOrigin !== (message.errorSummary || message.translatedText)"
+                class="message-error"
+              >
+                详细信息：{{ message.errorOrigin }}
+              </div>
             </div>
           </div>
-        </div>
-      </article>
-    </section>
+        </article>
+      </section>
 
-    <footer class="composer">
-      <textarea
-        v-model="appState.session.composerText"
-        class="composer-input"
-        spellcheck="false"
-        placeholder="输入你想翻译或继续追问的内容…"
-        @keydown="handleComposerKeydown"
-        @compositionstart="composerComposing = true"
-        @compositionend="composerComposing = false"
-      />
-      <div class="composer-toolbar">
-        <button
-          class="composer-icon-btn"
-          type="button"
-          title="重新截图"
-          aria-label="重新截图"
-          @click="handleRecapture"
-        >
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.75 6.5a2.25 2.25 0 0 1 2.25-2.25h1.54l.63-.94A1.5 1.5 0 0 1 9.42 2.5h1.16c.5 0 .97.25 1.25.67l.63.94H14a2.25 2.25 0 0 1 2.25 2.25v7A2.25 2.25 0 0 1 14 15.75H6a2.25 2.25 0 0 1-2.25-2.25v-7ZM10 13.5a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Zm0-1.5a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5Z"/></svg>
-        </button>
-        <div class="composer-spacer"></div>
-        <button
-          class="composer-send-btn"
-          type="button"
-          title="发送"
-          aria-label="发送"
-          @click="handleSendMessage"
-        >
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.28 9.2 15.4 3.8c.9-.4 1.8.48 1.4 1.38l-5.4 12.14c-.42.93-1.78.86-2.1-.1l-1.16-3.47-3.47-1.16c-.96-.32-1.03-1.68-.1-2.1Zm5.82 3.02.9 2.69 4.2-9.44-9.44 4.2 2.69.9 3.36-3.36a.75.75 0 0 1 1.06 1.06l-3.36 3.36Z"/></svg>
-        </button>
-      </div>
-    </footer>
+      <footer class="composer">
+        <textarea
+          v-model="appState.session.composerText"
+          class="composer-input"
+          spellcheck="false"
+          placeholder="输入你想翻译或继续追问的内容…"
+          @keydown="handleComposerKeydown"
+          @compositionstart="composerComposing = true"
+          @compositionend="composerComposing = false"
+        />
+        <div class="composer-toolbar">
+          <button
+            class="composer-icon-btn"
+            type="button"
+            title="重新截图"
+            aria-label="重新截图"
+            @click="handleRecapture"
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.75 6.5a2.25 2.25 0 0 1 2.25-2.25h1.54l.63-.94A1.5 1.5 0 0 1 9.42 2.5h1.16c.5 0 .97.25 1.25.67l.63.94H14a2.25 2.25 0 0 1 2.25 2.25v7A2.25 2.25 0 0 1 14 15.75H6a2.25 2.25 0 0 1-2.25-2.25v-7ZM10 13.5a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Zm0-1.5a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5Z"/></svg>
+          </button>
+          <div class="composer-spacer"></div>
+          <button
+            class="composer-send-btn"
+            type="button"
+            title="发送"
+            aria-label="发送"
+            @click="handleSendMessage"
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.28 9.2 15.4 3.8c.9-.4 1.8.48 1.4 1.38l-5.4 12.14c-.42.93-1.78.86-2.1-.1l-1.16-3.47-3.47-1.16c-.96-.32-1.03-1.68-.1-2.1Zm5.82 3.02.9 2.69 4.2-9.44-9.44 4.2 2.69.9 3.36-3.36a.75.75 0 0 1 1.06 1.06l-3.36 3.36Z"/></svg>
+          </button>
+        </div>
+      </footer>
+    </template>
   </main>
 </template>

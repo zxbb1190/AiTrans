@@ -6,8 +6,11 @@ function buildId(prefix) {
 }
 
 function createEmptySession() {
+  const now = new Date().toISOString();
   return {
     sessionId: buildId('session'),
+    createdAt: now,
+    updatedAt: now,
     messages: [],
     composerText: '',
   };
@@ -37,7 +40,10 @@ function normalizeMessage(message) {
         : 'idle',
     text: typeof message.text === 'string' ? message.text : '',
     sourceText: typeof message.sourceText === 'string' ? message.sourceText : '',
-    sourceDraft: typeof message.sourceDraft === 'string' ? message.sourceDraft : (typeof message.sourceText === 'string' ? message.sourceText : ''),
+    sourceDraft:
+      typeof message.sourceDraft === 'string'
+        ? message.sourceDraft
+        : (typeof message.sourceText === 'string' ? message.sourceText : ''),
     lastSubmittedSource:
       typeof message.lastSubmittedSource === 'string'
         ? message.lastSubmittedSource
@@ -56,6 +62,7 @@ function normalizeMessage(message) {
         ? message.previewDataUrl
         : null,
     previewExpanded: Boolean(message.previewExpanded),
+    errorSummary: typeof message.errorSummary === 'string' ? message.errorSummary : '',
     errorOrigin:
       typeof message.errorOrigin === 'string' && message.errorOrigin.trim()
         ? message.errorOrigin
@@ -72,14 +79,69 @@ function normalizeSession(session) {
   const normalizedMessages = Array.isArray(session.messages)
     ? session.messages.map(normalizeMessage).filter(Boolean)
     : [];
+  const createdAt =
+    typeof session.createdAt === 'string' && session.createdAt.trim()
+      ? session.createdAt.trim()
+      : new Date().toISOString();
+  const updatedAt =
+    typeof session.updatedAt === 'string' && session.updatedAt.trim()
+      ? session.updatedAt.trim()
+      : createdAt;
 
   return {
     sessionId:
       typeof session.sessionId === 'string' && session.sessionId.trim()
         ? session.sessionId.trim()
         : buildId('session'),
+    createdAt,
+    updatedAt,
     messages: normalizedMessages,
     composerText: typeof session.composerText === 'string' ? session.composerText : '',
+  };
+}
+
+function dedupeSessions(sessions) {
+  const map = new Map();
+  for (const session of sessions) {
+    const normalized = normalizeSession(session);
+    map.set(normalized.sessionId, normalized);
+  }
+  return Array.from(map.values()).sort((left, right) => {
+    const leftTime = Date.parse(left.updatedAt || left.createdAt || 0) || 0;
+    const rightTime = Date.parse(right.updatedAt || right.createdAt || 0) || 0;
+    return rightTime - leftTime;
+  });
+}
+
+function normalizeConversationState(rawState) {
+  if (!rawState || typeof rawState !== 'object' || Array.isArray(rawState)) {
+    return {
+      activeSession: createEmptySession(),
+      historySessions: [],
+    };
+  }
+
+  if (rawState.activeSession || Array.isArray(rawState.historySessions)) {
+    const activeSession = normalizeSession(rawState.activeSession);
+    const historySessions = dedupeSessions(rawState.historySessions || []).filter(
+      (session) => session.sessionId !== activeSession.sessionId,
+    );
+    return {
+      activeSession,
+      historySessions,
+    };
+  }
+
+  if (rawState.sessionId || Array.isArray(rawState.messages) || typeof rawState.composerText === 'string') {
+    return {
+      activeSession: normalizeSession(rawState),
+      historySessions: [],
+    };
+  }
+
+  return {
+    activeSession: createEmptySession(),
+    historySessions: [],
   };
 }
 
@@ -89,19 +151,19 @@ function createConversationStore(app, namespace) {
   function load() {
     try {
       const raw = fs.readFileSync(storePath, 'utf-8');
-      return normalizeSession(JSON.parse(raw));
+      return normalizeConversationState(JSON.parse(raw));
     } catch {
-      return createEmptySession();
+      return normalizeConversationState(null);
     }
   }
 
-  function save(session) {
-    const normalized = normalizeSession(session);
+  function save(state) {
+    const normalized = normalizeConversationState(state);
     fs.mkdirSync(path.dirname(storePath), { recursive: true });
     fs.writeFileSync(storePath, JSON.stringify(normalized, null, 2), 'utf-8');
     return {
       path: storePath,
-      session: normalized,
+      state: normalized,
     };
   }
 
