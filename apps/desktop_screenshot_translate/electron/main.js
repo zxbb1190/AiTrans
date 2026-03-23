@@ -18,9 +18,14 @@ const {
 } = require('./lib/runtime-overrides');
 const {
   OFFICIAL_OPENAI_BASE_URL,
+  TRANSLATION_SERVICE_PRESETS,
+  getTranslationServicePreset,
   normalizeBaseUrl,
+  normalizeTranslationService,
   resolveOpenAiApiKey,
   resolveOpenAiBaseUrl,
+  resolveTranslationModel,
+  resolveTranslationService,
 } = require('./lib/provider-runtime');
 const { createWindowStateStore } = require('./lib/window-state');
 const { createConversationStore } = require('./lib/conversation-store');
@@ -942,7 +947,6 @@ function buildStageResult(selection, overrides = {}) {
 
 function getSetupGuideState() {
   const overrides = loadRuntimeOverrides();
-  const baseUrl = resolveOpenAiBaseUrl();
   const translationOverrides =
     overrides.values && typeof overrides.values.translation === 'object'
       ? overrides.values.translation
@@ -955,36 +959,72 @@ function getSetupGuideState() {
     overrides.values && typeof overrides.values.pipeline === 'object'
       ? overrides.values.pipeline
       : {};
+  const translationService =
+    typeof translationOverrides.service === 'string' && translationOverrides.service.trim()
+      ? normalizeTranslationService(translationOverrides.service)
+      : resolveTranslationService();
+  const translationServicePreset = getTranslationServicePreset(translationService);
+  const rawBaseUrl =
+    typeof translationOverrides.base_url === 'string' && translationOverrides.base_url.trim()
+      ? translationOverrides.base_url.trim()
+      : (translationServicePreset.baseUrl || '');
+  const baseUrl = rawBaseUrl ? normalizeBaseUrl(rawBaseUrl) : '';
+  const translationModel =
+    typeof translationOverrides.model === 'string' && translationOverrides.model.trim()
+      ? translationOverrides.model.trim()
+      : resolveTranslationModel(config.implementationConfig);
   let configured = true;
   let credentialMode = 'configured';
 
-  try {
-    const apiKey = resolveOpenAiApiKey(baseUrl);
-    if (!apiKey && baseUrl !== OFFICIAL_OPENAI_BASE_URL) {
-      credentialMode = 'local_endpoint_without_key';
-    }
-  } catch {
+  if (!baseUrl) {
     configured = false;
-    credentialMode = 'missing_translation_credential';
+    credentialMode = 'missing_translation_endpoint';
+  } else if (!translationModel) {
+    configured = false;
+    credentialMode = 'missing_translation_model';
+  } else {
+    try {
+      const apiKey = resolveOpenAiApiKey(baseUrl, translationService);
+      if (!apiKey && !translationServicePreset.requiresApiKey) {
+        credentialMode = 'local_endpoint_without_key';
+      }
+    } catch {
+      configured = false;
+      credentialMode = 'missing_translation_credential';
+    }
   }
 
   return {
     configured,
     credentialMode,
+    translationService,
+    translationModel,
     baseUrl,
-    usingOfficialEndpoint: baseUrl === OFFICIAL_OPENAI_BASE_URL,
+    usingOfficialEndpoint: translationService === 'openai' && baseUrl === OFFICIAL_OPENAI_BASE_URL,
     runtimeOverridesPath: overrides.path || getPrimaryRuntimeOverridePath(),
     runtimeOverridesDetected: Boolean(overrides.path),
     bootstrapCreated: Boolean(runtimeBootstrap?.created),
     runtimeDraft: {
-      baseUrl:
-        typeof translationOverrides.base_url === 'string'
-          ? translationOverrides.base_url
-          : '',
+      translationService,
+      baseUrl,
+      translationModel,
       apiKeyPresent:
         typeof translationOverrides.api_key === 'string'
         && translationOverrides.api_key.trim().length > 0,
     },
+    translationServiceOptions: Object.keys(TRANSLATION_SERVICE_PRESETS),
+    translationServicePresets: Object.fromEntries(
+      Object.entries(TRANSLATION_SERVICE_PRESETS).map(([key, preset]) => [
+        key,
+        {
+          key: preset.key,
+          label: preset.label,
+          baseUrl: preset.baseUrl,
+          requiresApiKey: Boolean(preset.requiresApiKey),
+          modelExamples: Array.isArray(preset.modelExamples) ? preset.modelExamples : [],
+        },
+      ]),
+    ),
     desktopDraft: {
       captureShortcut:
         typeof desktopOverrides.capture_shortcut === 'string' && desktopOverrides.capture_shortcut.trim()
@@ -1618,10 +1658,18 @@ ipcMain.handle('setup:copy-config-path', async () => {
 });
 
 ipcMain.handle('setup:save-config', async (_event, payload) => {
+  const translationServiceInput =
+    payload && typeof payload.translationService === 'string'
+      ? payload.translationService.trim()
+      : resolveTranslationService();
   const baseUrlInput =
     payload && typeof payload.baseUrl === 'string'
       ? payload.baseUrl.trim()
       : '';
+  const translationModelInput =
+    payload && typeof payload.translationModel === 'string'
+      ? payload.translationModel.trim()
+      : resolveTranslationModel(config.implementationConfig);
   const apiKeyInput =
     payload && typeof payload.apiKey === 'string'
       ? payload.apiKey.trim()
@@ -1642,9 +1690,15 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
   const supportedSourceLanguages = Array.isArray(config.productSpec.pipeline.source_languages)
     ? config.productSpec.pipeline.source_languages
     : ['auto'];
+  const translationService = normalizeTranslationService(translationServiceInput);
+  const translationPreset = getTranslationServicePreset(translationService);
+  const rawBaseUrl = baseUrlInput || translationPreset.baseUrl || '';
 
-  if (!baseUrlInput) {
+  if (!rawBaseUrl) {
     return { ok: false, error: 'missing translation.base_url' };
+  }
+  if (!translationModelInput) {
+    return { ok: false, error: 'missing translation.model' };
   }
   if (!supportedSourceLanguages.includes(sourceLanguageInput)) {
     return { ok: false, error: 'invalid pipeline.source_language' };
@@ -1653,9 +1707,9 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
     return { ok: false, error: 'invalid desktop.send_shortcut' };
   }
 
-  const normalizedBaseUrl = normalizeBaseUrl(baseUrlInput);
-  if (normalizedBaseUrl === OFFICIAL_OPENAI_BASE_URL && !apiKeyInput) {
-    return { ok: false, error: 'official OpenAI endpoint requires api_key' };
+  const normalizedBaseUrl = normalizeBaseUrl(rawBaseUrl);
+  if ((translationPreset.requiresApiKey || normalizedBaseUrl === OFFICIAL_OPENAI_BASE_URL) && !apiKeyInput) {
+    return { ok: false, error: `${translationPreset.label} requires api_key` };
   }
 
   const shortcutResult = applyCaptureShortcut(shortcutInput);
@@ -1670,8 +1724,10 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
       ...(currentValues.translation && typeof currentValues.translation === 'object'
         ? currentValues.translation
         : {}),
+      service: translationService,
       base_url: normalizedBaseUrl,
       api_key: apiKeyInput,
+      model: translationModelInput,
     },
     desktop: {
       ...(currentValues.desktop && typeof currentValues.desktop === 'object'
@@ -1695,10 +1751,25 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
   }
   config.productSpec.conversation.selected_send_shortcut = sendShortcutInput;
   config.productSpec.conversation.send_shortcut_options = SUPPORTED_SEND_SHORTCUTS;
+  if (!config.implementationConfig || typeof config.implementationConfig !== 'object') {
+    config.implementationConfig = {};
+  }
+  if (!config.implementationConfig.providers || typeof config.implementationConfig.providers !== 'object') {
+    config.implementationConfig.providers = {};
+  }
+  config.implementationConfig.providers.translation_model = translationModelInput;
+  config.implementationConfig.providers.translation_service = translationService;
   if (config.runtimeBundle?.pipeline) {
     config.runtimeBundle.pipeline.selected_source_language = sourceLanguageInput;
   }
   if (config.runtimeBundle) {
+    config.runtimeBundle.providers = {
+      ...(config.runtimeBundle.providers && typeof config.runtimeBundle.providers === 'object'
+        ? config.runtimeBundle.providers
+        : {}),
+      translation_model: translationModelInput,
+      translation_service: translationService,
+    };
     config.runtimeBundle.conversation = {
       ...(config.runtimeBundle.conversation && typeof config.runtimeBundle.conversation === 'object'
         ? config.runtimeBundle.conversation
@@ -1710,6 +1781,8 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
 
   appendStartupLog('setup-guide:config-saved', {
     configPath: saved.path,
+    translationService,
+    translationModel: translationModelInput,
     usingOfficialEndpoint: normalizedBaseUrl === OFFICIAL_OPENAI_BASE_URL,
     apiKeyPresent: Boolean(apiKeyInput),
     captureShortcut: shortcutResult.shortcut,

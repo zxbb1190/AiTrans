@@ -1,6 +1,8 @@
 const {
   resolveOpenAiApiKey,
   resolveOpenAiBaseUrl,
+  resolveTranslationModel,
+  resolveTranslationService,
 } = require('./provider-runtime');
 
 const LANGUAGE_LABELS = {
@@ -64,11 +66,11 @@ function extractChatCompletionText(payload) {
   return fragments.join('\n').trim();
 }
 
-function buildOpenAiHeaders(baseUrl) {
+function buildOpenAiHeaders(baseUrl, service) {
   const headers = {
     'Content-Type': 'application/json',
   };
-  const apiKey = resolveOpenAiApiKey(baseUrl);
+  const apiKey = resolveOpenAiApiKey(baseUrl, service);
   if (apiKey) {
     headers.Authorization = `Bearer ${apiKey}`;
   }
@@ -80,9 +82,15 @@ async function translateWithOpenAI(sourceText, productSpec, implementationConfig
   const timeoutMs = Math.max(1500, Math.min(productSpec.pipeline.timeout_budget_ms, 8000));
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const baseUrl = resolveOpenAiBaseUrl();
+  const service = resolveTranslationService();
+  const model = resolveTranslationModel(implementationConfig);
   const apiMode = implementationConfig.providers.translation_api;
 
   try {
+    if (!model || !model.trim()) {
+      throw new Error('translation model is not configured');
+    }
+
     const instructions = [
       'You are a translation engine.',
       `Translate the user text into ${resolveTargetLanguage(productSpec)}.`,
@@ -93,7 +101,7 @@ async function translateWithOpenAI(sourceText, productSpec, implementationConfig
 
     let endpoint = `${baseUrl}/responses`;
     let requestBody = {
-      model: implementationConfig.providers.translation_model,
+      model,
       instructions,
       input: sourceText,
     };
@@ -101,7 +109,7 @@ async function translateWithOpenAI(sourceText, productSpec, implementationConfig
     if (apiMode === 'openai_compatible') {
       endpoint = `${baseUrl}/chat/completions`;
       requestBody = {
-        model: implementationConfig.providers.translation_model,
+        model,
         temperature: 0.2,
         messages: [
           { role: 'system', content: instructions },
@@ -112,7 +120,7 @@ async function translateWithOpenAI(sourceText, productSpec, implementationConfig
 
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: buildOpenAiHeaders(baseUrl),
+      headers: buildOpenAiHeaders(baseUrl, service),
       body: JSON.stringify(requestBody),
       signal: controller.signal,
     });
@@ -136,7 +144,8 @@ async function translateWithOpenAI(sourceText, productSpec, implementationConfig
       diagnostics: {
         apiMode,
         baseUrl,
-        model: implementationConfig.providers.translation_model,
+        service,
+        model,
         responseId: payload.id || null,
       },
     };

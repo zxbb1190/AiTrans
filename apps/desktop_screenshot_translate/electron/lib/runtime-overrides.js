@@ -133,10 +133,12 @@ function ensureRuntimeOverridesTemplate() {
   }
 
   const fallbackTemplate = {
-    _comment: 'Fill translation.base_url and translation.api_key before using remote translation.',
+    _comment: 'Fill translation.service, translation.base_url, translation.model, and translation.api_key before using remote translation.',
     translation: {
+      service: 'custom',
       base_url: '',
       api_key: '',
+      model: '',
     },
     desktop: {
       capture_shortcut: '',
@@ -182,6 +184,10 @@ function writeRuntimeOverrides(nextValues) {
     pipeline: {
       ...normalizePlainObject(currentValues.pipeline),
       ...normalizePlainObject(incomingValues.pipeline),
+    },
+    desktop: {
+      ...normalizePlainObject(currentValues.desktop),
+      ...normalizePlainObject(incomingValues.desktop),
     },
     release: {
       ...normalizePlainObject(currentValues.release),

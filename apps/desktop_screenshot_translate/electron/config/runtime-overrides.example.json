@@ -1,9 +1,11 @@
 {
   "_comment": "AiTrans normally manages this file through the first-launch setup UI. Edit it manually only for advanced troubleshooting.",
   "translation": {
+    "service": "custom",
     "base_url": "",
     "api_key": "",
-    "model_note": "Runtime uses the translation model embedded in project-generated/implementation_bundle.py."
+    "model": "",
+    "service_note": "Supported presets include OpenAI, DeepSeek, Zhipu AI, and other OpenAI-compatible services."
   },
   "desktop": {
     "capture_shortcut": "",

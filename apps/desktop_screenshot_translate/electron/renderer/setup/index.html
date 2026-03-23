@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AiTrans 首次配置</title>
+    <title>AiTrans 设置与连接</title>
     <style>
       :root {
         color-scheme: light;
@@ -15,11 +15,7 @@
         --accent: #0f766e;
         --accent-strong: #115e59;
       }
-
-      * {
-        box-sizing: border-box;
-      }
-
+      * { box-sizing: border-box; }
       body {
         margin: 0;
         font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -28,240 +24,80 @@
           linear-gradient(180deg, #f7fbf8 0%, var(--bg) 100%);
         color: var(--ink);
       }
-
-      .shell {
-        min-height: 100vh;
-        padding: 22px;
-      }
-
-      .hero,
-      .card {
+      .shell { min-height: 100vh; padding: 22px; }
+      .hero, .card {
         border: 1px solid var(--line);
         border-radius: 22px;
         background: var(--card);
         box-shadow: 0 20px 54px rgba(17, 79, 65, 0.1);
       }
-
-      .hero {
-        padding: 22px;
-        margin-bottom: 14px;
-      }
-
+      .hero { padding: 22px; margin-bottom: 14px; }
       .eyebrow {
-        font-size: 12px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--accent);
-        margin-bottom: 10px;
+        font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+        color: var(--accent); margin-bottom: 10px;
       }
-
-      h1 {
-        margin: 0 0 10px;
-        font-size: 28px;
-        line-height: 1.15;
-      }
-
-      .lead {
-        margin: 0;
-        color: var(--muted);
-        line-height: 1.65;
-      }
-
-      .card {
-        padding: 16px 18px;
-        margin-bottom: 12px;
-      }
-
-      .title {
-        margin: 0 0 10px;
-        font-size: 16px;
-        font-weight: 700;
-      }
-
+      h1 { margin: 0 0 10px; font-size: 28px; line-height: 1.15; }
+      .lead { margin: 0; color: var(--muted); line-height: 1.65; }
+      .card { padding: 16px 18px; margin-bottom: 12px; }
+      .title { margin: 0 0 10px; font-size: 16px; font-weight: 700; }
       .status {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: rgba(15, 118, 110, 0.12);
-        color: var(--accent-strong);
-        font-size: 13px;
-        font-weight: 600;
+        display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px;
+        border-radius: 999px; background: rgba(15, 118, 110, 0.12);
+        color: var(--accent-strong); font-size: 13px; font-weight: 600;
       }
-
-      .status[data-tone="success"] {
-        background: rgba(20, 140, 96, 0.14);
-        color: #176b4d;
-      }
-
-      .status[data-tone="warning"] {
-        background: rgba(217, 119, 6, 0.14);
-        color: #9a5b02;
-      }
-
-      .status[data-tone="error"] {
-        background: rgba(220, 38, 38, 0.12);
-        color: #991b1b;
-      }
-
-      ul {
-        margin: 10px 0 0;
-        padding-left: 18px;
-        color: var(--muted);
-        line-height: 1.7;
-      }
-
+      .status[data-tone="success"] { background: rgba(20, 140, 96, 0.14); color: #176b4d; }
+      .status[data-tone="warning"] { background: rgba(217, 119, 6, 0.14); color: #9a5b02; }
+      .status[data-tone="error"] { background: rgba(220, 38, 38, 0.12); color: #991b1b; }
+      ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); line-height: 1.7; }
       .actions {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-        margin-top: 14px;
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px;
       }
-
       button {
-        appearance: none;
-        border: none;
-        border-radius: 16px;
-        padding: 13px 14px;
-        font-size: 14px;
-        font-weight: 700;
-        cursor: pointer;
+        appearance: none; border: none; border-radius: 16px; padding: 13px 14px;
+        font-size: 14px; font-weight: 700; cursor: pointer;
       }
-
-      .primary {
-        background: linear-gradient(135deg, var(--accent) 0%, #14b8a6 100%);
-        color: white;
+      .primary { background: linear-gradient(135deg, var(--accent) 0%, #14b8a6 100%); color: white; }
+      .secondary { background: rgba(15, 118, 110, 0.08); color: var(--accent-strong); }
+      .footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; }
+      .footer-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+      .form-grid { display: grid; gap: 12px; }
+      .field { display: grid; gap: 8px; }
+      .field label { font-size: 13px; font-weight: 700; color: var(--ink); }
+      .field input, .field select {
+        width: 100%; border: 1px solid rgba(15, 118, 110, 0.18); border-radius: 14px;
+        padding: 12px 14px; font-size: 14px; color: var(--ink); background: rgba(255, 255, 255, 0.95);
       }
-
-      .secondary {
-        background: rgba(15, 118, 110, 0.08);
-        color: var(--accent-strong);
-      }
-
-      .footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-top: 16px;
-      }
-
-      .footer-actions {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
-
-      .form-grid {
-        display: grid;
-        gap: 12px;
-      }
-
-      .field {
-        display: grid;
-        gap: 8px;
-      }
-
-      .field label {
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--ink);
-      }
-
-      .field input,
-      .field select {
-        width: 100%;
-        border: 1px solid rgba(15, 118, 110, 0.18);
-        border-radius: 14px;
-        padding: 12px 14px;
-        font-size: 14px;
-        color: var(--ink);
-        background: rgba(255, 255, 255, 0.95);
-      }
-
-      .field small {
-        color: var(--muted);
-        line-height: 1.6;
-      }
-
-      .hint {
-        margin-top: 10px;
-        color: var(--muted);
-        line-height: 1.65;
-      }
-
-      .chip-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 12px;
-      }
-
+      .field small { color: var(--muted); line-height: 1.6; }
+      .hint { margin-top: 10px; color: var(--muted); line-height: 1.65; }
+      .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
       .chip {
-        display: inline-flex;
-        align-items: center;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: rgba(15, 118, 110, 0.08);
-        color: var(--accent-strong);
-        font-size: 12px;
-        font-weight: 600;
+        display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 999px;
+        background: rgba(15, 118, 110, 0.08); color: var(--accent-strong); font-size: 12px; font-weight: 600;
       }
-
-      .advanced {
-        border: 1px solid rgba(15, 118, 110, 0.12);
-        border-radius: 18px;
-        background: rgba(248, 252, 250, 0.9);
-      }
-
-      .advanced summary {
-        cursor: pointer;
-        list-style: none;
-        padding: 14px 16px;
-        font-weight: 700;
-        color: var(--accent-strong);
-      }
-
-      .advanced summary::-webkit-details-marker {
-        display: none;
-      }
-
-      .advanced-body {
-        padding: 0 16px 16px;
-      }
-
+      .advanced { border: 1px solid rgba(15, 118, 110, 0.12); border-radius: 18px; background: rgba(248, 252, 250, 0.9); }
+      .advanced summary { cursor: pointer; list-style: none; padding: 14px 16px; font-weight: 700; color: var(--accent-strong); }
+      .advanced summary::-webkit-details-marker { display: none; }
+      .advanced-body { padding: 0 16px 16px; }
       .path {
-        margin-top: 10px;
-        padding: 10px 12px;
-        border-radius: 14px;
-        background: rgba(15, 118, 110, 0.08);
-        border: 1px solid rgba(15, 118, 110, 0.12);
-        font-family: Consolas, "SFMono-Regular", monospace;
-        font-size: 12px;
-        line-height: 1.55;
-        word-break: break-all;
+        margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(15, 118, 110, 0.08);
+        border: 1px solid rgba(15, 118, 110, 0.12); font-family: Consolas, "SFMono-Regular", monospace;
+        font-size: 12px; line-height: 1.55; word-break: break-all;
       }
-
-      .subtle {
-        color: var(--muted);
-        font-size: 13px;
-        line-height: 1.65;
-      }
+      .subtle { color: var(--muted); font-size: 13px; line-height: 1.65; }
     </style>
   </head>
   <body>
     <main class="shell">
       <section class="hero">
-        <div class="eyebrow">AiTrans · First Launch</div>
+        <div class="eyebrow">AiTrans · Settings & Connection</div>
         <h1 id="displayName">AiTrans 截图翻译</h1>
-        <p class="lead">先补齐翻译端点和快捷键，就能直接开始截图翻译。普通用户主路径是“在本窗口填写并保存”，不是手工编辑配置文件。</p>
+        <p class="lead">先选择翻译服务、模型和连接信息，再决定源语言与快捷键。普通用户主路径是“在本窗口填写并保存”，不是手工编辑配置文件。</p>
       </section>
 
       <section class="card">
         <div class="title">当前状态</div>
         <div id="status" class="status">正在检查配置…</div>
-        <p id="hint" class="hint">正在读取当前运行时配置。</p>
+        <p id="hint" class="hint">正在读取当前运行时配置…</p>
         <div class="chip-row">
           <span id="entryModeChip" class="chip">入口模式：读取中</span>
           <span id="shortcutChip" class="chip">快捷键：读取中</span>
@@ -273,14 +109,24 @@
         <div class="title">直接填写并保存</div>
         <form id="setupForm" class="form-grid">
           <div class="field">
+            <label for="translationService">翻译服务</label>
+            <select id="translationService"></select>
+            <small id="translationServiceHint">支持 OpenAI 官方、DeepSeek、智谱 AI，以及其他 OpenAI-compatible 服务。若某家厂商只提供原生私有 API，则仍需要单独适配。</small>
+          </div>
+          <div class="field">
             <label for="baseUrl">翻译端点地址</label>
-            <input id="baseUrl" type="url" placeholder="http://127.0.0.1:8000/v1 或 https://api.openai.com/v1" />
-            <small>支持 OpenAI 官方端点和 OpenAI-compatible 局域网端点。</small>
+            <input id="baseUrl" type="url" placeholder="例如 https://api.openai.com/v1" />
+            <small id="baseUrlHint">选择预设服务后会自动带出常用端点，你也可以手工改成企业网关、局域网网关或其他兼容地址。</small>
+          </div>
+          <div class="field">
+            <label for="translationModel">模型名称</label>
+            <input id="translationModel" type="text" placeholder="例如 gpt-4.1-mini / deepseek-chat / glm-4.5-air" />
+            <small id="modelHint">模型名称由服务方决定。常见示例：OpenAI `gpt-4.1-mini`，DeepSeek `deepseek-chat`，智谱 AI `glm-4.5-air`。</small>
           </div>
           <div class="field">
             <label for="apiKey">接口密钥</label>
-            <input id="apiKey" type="password" placeholder="输入 API Key；本地兼容端点如允许无密钥可留空" />
-            <small>优先通过本界面保存。除高级排障外，不要求用户手工编辑 JSON。</small>
+            <input id="apiKey" type="password" placeholder="输入 API Key；若你的兼容服务允许无密钥可留空" />
+            <small id="apiKeyHint">OpenAI、DeepSeek、智谱 AI 通常都需要 API Key。优先通过本界面保存；除高级排障外，不要求用户手工编辑 JSON。</small>
           </div>
           <div class="field">
             <label for="sourceLanguage">源语言</label>
@@ -304,7 +150,7 @@
               <option value="ctrl_enter">Ctrl+Enter</option>
               <option value="shift_enter">Shift+Enter</option>
             </select>
-            <small>默认用 Enter 发送；未命中的组合键继续用于换行。输入法选词阶段不会因为回车而误发送。</small>
+            <small>默认 Enter 发送；未命中的组合键继续用于换行。输入法选词阶段不会因为回车而误发送。</small>
           </div>
           <div class="footer">
             <div class="subtle">保存后立即生效，不需要重新安装。</div>

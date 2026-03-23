@@ -3,12 +3,12 @@
 [中文说明](./README.zh-CN.md)
 
 AiTrans is a Windows desktop app for screenshot translation and AI-assisted follow-up chat.
-This README is for end users first: installation, first-time setup, daily usage, and update behavior.
+This README is written for end users first: installation, first-time setup, daily usage, and update behavior.
 
 ## What AiTrans Can Do
 
 - Capture a screen region and extract the source text
-- Translate the captured content through an OpenAI-compatible endpoint
+- Translate the captured content through OpenAI official API, DeepSeek API, Zhipu AI API, or another OpenAI-compatible service
 - Continue the same task in a lightweight AI chat window
 - Keep the current conversation in local cache until you start a new chat or clear history
 
@@ -31,15 +31,29 @@ On first launch, AiTrans will:
 
 Please configure at least:
 
+- translation service
+- model name
 - `base_url`
 - `api_key`
 
-A local OpenAI-compatible service is supported.
+## Supported Translation Services
+
+AiTrans currently supports:
+
+- OpenAI official API
+- DeepSeek API
+- Zhipu AI API
+- other services that expose an OpenAI-compatible API
+
+This does **not** mean every vendor-native API works out of the box.
+If a provider only offers its own private protocol rather than an OpenAI-compatible API, an extra adapter is still required.
 
 ## Recommended Settings
 
 In **Settings & Connection**, check these first:
 
+- translation service preset
+- translation model name
 - translation service `base_url`
 - translation service `api_key`
 - source language: auto / Chinese / English / Japanese
@@ -77,7 +91,7 @@ In **Settings & Connection**, check these first:
 ## OCR And Translation Notes
 
 - OCR uses the bundled local runtime
-- Translation uses an OpenAI-compatible API path
+- Translation supports OpenAI official endpoints and OpenAI-compatible vendor endpoints
 - If clear single-line English text is recognized poorly, try setting the source language to **English** before capturing again
 
 ## Updates
