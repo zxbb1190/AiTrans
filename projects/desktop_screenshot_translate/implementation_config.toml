@@ -106,6 +106,7 @@ secret_source = "setup_ui_managed_runtime_store_or_env"
 # - panel 从“结果面板”升级为“AI 对话浮窗”，使用 `Vue 3 + Vite + .vue SFC`
 # - 开发态热更新采用“panel 走 Vite HMR，Electron 宿主与原生页面变更时自动重启”的双路径
 # - 面向 C 端公开面的对话线程默认不展示执行信息、Provider 细节和诊断模块
+# - 当 OCR 或翻译失败时，对话浮窗应直接显示用户可读的错误摘要，并在同一条消息内保留次级错误详情；错误原因不得只写入日志
 # - 截图应进入当前会话线程，AI 回复承接原文与译文，不再弹出脱节的独立结果面板
 # - 当前项目的浮窗结构、消息类型、动作优先级与会话缓存约束，以
 #   `projects/desktop_screenshot_translate/对话浮窗界面契约.md` 为实现收敛入口

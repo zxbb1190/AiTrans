@@ -68,6 +68,7 @@ function normalizeMessage(message) {
     targetLanguage: message.targetLanguage || 'zh-Hans',
     previewDataUrl: message.previewDataUrl || null,
     previewExpanded: Boolean(message.previewExpanded),
+    errorSummary: message.errorSummary || '',
     errorOrigin: message.errorOrigin || null,
     copyFeedback: message.copyFeedback || '',
   };
@@ -112,6 +113,7 @@ function createConversationSnapshot() {
       targetLanguage: message.targetLanguage,
       previewDataUrl: message.previewDataUrl,
       previewExpanded: message.previewExpanded,
+      errorSummary: message.errorSummary,
       errorOrigin: message.errorOrigin,
       copyFeedback: message.copyFeedback,
     })),
@@ -287,7 +289,7 @@ function stageLabel(stageStatus) {
 
 function resultStageSummary(result) {
   if (result.stageStatus === 'failed') {
-    return result.errorOrigin || appState.payload.product.copy.failure_title;
+    return result.errorSummary || result.errorOrigin || appState.payload.product.copy.failure_title;
   }
   if (result.stageStatus === 'capturing') {
     return '已发送截图';
@@ -331,6 +333,7 @@ function buildAssistantTranslationMessage(result, requestId) {
     translatedText: result.translatedText || '',
     sourceLanguage: result.sourceLanguage || 'auto',
     targetLanguage: result.captureMeta?.targetLanguage || 'zh-Hans',
+    errorSummary: result.errorSummary || '',
     errorOrigin: result.errorOrigin || null,
   };
 }
@@ -719,8 +722,11 @@ watch(
             </div>
             <div class="translation-output">{{ message.translatedText || appState.payload.product.copy.empty_translation }}</div>
             <div v-if="message.copyFeedback" class="message-feedback">{{ message.copyFeedback }}</div>
-            <div v-if="message.stageStatus === 'failed' && message.errorOrigin" class="message-error">
-              {{ message.errorOrigin }}
+            <div
+              v-if="message.stageStatus === 'failed' && message.errorOrigin && message.errorOrigin !== (message.errorSummary || message.translatedText)"
+              class="message-error"
+            >
+              详细信息：{{ message.errorOrigin }}
             </div>
           </div>
         </div>

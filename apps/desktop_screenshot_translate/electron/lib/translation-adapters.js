@@ -154,15 +154,19 @@ async function translateWithOpenAI(sourceText, productSpec, implementationConfig
   }
 }
 
-async function translateWithFallbackStub(sourceText, productSpec) {
+async function translateWithFallbackStub(sourceText, productSpec, upstreamFailures = []) {
   const normalized = normalizeSourceText(sourceText);
+  const fallbackReason = normalized
+    ? (upstreamFailures.length ? 'upstream_failures' : 'fallback_stub_applied')
+    : 'empty_source_text';
   return {
     provider: 'fallback_stub',
     translatedText: normalized
       ? `Stub Translation (${productSpec.pipeline.target_language}): ${normalized}`
       : 'OCR 未返回可翻译文本，当前未调用远端翻译 provider。',
     diagnostics: {
-      reason: normalized ? 'fallback_stub_applied' : 'empty_source_text',
+      reason: fallbackReason,
+      upstreamFailures,
     },
   };
 }
@@ -181,11 +185,13 @@ async function translateText(sourceText, productSpec, implementationConfig) {
         return await translateWithOpenAI(normalizedSourceText, productSpec, implementationConfig);
       }
       if (provider === 'fallback_stub') {
-        return await translateWithFallbackStub(normalizedSourceText, productSpec);
+        return await translateWithFallbackStub(normalizedSourceText, productSpec, failures.slice());
       }
       failures.push(`${provider}: unsupported provider`);
+      console.error(`[translation] unsupported provider: ${provider}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      console.error(`[translation] provider failed (${provider})`, message);
       failures.push(`${provider}: ${message}`);
     }
   }

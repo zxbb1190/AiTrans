@@ -1109,6 +1109,171 @@ function showPanel(result) {
   }
 }
 
+function collapseWhitespace(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function tryParseEmbeddedJson(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const firstBrace = value.indexOf('{');
+  const lastBrace = value.lastIndexOf('}');
+  if (firstBrace === -1 || lastBrace <= firstBrace) {
+    return null;
+  }
+  const candidate = value.slice(firstBrace, lastBrace + 1);
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    return null;
+  }
+}
+
+function extractProviderErrorContext(rawMessage) {
+  const raw = collapseWhitespace(rawMessage);
+  const payload = tryParseEmbeddedJson(raw);
+  const statusMatch = raw.match(/\b([1-5]\d{2})\b/);
+  const status = statusMatch ? Number(statusMatch[1]) : null;
+  const code = String(
+    payload?.error?.code
+      || payload?.code
+      || payload?.error_code
+      || '',
+  ).trim() || null;
+  const payloadMessage = collapseWhitespace(
+    payload?.error?.message
+      || payload?.message
+      || payload?.msg
+      || payload?.detail
+      || payload?.error_msg
+      || '',
+  );
+  const cleanedRaw = collapseWhitespace(
+    raw
+      .replace(/^no (translation|ocr) provider succeeded:\s*/i, '')
+      .replace(/^(openai_translation|fallback_stub|tesseract|windows_ocr_api):\s*/i, '')
+      .replace(/^error:\s*/i, ''),
+  );
+
+  return {
+    raw,
+    status,
+    code,
+    payloadMessage,
+    cleanedRaw,
+  };
+}
+
+function getTranslationServiceLabel() {
+  const service = resolveTranslationService();
+  return getTranslationServicePreset(service)?.label || '当前翻译服务';
+}
+
+function buildTechnicalErrorDetail(rawMessage) {
+  const info = extractProviderErrorContext(rawMessage);
+  const parts = [];
+  if (info.status) {
+    parts.push(`HTTP ${info.status}`);
+  }
+  if (info.code) {
+    parts.push(`代码 ${info.code}`);
+  }
+  if (info.payloadMessage) {
+    parts.push(info.payloadMessage);
+  } else if (info.cleanedRaw) {
+    parts.push(info.cleanedRaw);
+  } else if (info.raw) {
+    parts.push(info.raw);
+  }
+  const detail = collapseWhitespace(parts.join(' · '));
+  if (!detail) {
+    return '未返回更详细的错误信息。';
+  }
+  return detail.length > 320 ? `${detail.slice(0, 317)}…` : detail;
+}
+
+function summarizePipelineFailure(rawMessage) {
+  const info = extractProviderErrorContext(rawMessage);
+  const serviceLabel = getTranslationServiceLabel();
+  const baseUrl = collapseWhitespace(resolveOpenAiBaseUrl());
+  const normalizedBaseUrl = collapseWhitespace(normalizeBaseUrl(baseUrl)).toLowerCase();
+  const haystack = collapseWhitespace([
+    info.raw,
+    info.payloadMessage,
+    info.code,
+    info.status ? String(info.status) : '',
+    baseUrl,
+  ].filter(Boolean).join(' ')).toLowerCase();
+
+  let summary = `模型调用失败，请检查 ${serviceLabel} 的服务地址、模型名称和 API Key。`;
+
+  if (
+    /tesseract returned empty ocr text|no ocr provider succeeded|empty ocr text|ocr 未返回|未识别到可翻译文本/.test(haystack)
+  ) {
+    summary = '截图中的原文未识别成功，请尽量框选更清晰的文字，或固定源语言后重试。';
+  } else if (
+    info.status === 429
+    || /1302|1305|rate limit|too many requests|请求频率|速率限制|rate_limit/.test(haystack)
+  ) {
+    summary = '您的账户已达到速率限制，请稍后重试并控制请求频率。';
+  } else if (
+    info.status === 401
+    || info.status === 403
+    || /invalid api key|authentication|unauthorized|forbidden|鉴权|未授权|permission denied|api key/.test(haystack)
+  ) {
+    summary = `${serviceLabel} 的 API Key 无效、已过期或没有调用权限，请检查设置。`;
+  } else if (
+    normalizedBaseUrl.endsWith('/chat/completions')
+    || normalizedBaseUrl.endsWith('/responses')
+    || /chat\/completions\/chat\/completions|responses\/responses/.test(haystack)
+  ) {
+    summary = `${serviceLabel} 服务地址填写过深，请填写到服务根路径，不要直接填完整接口地址。`;
+  } else if (
+    /model_not_found|unknown model|invalid model|does not exist|not found/.test(haystack)
+    && /model|glm|gpt|qwen|deepseek/.test(haystack)
+  ) {
+    summary = `当前模型名称不可用，请检查 ${serviceLabel} 的模型名是否填写正确。`;
+  } else if (
+    /timeout|timed out|aborterror|aborted|etimedout|socket hang up/.test(haystack)
+  ) {
+    summary = `${serviceLabel} 响应超时，请稍后重试。`;
+  } else if (
+    /fetch failed|network error|econnrefused|enotfound|certificate|socket|connect|connection refused|self signed|unable to verify|dns/.test(haystack)
+  ) {
+    summary = `无法连接到 ${serviceLabel}，请检查网络、代理或服务地址。`;
+  } else if (
+    /no desktop capture source available|screen capture unavailable|desktopcapturer/.test(haystack)
+  ) {
+    summary = '当前系统截图能力不可用，请检查屏幕捕获能力或相关权限。';
+  } else if (/missing source text/.test(haystack)) {
+    summary = '当前没有可翻译的原文，请先截图或输入要翻译的内容。';
+  }
+
+  return {
+    summary,
+    detail: buildTechnicalErrorDetail(rawMessage),
+  };
+}
+
+function isFallbackTranslationFailure(translationResult) {
+  return (
+    translationResult?.provider === 'fallback_stub'
+    && Array.isArray(translationResult?.diagnostics?.upstreamFailures)
+    && translationResult.diagnostics.upstreamFailures.length > 0
+  );
+}
+
+function extractFallbackTranslationFailure(translationResult) {
+  if (!isFallbackTranslationFailure(translationResult)) {
+    return '';
+  }
+  return translationResult.diagnostics.upstreamFailures.join(' | ');
+}
+
 function rememberPipelineState(selection, capture, ocrResult, translatedText, translationDiagnostics, audit) {
   lastPipelineState = {
     selection,
@@ -1231,6 +1396,16 @@ async function translateFromSourceText(
       config.productSpec,
       config.implementationConfig,
     );
+    if (isFallbackTranslationFailure(translationResult)) {
+      const fallbackFailure = extractFallbackTranslationFailure(translationResult);
+      appendStartupLog('translation:fallback_stub_used', {
+        sourceMode,
+        captureSessionId: audit.captureSessionId,
+        taskId: audit.taskId,
+        failures: translationResult.diagnostics.upstreamFailures,
+      });
+      throw new Error(fallbackFailure || 'translation provider failed and fallback_stub was used');
+    }
 
     rememberPipelineState(
       selection,
@@ -1277,18 +1452,27 @@ async function translateFromSourceText(
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const failure = summarizePipelineFailure(message);
     showPanel(buildStageResult(selection, {
       sourceLanguage,
       stageStatus: 'failed',
       sourceText: normalizedSourceText,
-      translatedText: config.productSpec.presentation.copy.failure_title,
+      translatedText: failure.summary,
       capturePreviewDataUrl: lastPipelineState?.capturePreviewDataUrl || null,
       captureMeta: {
         ...captureMeta,
         errorSourceMode: sourceMode,
       },
-      errorOrigin: message,
+      errorSummary: failure.summary,
+      errorOrigin: failure.detail,
     }));
+    appendStartupLog('translation:failed', {
+      sourceMode,
+      captureSessionId: audit.captureSessionId,
+      taskId: audit.taskId,
+      summary: failure.summary,
+      detail: failure.detail,
+    });
     appendPipelineEvent('failure_raised', audit, {
       provider: lastPipelineState?.captureMeta?.translationProvider || null,
       resultState: 'failed',
@@ -1393,6 +1577,16 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
       config.productSpec,
       config.implementationConfig,
     );
+    if (isFallbackTranslationFailure(translationResult)) {
+      const fallbackFailure = extractFallbackTranslationFailure(translationResult);
+      appendStartupLog('translation:fallback_stub_used', {
+        sourceMode: 'capture_pipeline',
+        captureSessionId: audit.captureSessionId,
+        taskId: audit.taskId,
+        failures: translationResult.diagnostics.upstreamFailures,
+      });
+      throw new Error(fallbackFailure || 'translation provider failed and fallback_stub was used');
+    }
     rememberPipelineState(selection, capture, ocrResult, translationResult.translatedText, translationResult, audit);
 
     const result = buildStageResult(selection, {
@@ -1425,6 +1619,7 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const failure = summarizePipelineFailure(message);
     if (message.includes('no desktop capture source available')) {
       setScreenCaptureCapability(false, message);
       showSetupGuide();
@@ -1439,10 +1634,17 @@ ipcMain.handle('overlay:submit-selection', async (_event, selection) => {
           })
         : buildStubResult(selection)),
       stageStatus: 'failed',
-      translatedText: 'OCR 或翻译主链执行失败，请检查 desktopCapturer、内置或外部 tesseract、OPENAI_API_KEY、AITRANS_OPENAI_BASE_URL 或当前 Windows 权限状态。',
-      errorOrigin: message,
+      translatedText: failure.summary,
+      errorSummary: failure.summary,
+      errorOrigin: failure.detail,
     };
     showPanel(failureResult);
+    appendStartupLog('pipeline:failed', {
+      captureSessionId: audit.captureSessionId,
+      taskId: audit.taskId,
+      summary: failure.summary,
+      detail: failure.detail,
+    });
     appendPipelineEvent('failure_raised', audit, {
       provider: lastPipelineState?.captureMeta?.translationProvider || lastPipelineState?.captureMeta?.ocrProvider || null,
       resultState: 'failed',
