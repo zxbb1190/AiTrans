@@ -172,8 +172,11 @@ function syncForm(guide) {
 
   syncServiceControls();
 
-  if (document.activeElement !== apiKeyInput && !runtimeDraft.apiKeyPresent) {
+  if (document.activeElement !== apiKeyInput) {
     apiKeyInput.value = '';
+    apiKeyInput.placeholder = runtimeDraft.apiKeyPresent
+      ? '已保存 API Key；留空保存会保持当前值'
+      : '输入 API Key；若你的兼容服务允许无密钥可留空';
   }
   if (document.activeElement !== captureShortcutInput) {
     captureShortcutInput.value = desktopDraft.captureShortcut || 'CommandOrControl+Shift+1';

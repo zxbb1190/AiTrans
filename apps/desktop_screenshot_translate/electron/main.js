@@ -1693,6 +1693,13 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
   const translationService = normalizeTranslationService(translationServiceInput);
   const translationPreset = getTranslationServicePreset(translationService);
   const rawBaseUrl = baseUrlInput || translationPreset.baseUrl || '';
+  const currentValues = loadRuntimeOverrides().values;
+  const existingApiKey =
+    currentValues.translation && typeof currentValues.translation === 'object'
+      && typeof currentValues.translation.api_key === 'string'
+      ? currentValues.translation.api_key.trim()
+      : '';
+  const effectiveApiKey = apiKeyInput || existingApiKey;
 
   if (!rawBaseUrl) {
     return { ok: false, error: 'missing translation.base_url' };
@@ -1708,7 +1715,7 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
   }
 
   const normalizedBaseUrl = normalizeBaseUrl(rawBaseUrl);
-  if ((translationPreset.requiresApiKey || normalizedBaseUrl === OFFICIAL_OPENAI_BASE_URL) && !apiKeyInput) {
+  if ((translationPreset.requiresApiKey || normalizedBaseUrl === OFFICIAL_OPENAI_BASE_URL) && !effectiveApiKey) {
     return { ok: false, error: `${translationPreset.label} requires api_key` };
   }
 
@@ -1717,7 +1724,6 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
     return { ok: false, error: shortcutResult.error };
   }
 
-  const currentValues = loadRuntimeOverrides().values;
   const saved = writeRuntimeOverrides({
     ...currentValues,
     translation: {
@@ -1726,7 +1732,7 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
         : {}),
       service: translationService,
       base_url: normalizedBaseUrl,
-      api_key: apiKeyInput,
+      api_key: effectiveApiKey,
       model: translationModelInput,
     },
     desktop: {
@@ -1784,7 +1790,8 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
     translationService,
     translationModel: translationModelInput,
     usingOfficialEndpoint: normalizedBaseUrl === OFFICIAL_OPENAI_BASE_URL,
-    apiKeyPresent: Boolean(apiKeyInput),
+    apiKeyPresent: Boolean(effectiveApiKey),
+    apiKeyUpdated: Boolean(apiKeyInput),
     captureShortcut: shortcutResult.shortcut,
     sendShortcut: sendShortcutInput,
     sourceLanguage: sourceLanguageInput,
