@@ -88,7 +88,8 @@ coordinate_profile = "windows_per_monitor_dpi_compensation"
 # - secret 配置的用户主路径应是“首次配置窗口 / 设置界面”，而不是要求用户手工编辑 JSON
 # - 运行时覆盖文件可以继续作为内部持久化和高级排障出口，但不应作为普通用户主交互
 [providers]
-ocr_chain = ["tesseract", "windows_ocr_api"]
+ocr_chain = ["paddleocr_local", "tesseract", "windows_ocr_api"]
+# 本地 PaddleOCR 的 Python 路径与运行设备由设置界面写入 runtime-overrides.json 的 ocr.paddleocr_python / ocr.paddleocr_device 管理。
 ocr_distribution = "bundle_with_app"
 ocr_dev_fallback = "allow_env_binary_path"
 translation_chain = ["openai_translation", "fallback_stub"]

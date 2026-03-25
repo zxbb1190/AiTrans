@@ -150,6 +150,59 @@ function resolveTessdataDirectory(executable, runtimeOverrides) {
   return candidates.find((candidate) => fs.existsSync(candidate)) || null;
 }
 
+
+function getBundledPaddleOcrScriptCandidates() {
+  const appRoot = resolveAppRoot();
+  const resourcesPath =
+    typeof process.resourcesPath === 'string' && process.resourcesPath.trim()
+      ? process.resourcesPath
+      : null;
+
+  const candidates = [
+    path.join(appRoot, 'vendor', 'paddleocr', 'paddleocr_local_runner.py'),
+  ];
+
+  if (resourcesPath) {
+    candidates.push(
+      path.join(resourcesPath, 'paddleocr', 'paddleocr_local_runner.py'),
+    );
+  }
+
+  return [...new Set(candidates)];
+}
+
+function resolvePaddleOcrRuntime(implementationConfig) {
+  const runtimeOverrides = loadRuntimeOverrides().values;
+  const allowEnvFallback = implementationConfig?.providers?.ocr_dev_fallback === 'allow_env_binary_path';
+  const scriptPath = getBundledPaddleOcrScriptCandidates().find((candidate) => fs.existsSync(candidate)) || null;
+  const overridePython = (
+    process.env.AITRANS_PADDLEOCR_PYTHON
+    || runtimeOverrides.ocr?.paddleocr_python
+    || ''
+  ).trim();
+  const device = (
+    process.env.AITRANS_PADDLEOCR_DEVICE
+    || runtimeOverrides.ocr?.paddleocr_device
+    || 'cpu'
+  ).trim() || 'cpu';
+
+  if (allowEnvFallback && overridePython) {
+    return {
+      executable: overridePython,
+      source: 'env_override',
+      device,
+      scriptPath,
+    };
+  }
+
+  return {
+    executable: 'python',
+    source: 'path_lookup',
+    device,
+    scriptPath,
+  };
+}
+
 function resolveTesseractExecutable(implementationConfig) {
   const runtimeOverrides = loadRuntimeOverrides().values;
   const allowEnvFallback = implementationConfig?.providers?.ocr_dev_fallback === 'allow_env_binary_path';
@@ -186,6 +239,7 @@ module.exports = {
   OFFICIAL_OPENAI_BASE_URL,
   TRANSLATION_SERVICE_PRESETS,
   getBundledTesseractCandidates,
+  getBundledPaddleOcrScriptCandidates,
   getTranslationServicePreset,
   loadRuntimeOverrides,
   normalizeBaseUrl,
@@ -195,5 +249,6 @@ module.exports = {
   resolveOpenAiBaseUrl,
   resolveTranslationModel,
   resolveTranslationService,
+  resolvePaddleOcrRuntime,
   resolveTesseractExecutable,
 };

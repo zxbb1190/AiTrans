@@ -72,6 +72,13 @@
         ]
       },
       {
+        "from": "vendor/paddleocr",
+        "to": "paddleocr",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "config",
         "to": "config",
         "filter": [

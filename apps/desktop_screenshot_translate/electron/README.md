@@ -90,9 +90,22 @@ In **Settings & Connection**, check these first:
 
 ## OCR And Translation Notes
 
-- OCR uses the bundled local runtime
-- Translation supports OpenAI official endpoints and OpenAI-compatible vendor endpoints
-- If clear single-line English text is recognized poorly, try setting the source language to **English** before capturing again
+- OCR now prefers a local PaddleOCR runtime, then falls back to bundled Tesseract if PaddleOCR is not configured or fails locally.
+- Translation supports OpenAI official endpoints and OpenAI-compatible vendor endpoints.
+- For the best OCR accuracy, try setting the source language to **English** for clear single-line English text, or configure a local PaddleOCR runtime.
+
+## Enable Local PaddleOCR (Optional)
+
+If you want better local OCR accuracy for Chinese, English, and Japanese screenshots, prepare a Python runtime with PaddleOCR on the same machine and point AiTrans to it from **Settings & Connection**.
+
+Suggested steps:
+
+- Prepare a local Python runtime. A system Python or a dedicated virtual environment are both fine.
+- Install PaddleOCR and the matching Paddle runtime into that Python environment.
+- Open **Settings & Connection**.
+- Fill **Local PaddleOCR Python** with the Python executable path. If your shell `PATH` already resolves the right Python, you can leave it blank.
+- Keep the device on `CPU` unless you already know your Paddle runtime is ready for GPU.
+- Save the settings and capture again. AiTrans will try PaddleOCR first and fall back to bundled Tesseract only when the local PaddleOCR path fails.
 
 ## Updates
 

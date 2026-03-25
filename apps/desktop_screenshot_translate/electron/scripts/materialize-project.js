@@ -54,6 +54,13 @@ function resolveSourceProductSpecPath() {
   );
 }
 
+function resolveSourceImplementationConfigPath() {
+  return (
+    resolveOptionalInputPath(process.env.AITRANS_IMPLEMENTATION_CONFIG_SOURCE)
+    || resolveLegacySourceDir('projects', 'desktop_screenshot_translate', 'implementation_config.toml')
+  );
+}
+
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
 }
@@ -103,6 +110,16 @@ function parseProjectMetadataFromToml(productSpecPath) {
   }
 
   return metadata;
+}
+
+function parseImplementationOverrides(sourceImplementationConfigPath) {
+  const text = fs.readFileSync(sourceImplementationConfigPath, 'utf-8');
+  const overrides = {};
+  const ocrChainMatch = text.match(/^ocr_chain\s*=\s*\[(.*?)\]/m);
+  if (ocrChainMatch) {
+    overrides.ocr_chain = [...ocrChainMatch[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+  }
+  return overrides;
 }
 
 function synchronizeProjectMetadata(targetDir, metadata) {
@@ -156,7 +173,7 @@ function synchronizeProjectMetadata(targetDir, metadata) {
   }
 }
 
-function sanitizeImplementationBundle(bundlePath) {
+function sanitizeImplementationBundle(bundlePath, implementationOverrides = null) {
   const text = fs.readFileSync(bundlePath, 'utf-8');
   const names = ['PRODUCT_SPEC', 'IMPLEMENTATION_CONFIG', 'RUNTIME_BUNDLE'];
   const parsed = {};
@@ -172,6 +189,27 @@ function sanitizeImplementationBundle(bundlePath) {
 
   if (parsed.IMPLEMENTATION_CONFIG.artifacts) {
     delete parsed.IMPLEMENTATION_CONFIG.artifacts.framework_ir_json;
+  }
+
+  if (implementationOverrides?.ocr_chain && implementationOverrides.ocr_chain.length > 0) {
+    parsed.IMPLEMENTATION_CONFIG.providers = {
+      ...(parsed.IMPLEMENTATION_CONFIG.providers || {}),
+      ocr_chain: implementationOverrides.ocr_chain,
+    };
+    parsed.RUNTIME_BUNDLE.implementation = {
+      ...(parsed.RUNTIME_BUNDLE.implementation || {}),
+      providers: {
+        ...((parsed.RUNTIME_BUNDLE.implementation && parsed.RUNTIME_BUNDLE.implementation.providers) || {}),
+        ocr_chain: implementationOverrides.ocr_chain,
+      },
+    };
+    if (parsed.RUNTIME_BUNDLE.contracts && Array.isArray(parsed.RUNTIME_BUNDLE.contracts.workflow)) {
+      parsed.RUNTIME_BUNDLE.contracts.workflow = parsed.RUNTIME_BUNDLE.contracts.workflow.map((stage) => (
+        stage.stage_id === 'ocr'
+          ? { ...stage, providers: implementationOverrides.ocr_chain }
+          : stage
+      ));
+    }
   }
 
   parsed.RUNTIME_BUNDLE.generated_artifacts = {
@@ -268,6 +306,7 @@ function main() {
   const sourceGeneratedDir = resolveSourceGeneratedDir();
   const sourceReleaseNotesDir = resolveSourceReleaseNotesDir();
   const sourceProductSpecPath = resolveSourceProductSpecPath();
+  const sourceImplementationConfigPath = resolveSourceImplementationConfigPath();
 
   console.log('desktop_screenshot_translate standalone materializer');
   console.log(`app root: ${resolveAppRoot()}`);
@@ -281,7 +320,10 @@ function main() {
     } else {
       console.log('[WARN] source product_spec.toml not found; keeping copied generated project metadata as-is');
     }
-    sanitizeImplementationBundle(path.join(localGeneratedDir, 'implementation_bundle.py'));
+    const implementationOverrides = sourceImplementationConfigPath && fs.existsSync(sourceImplementationConfigPath)
+      ? parseImplementationOverrides(sourceImplementationConfigPath)
+      : null;
+    sanitizeImplementationBundle(path.join(localGeneratedDir, 'implementation_bundle.py'), implementationOverrides);
     sanitizeGenerationManifest(localGeneratedDir);
   } else {
     console.log('[INFO] no external generated source configured; validating local project-generated');

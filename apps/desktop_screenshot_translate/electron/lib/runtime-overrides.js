@@ -148,6 +148,8 @@ function ensureRuntimeOverridesTemplate() {
       source_language: 'auto',
     },
     ocr: {
+      paddleocr_python: '',
+      paddleocr_device: 'cpu',
       tesseract_path: '',
       tessdata_dir: '',
     },

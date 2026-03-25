@@ -7,6 +7,7 @@ const state = {
 const DEFAULT_SERVICE_OPTIONS = ['openai', 'deepseek', 'zhipu', 'custom'];
 const DEFAULT_PIPELINE_OPTIONS = ['auto', 'zh', 'en', 'ja'];
 const DEFAULT_SEND_SHORTCUTS = ['enter', 'ctrl_enter', 'shift_enter'];
+const DEFAULT_PADDLE_DEVICE_OPTIONS = ['cpu', 'gpu'];
 const SERVICE_LABELS = {
   openai: 'OpenAI',
   deepseek: 'DeepSeek',
@@ -162,13 +163,17 @@ function syncForm(guide) {
   const runtimeDraft = guide?.runtimeDraft || {};
   const desktopDraft = guide?.desktopDraft || {};
   const pipelineDraft = guide?.pipelineDraft || {};
+  const ocrDraft = guide?.ocrDraft || {};
   const pipelineOptions = Array.isArray(guide?.pipelineOptions) ? guide.pipelineOptions : DEFAULT_PIPELINE_OPTIONS;
   const sendShortcutOptions = Array.isArray(guide?.sendShortcutOptions) ? guide.sendShortcutOptions : DEFAULT_SEND_SHORTCUTS;
+  const paddleDeviceOptions = Array.isArray(guide?.paddleDeviceOptions) ? guide.paddleDeviceOptions : DEFAULT_PADDLE_DEVICE_OPTIONS;
 
   const apiKeyInput = document.getElementById('apiKey');
   const captureShortcutInput = document.getElementById('captureShortcut');
   const sendShortcutInput = document.getElementById('sendShortcut');
   const sourceLanguageInput = document.getElementById('sourceLanguage');
+  const paddlePythonInput = document.getElementById('paddlePython');
+  const paddleDeviceInput = document.getElementById('paddleDevice');
 
   syncServiceControls();
 
@@ -180,6 +185,9 @@ function syncForm(guide) {
   }
   if (document.activeElement !== captureShortcutInput) {
     captureShortcutInput.value = desktopDraft.captureShortcut || 'CommandOrControl+Shift+1';
+  }
+  if (document.activeElement !== paddlePythonInput) {
+    paddlePythonInput.value = ocrDraft.paddlePython || '';
   }
 
   const currentSendShortcut = sendShortcutInput.value;
@@ -207,7 +215,21 @@ function syncForm(guide) {
   if (document.activeElement !== sourceLanguageInput || !pipelineOptions.includes(currentSourceLanguage)) {
     sourceLanguageInput.value = pipelineOptions.includes(nextSourceLanguage) ? nextSourceLanguage : 'auto';
   }
+
+  const currentPaddleDevice = paddleDeviceInput.value;
+  paddleDeviceInput.innerHTML = '';
+  for (const option of paddleDeviceOptions) {
+    const element = document.createElement('option');
+    element.value = option;
+    element.textContent = option === 'gpu' ? 'GPU' : 'CPU（默认）';
+    paddleDeviceInput.appendChild(element);
+  }
+  const nextPaddleDevice = ocrDraft.paddleDevice || 'cpu';
+  if (document.activeElement !== paddleDeviceInput || !paddleDeviceOptions.includes(currentPaddleDevice)) {
+    paddleDeviceInput.value = paddleDeviceOptions.includes(nextPaddleDevice) ? nextPaddleDevice : 'cpu';
+  }
 }
+
 
 function render(payload) {
   const displayName = payload?.product?.displayName || state.displayName;
@@ -279,6 +301,8 @@ async function saveConfig(startCapture) {
   const captureShortcut = document.getElementById('captureShortcut').value.trim();
   const sendShortcut = document.getElementById('sendShortcut').value;
   const sourceLanguage = document.getElementById('sourceLanguage').value;
+  const paddlePython = document.getElementById('paddlePython').value.trim();
+  const paddleDevice = document.getElementById('paddleDevice').value;
 
   saveButton.disabled = true;
   startButton.disabled = true;
@@ -293,6 +317,8 @@ async function saveConfig(startCapture) {
       captureShortcut,
       sendShortcut,
       sourceLanguage,
+      paddlePython,
+      paddleDevice,
       startCapture,
     });
     if (!result?.ok) {

@@ -4,7 +4,7 @@ const path = require('node:path');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 
-const { resolveTesseractExecutable } = require('./provider-runtime');
+const { resolvePaddleOcrRuntime, resolveTesseractExecutable } = require('./provider-runtime');
 
 const execFileAsync = promisify(execFile);
 const OCR_ACCEPT_SCORE = 10;
@@ -12,6 +12,14 @@ const OCR_ACCEPT_TEXT_LENGTH = 5;
 const OCR_DENSE_BLOCK_ACCEPT_SCORE = 26;
 const OCR_DENSE_BLOCK_ACCEPT_TEXT_LENGTH = 48;
 const LATIN_WHITELIST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_/.:';
+
+const PADDLE_LANGUAGE_MAP = {
+  auto: null,
+  en: 'en',
+  zh: 'ch',
+  'zh-Hans': 'ch',
+  ja: 'japan',
+};
 
 const TESSERACT_LANGUAGE_MAP = {
   auto: null,
@@ -541,6 +549,159 @@ async function withTemporaryWorkspace(callback) {
   }
 }
 
+
+function buildPaddleLanguageProfiles(productSpec, capture) {
+  const profiles = [];
+  const seen = new Set();
+  const configuredSourceLanguage =
+    typeof productSpec?.pipeline?.selected_source_language === 'string'
+      ? productSpec.pipeline.selected_source_language.trim()
+      : '';
+
+  function pushProfile(label, language, sourceCode) {
+    if (!language || seen.has(language)) {
+      return;
+    }
+    seen.add(language);
+    profiles.push({
+      label,
+      language,
+      sourceCode,
+    });
+  }
+
+  if (configuredSourceLanguage && configuredSourceLanguage !== 'auto') {
+    const mapped = PADDLE_LANGUAGE_MAP[configuredSourceLanguage];
+    pushProfile(configuredSourceLanguage + '_primary', mapped, configuredSourceLanguage);
+    return profiles;
+  }
+
+  if (looksLikeLatinSingleLine(capture)) {
+    pushProfile('en_primary', 'en', 'en');
+    pushProfile('zh_fallback', 'ch', 'zh');
+    pushProfile('ja_fallback', 'japan', 'ja');
+    return profiles;
+  }
+
+  pushProfile('zh_primary', 'ch', 'zh');
+  pushProfile('en_fallback', 'en', 'en');
+  pushProfile('ja_fallback', 'japan', 'ja');
+  return profiles;
+}
+
+function buildPaddleRecognitionAttempts(capture, productSpec) {
+  const languageProfiles = buildPaddleLanguageProfiles(productSpec, capture);
+  const variants = buildCaptureVariants(capture);
+  const layoutProfile = getCaptureLayoutProfile(capture);
+  const variantOrder = layoutProfile === 'dense_block'
+    ? [1, 2, 0]
+    : (looksLikeLatinSingleLine(capture) ? [1, 0, 2] : [1, 2, 0]);
+  const attempts = [];
+  const seen = new Set();
+
+  for (const languageProfile of languageProfiles) {
+    for (const variantIndex of variantOrder) {
+      const variant = variants[variantIndex] || variants[0];
+      if (!variant) {
+        continue;
+      }
+      const token = languageProfile.language + '|' + variant.name;
+      if (seen.has(token)) {
+        continue;
+      }
+      seen.add(token);
+      attempts.push({ languageProfile, variant });
+    }
+  }
+
+  return attempts;
+}
+
+async function recognizeWithPaddleOcrLocal(imagePath, attempt, implementationConfig) {
+  const runtime = resolvePaddleOcrRuntime(implementationConfig);
+  if (!runtime.scriptPath) {
+    throw new Error('paddleocr_local runner script is missing');
+  }
+
+  const args = [
+    runtime.scriptPath,
+    '--image',
+    imagePath,
+    '--lang',
+    attempt.languageProfile.language,
+    '--device',
+    runtime.device,
+  ];
+
+  const result = await execFileAsync(runtime.executable, args, {
+    windowsHide: true,
+    maxBuffer: 16 * 1024 * 1024,
+  });
+
+  const stdout = (result.stdout || '').trim();
+  if (!stdout) {
+    throw new Error('paddleocr_local returned empty stdout');
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(stdout);
+  } catch (error) {
+    throw new Error('paddleocr_local returned invalid JSON: ' + stdout);
+  }
+
+  if (!payload.ok) {
+    throw new Error(payload.error || 'paddleocr_local failed');
+  }
+
+  const text = typeof payload.text === 'string' ? payload.text.trim() : '';
+  if (!text) {
+    throw new Error('paddleocr_local returned empty OCR text');
+  }
+
+  const sourceLanguage = detectSourceLanguageFromText(text);
+  const avgScore = typeof payload.avg_score === 'number' ? payload.avg_score : null;
+  const textScore = scoreRecognizedText(text) + (avgScore !== null ? avgScore * 20 : 0);
+
+  return {
+    provider: 'paddleocr_local',
+    text,
+    sourceLanguage: attempt.languageProfile.sourceCode || sourceLanguage.code,
+    diagnostics: {
+      language: attempt.languageProfile.language,
+      languageProfile: attempt.languageProfile.label,
+      imageVariant: attempt.variant.name,
+      preprocessStages: attempt.variant.stages,
+      executable: runtime.executable,
+      executableSource: runtime.source,
+      device: runtime.device,
+      scriptPath: runtime.scriptPath,
+      avgScore,
+      lines: Array.isArray(payload.lines) ? payload.lines.length : 0,
+      sourceLanguageDetection: sourceLanguage.strategy,
+      textScore,
+      stderr: (result.stderr || '').trim(),
+    },
+  };
+}
+
+function shouldAcceptPaddleRecognitionResult(result, capture) {
+  const text = typeof result?.text === 'string' ? result.text.trim() : '';
+  const avgScore = typeof result?.diagnostics?.avgScore === 'number' ? result.diagnostics.avgScore : 0;
+  const layoutProfile = getCaptureLayoutProfile(capture);
+
+  if (!text) {
+    return false;
+  }
+  if (layoutProfile === 'dense_block') {
+    return avgScore >= 0.8 && text.length >= 24;
+  }
+  if (looksLikeLatinSingleLine(capture)) {
+    return avgScore >= 0.72 && text.length >= 4;
+  }
+  return avgScore >= 0.72 && text.length >= 6;
+}
+
 async function recognizeWithTesseract(imagePath, attempt, implementationConfig) {
   const { executable, source, tessdataDir } = resolveTesseractExecutable(implementationConfig);
   const args = [
@@ -607,6 +768,35 @@ async function recognizeText(capture, productSpec, implementationConfig) {
       try {
         if (provider === 'windows_ocr_api') {
           return await recognizeWithWindowsOcr();
+        }
+        if (provider === 'paddleocr_local') {
+          const attempts = buildPaddleRecognitionAttempts(capture, productSpec);
+          const successes = [];
+
+          for (const [index, attempt] of attempts.entries()) {
+            const imagePath = path.join(tmpRoot, `capture-paddle-${index + 1}-${attempt.variant.name}.png`);
+            await fs.writeFile(imagePath, attempt.variant.pngBuffer);
+            try {
+              const result = await recognizeWithPaddleOcrLocal(imagePath, attempt, implementationConfig);
+              successes.push(result);
+              if (shouldAcceptPaddleRecognitionResult(result, capture)) {
+                return result;
+              }
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              failures.push(`${provider}[${attempt.languageProfile.label}|${attempt.variant.name}]: ${message}`);
+            }
+          }
+
+          if (successes.length > 0) {
+            successes.sort((left, right) => {
+              const rightScore = right.diagnostics?.textScore ?? -Infinity;
+              const leftScore = left.diagnostics?.textScore ?? -Infinity;
+              return rightScore - leftScore;
+            });
+            return successes[0];
+          }
+          continue;
         }
         if (provider === 'tesseract') {
           const attempts = buildRecognitionAttempts(capture, productSpec);

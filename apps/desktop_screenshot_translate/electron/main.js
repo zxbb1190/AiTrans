@@ -964,6 +964,10 @@ function getSetupGuideState() {
     overrides.values && typeof overrides.values.pipeline === 'object'
       ? overrides.values.pipeline
       : {};
+  const ocrOverrides =
+    overrides.values && typeof overrides.values.ocr === 'object'
+      ? overrides.values.ocr
+      : {};
   const translationService =
     typeof translationOverrides.service === 'string' && translationOverrides.service.trim()
       ? normalizeTranslationService(translationOverrides.service)
@@ -1046,10 +1050,21 @@ function getSetupGuideState() {
           ? pipelineOverrides.source_language.trim()
           : config.selectedSourceLanguage || 'auto',
     },
+    ocrDraft: {
+      paddlePython:
+        typeof ocrOverrides.paddleocr_python === 'string'
+          ? ocrOverrides.paddleocr_python.trim()
+          : '',
+      paddleDevice:
+        typeof ocrOverrides.paddleocr_device === 'string' && ocrOverrides.paddleocr_device.trim()
+          ? ocrOverrides.paddleocr_device.trim()
+          : 'cpu',
+    },
     pipelineOptions: Array.isArray(config.productSpec.pipeline.source_languages)
       ? config.productSpec.pipeline.source_languages
       : ['auto'],
     sendShortcutOptions: SUPPORTED_SEND_SHORTCUTS,
+    paddleDeviceOptions: ['cpu', 'gpu'],
     capabilities: {
       shortcutAvailable: runtimeCapabilities.shortcutAvailable !== false,
       shortcutMessage: runtimeCapabilities.shortcutMessage,
@@ -1893,6 +1908,14 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
     payload && typeof payload.sourceLanguage === 'string'
       ? payload.sourceLanguage.trim()
       : (config.selectedSourceLanguage || 'auto');
+  const paddlePythonInput =
+    payload && typeof payload.paddlePython === 'string'
+      ? payload.paddlePython.trim()
+      : '';
+  const paddleDeviceInput =
+    payload && typeof payload.paddleDevice === 'string'
+      ? payload.paddleDevice.trim()
+      : 'cpu';
   const startCapture = Boolean(payload && payload.startCapture);
   const supportedSourceLanguages = Array.isArray(config.productSpec.pipeline.source_languages)
     ? config.productSpec.pipeline.source_languages
@@ -1919,6 +1942,9 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
   }
   if (!SUPPORTED_SEND_SHORTCUTS.includes(sendShortcutInput)) {
     return { ok: false, error: 'invalid desktop.send_shortcut' };
+  }
+  if (!['cpu', 'gpu'].includes(paddleDeviceInput)) {
+    return { ok: false, error: 'invalid ocr.paddleocr_device' };
   }
 
   const normalizedBaseUrl = normalizeBaseUrl(rawBaseUrl);
@@ -1954,6 +1980,13 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
         ? currentValues.pipeline
         : {}),
       source_language: sourceLanguageInput,
+    },
+    ocr: {
+      ...(currentValues.ocr && typeof currentValues.ocr === 'object'
+        ? currentValues.ocr
+        : {}),
+      paddleocr_python: paddlePythonInput,
+      paddleocr_device: paddleDeviceInput,
     },
   });
   config.selectedSourceLanguage = sourceLanguageInput;
@@ -2002,6 +2035,8 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
     captureShortcut: shortcutResult.shortcut,
     sendShortcut: sendShortcutInput,
     sourceLanguage: sourceLanguageInput,
+    paddlePythonConfigured: Boolean(paddlePythonInput),
+    paddleDevice: paddleDeviceInput,
     startCapture,
   });
 
