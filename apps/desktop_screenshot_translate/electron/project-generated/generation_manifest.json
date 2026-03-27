@@ -12,7 +12,7 @@
     "generation_manifest_json": "project-generated/generation_manifest.json"
   },
   "content_sha256": {
-    "product_spec_json": "5917e93bb06db56924cab7d58cea431872ff592b0d8e488e5d1be2c1f8b3a628",
-    "implementation_bundle_py": "f363e5b02d2e0ed7d172c39d6e26fa40c1c02f6ac5562ff1f2377546e0b6235a"
+    "product_spec_json": "7be5b8ca4266b41ba2545dc9e3afb54c63f496ab1497714d4835f76ff1e6911f",
+    "implementation_bundle_py": "375e52ff21cd63ecb18b2263b90691e38522f08bf3a82ca6ae5fc42e7d7f7b97"
   }
 }

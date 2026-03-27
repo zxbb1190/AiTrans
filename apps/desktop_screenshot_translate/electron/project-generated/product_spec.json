@@ -4,7 +4,7 @@
     "template": "desktop_screenshot_translate",
     "display_name": "AiTrans 截图翻译",
     "description": "An AI-style desktop translation assistant that turns screenshots and text into a local conversation thread.",
-    "version": "0.2.2"
+    "version": "0.2.3"
   },
   "framework": {
     "frontend": "framework/frontend/L2-M0-前端框架标准模块.md",
