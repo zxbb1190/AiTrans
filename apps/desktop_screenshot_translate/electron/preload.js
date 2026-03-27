@@ -34,6 +34,9 @@ contextBridge.exposeInMainWorld('aitransDesktop', {
   copyTranslation(text) {
     return ipcRenderer.invoke('panel:copy-translation', { text });
   },
+  copyCaptureImage(dataUrl) {
+    return ipcRenderer.invoke('panel:copy-capture-image', { dataUrl });
+  },
   readClipboardText() {
     return ipcRenderer.invoke('panel:read-clipboard-text');
   },

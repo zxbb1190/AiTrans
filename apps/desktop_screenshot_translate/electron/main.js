@@ -1810,6 +1810,19 @@ ipcMain.handle('panel:copy-translation', async (_event, payload) => {
   return { ok: true };
 });
 
+ipcMain.handle('panel:copy-capture-image', async (_event, payload) => {
+  const dataUrl = typeof payload?.dataUrl === 'string' ? payload.dataUrl.trim() : '';
+  if (!dataUrl.startsWith('data:image/')) {
+    return { ok: false, error: 'missing capture image data' };
+  }
+  const image = nativeImage.createFromDataURL(dataUrl);
+  if (image.isEmpty()) {
+    return { ok: false, error: 'invalid capture image data' };
+  }
+  clipboard.writeImage(image);
+  return { ok: true };
+});
+
 ipcMain.on('panel:load-conversation-state-sync', (event) => {
   const state = conversationStore.load();
   event.returnValue = {

@@ -45,6 +45,8 @@ textarea {
 .message-feedback,
 .message-error,
 .preview-toggle,
+.preview-row,
+.preview-copy-btn,
 .capture-preview,
 .composer-toolbar {
   -webkit-app-region: no-drag;
@@ -213,6 +215,13 @@ textarea {
   font-weight: 600;
 }
 
+.preview-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
 .preview-toggle {
   display: flex;
   justify-content: space-between;
@@ -222,6 +231,10 @@ textarea {
   background: rgba(255, 255, 255, 0.08);
   color: inherit;
   font-weight: 600;
+}
+
+.preview-copy-btn {
+  flex: 0 0 auto;
 }
 
 .capture-preview {

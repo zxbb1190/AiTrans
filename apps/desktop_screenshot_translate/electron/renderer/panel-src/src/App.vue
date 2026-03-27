@@ -5,8 +5,8 @@ const editTimers = new Map();
 const copyResetTimers = new Map();
 const threadRef = ref(null);
 const composerComposing = ref(false);
+const shouldAutoFollow = ref(true);
 let persistTimer = null;
-let threadMutationObserver = null;
 const scrollBurstTimers = new Set();
 
 function createEmptyPayload() {
@@ -15,6 +15,7 @@ function createEmptyPayload() {
       displayName: 'AiTrans 截图翻译',
       copy: {
         copy_success: '译文已复制',
+        copy_image_success: '截图已复制',
         empty_translation: '未识别到可翻译文本',
         retry_label: '重试翻译',
         recapture_label: '重新截图',
@@ -259,9 +260,26 @@ async function clearConversationCache() {
   await window.aitransDesktop.clearConversationState();
 }
 
-function scrollThreadToBottom() {
+function isThreadNearBottom(threshold = 96) {
+  if (!threadRef.value) {
+    return true;
+  }
+  const thread = threadRef.value;
+  const remaining = thread.scrollHeight - (thread.scrollTop + thread.clientHeight);
+  return remaining <= threshold;
+}
+
+function handleThreadScroll() {
+  shouldAutoFollow.value = isThreadNearBottom();
+}
+
+function scrollThreadToBottom(options = {}) {
+  const force = Boolean(options.force);
   nextTick(() => {
     if (!threadRef.value) {
+      return;
+    }
+    if (!force && !shouldAutoFollow.value) {
       return;
     }
     const performScroll = () => {
@@ -273,6 +291,7 @@ function scrollThreadToBottom() {
         lastMessage.scrollIntoView({ block: 'end' });
       }
       threadRef.value.scrollTop = threadRef.value.scrollHeight;
+      shouldAutoFollow.value = true;
     };
 
     window.requestAnimationFrame(() => {
@@ -283,28 +302,15 @@ function scrollThreadToBottom() {
   });
 }
 
-function scheduleScrollBurst() {
-  scrollThreadToBottom();
+function scheduleScrollBurst(options = {}) {
+  scrollThreadToBottom(options);
   for (const delay of [40, 140, 280]) {
     const timer = window.setTimeout(() => {
       scrollBurstTimers.delete(timer);
-      scrollThreadToBottom();
+      scrollThreadToBottom(options);
     }, delay);
     scrollBurstTimers.add(timer);
   }
-}
-
-function conversationScrollSignature() {
-  return appState.session.messages
-    .map((message) => [
-      message.id,
-      message.stageStatus,
-      message.text,
-      message.translatedText,
-      message.sourceDraft,
-      message.previewExpanded ? 'preview-open' : 'preview-closed',
-    ].join(':'))
-    .join('|');
 }
 
 const loadedConversationState = loadConversationCache();
@@ -372,17 +378,33 @@ function handleComposerKeydown(event) {
 function upsertMessage(nextMessage) {
   const index = appState.session.messages.findIndex((item) => item.id === nextMessage.id);
   const normalized = normalizeMessage(nextMessage);
+  const wasAutoFollowing = shouldAutoFollow.value;
+
   if (index >= 0) {
+    const previousMessage = appState.session.messages[index];
     appState.session.messages[index] = {
-      ...appState.session.messages[index],
+      ...previousMessage,
       ...normalized,
     };
+    const isLastMessage = index === appState.session.messages.length - 1;
+    const shouldScrollUpdatedLastMessage = (
+      wasAutoFollowing
+      && isLastMessage
+      && (
+        previousMessage.stageStatus !== normalized.stageStatus
+        || previousMessage.text !== normalized.text
+        || previousMessage.translatedText !== normalized.translatedText
+      )
+    );
+    if (shouldScrollUpdatedLastMessage) {
+      scheduleScrollBurst({ force: true });
+    }
   } else {
     appState.session.messages.push(normalized);
+    scheduleScrollBurst({ force: true });
   }
   touchSession(appState.session);
   persistConversation();
-  scheduleScrollBurst();
   return appState.session.messages.find((item) => item.id === normalized.id);
 }
 
@@ -497,7 +519,7 @@ async function startNewChatSession() {
   appState.session = createSession();
   appState.historyOpen = false;
   persistConversation({ immediate: true });
-  scheduleScrollBurst();
+  scheduleScrollBurst({ force: true });
 }
 
 async function handleNewChat() {
@@ -530,7 +552,7 @@ async function handleOpenHistorySession(sessionId) {
   appState.session = cloneSession(nextSession);
   appState.historyOpen = false;
   persistConversation({ immediate: true });
-  scheduleScrollBurst();
+  scheduleScrollBurst({ force: true });
 }
 
 async function handleDeleteHistorySession(sessionId) {
@@ -558,14 +580,10 @@ ${copy.clear_confirm_copy}`);
   await clearConversationCache();
   persistConversation({ immediate: true });
   appState.historyOpen = false;
-  scheduleScrollBurst();
+  scheduleScrollBurst({ force: true });
 }
-async function handleCopy(message) {
-  if (!message.translatedText) {
-    return;
-  }
-  await window.aitransDesktop.copyTranslation(message.translatedText);
-  message.copyFeedback = appState.payload.product.copy.copy_success;
+function setMessageCopyFeedback(message, feedback) {
+  message.copyFeedback = feedback;
   persistConversation();
   const existingTimer = copyResetTimers.get(message.id);
   if (existingTimer) {
@@ -577,6 +595,25 @@ async function handleCopy(message) {
     copyResetTimers.delete(message.id);
   }, 1600);
   copyResetTimers.set(message.id, timer);
+}
+
+async function handleCopy(message) {
+  if (!message.translatedText) {
+    return;
+  }
+  await window.aitransDesktop.copyTranslation(message.translatedText);
+  setMessageCopyFeedback(message, appState.payload.product.copy.copy_success);
+}
+
+async function handleCopyCaptureImage(message) {
+  if (!message.previewDataUrl) {
+    return;
+  }
+  const result = await window.aitransDesktop.copyCaptureImage(message.previewDataUrl);
+  if (!result?.ok) {
+    return;
+  }
+  setMessageCopyFeedback(message, appState.payload.product.copy.copy_image_success || '截图已复制');
 }
 
 async function requestAssistantTranslation(message, sourceMode = 'manual_source_edit') {
@@ -723,10 +760,6 @@ window.aitransDesktop.onPanelCommand(async ({ command }) => {
 });
 
 onBeforeUnmount(() => {
-  if (threadMutationObserver) {
-    threadMutationObserver.disconnect();
-    threadMutationObserver = null;
-  }
   for (const timer of scrollBurstTimers.values()) {
     window.clearTimeout(timer);
   }
@@ -745,25 +778,8 @@ onBeforeUnmount(() => {
 });
 
 onMounted(() => {
-  scheduleScrollBurst();
-  if (threadRef.value) {
-    threadMutationObserver = new MutationObserver(() => {
-      scheduleScrollBurst();
-    });
-    threadMutationObserver.observe(threadRef.value, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-  }
+  scheduleScrollBurst({ force: true });
 });
-
-watch(
-  () => conversationScrollSignature(),
-  () => {
-    scheduleScrollBurst();
-  },
-);
 </script>
 
 <template>
@@ -841,7 +857,7 @@ watch(
     </aside>
 
     <template v-else>
-      <section ref="threadRef" class="chat-thread">
+      <section ref="threadRef" class="chat-thread" @scroll="handleThreadScroll">
         <div v-if="appState.session.messages.length === 0" class="empty-state">
           <div class="empty-brand">AiTrans</div>
           <div class="empty-title">{{ appState.payload.product.displayName }}</div>
@@ -866,23 +882,33 @@ watch(
 
           <div v-else-if="message.kind === 'user_screenshot'" class="bubble bubble--user bubble--capture">
             <div class="capture-label">{{ message.text || '已发送截图' }}</div>
-            <button
-              v-if="message.previewDataUrl"
-              class="preview-toggle"
-              type="button"
-              :aria-expanded="message.previewExpanded ? 'true' : 'false'"
-              @click="togglePreview(message)"
-            >
-              <span>截图结果预览</span>
-              <span>{{ message.previewExpanded ? '收起' : '展开' }}</span>
-            </button>
+            <div v-if="message.previewDataUrl" class="preview-row">
+              <button
+                class="preview-toggle"
+                type="button"
+                :aria-expanded="message.previewExpanded ? 'true' : 'false'"
+                @click="togglePreview(message)"
+              >
+                <span>截图结果预览</span>
+                <span>{{ message.previewExpanded ? '收起' : '展开' }}</span>
+              </button>
+              <button
+                class="icon-btn icon-btn--small preview-copy-btn"
+                type="button"
+                title="复制截图"
+                aria-label="复制截图"
+                @click="handleCopyCaptureImage(message)"
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.75 2A2.75 2.75 0 0 0 4 4.75v7.5A2.75 2.75 0 0 0 6.75 15h4.5A2.75 2.75 0 0 0 14 12.25v-7.5A2.75 2.75 0 0 0 11.25 2h-4.5Zm-1.25 2.75c0-.69.56-1.25 1.25-1.25h4.5c.69 0 1.25.56 1.25 1.25v7.5c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-7.5ZM9 16.5H7.5a3.5 3.5 0 0 1-3.5-3.5V6.5a.75.75 0 0 0-1.5 0V13A5 5 0 0 0 7.5 18H9a.75.75 0 0 0 0-1.5Z"/></svg>
+              </button>
+            </div>
             <img
               v-if="message.previewExpanded && message.previewDataUrl"
               class="capture-preview"
               :src="message.previewDataUrl"
               alt="capture preview"
-              @load="scrollThreadToBottom"
             />
+            <div v-if="message.copyFeedback" class="message-feedback">{{ message.copyFeedback }}</div>
           </div>
 
           <div v-else-if="message.kind === 'assistant_translation'" class="bubble bubble--assistant">
