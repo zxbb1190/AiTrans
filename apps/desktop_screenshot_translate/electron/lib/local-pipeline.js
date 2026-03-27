@@ -1,5 +1,5 @@
 const { desktopCapturer, screen } = require('electron');
-const { recognizeText } = require('./ocr-adapters');
+const { recognizeText, prewarmOcrProviders, getPaddleWarmupLanguagePlan } = require('./ocr-adapters');
 const { translateText } = require('./translation-adapters');
 
 function clampRect(rect, maxWidth, maxHeight) {
@@ -103,6 +103,8 @@ async function probeScreenCaptureCapability() {
 module.exports = {
   captureSelectionImage,
   probeScreenCaptureCapability,
+  prewarmOcrProviders,
+  getPaddleWarmupLanguagePlan,
   recognizeText,
   translateText,
 };

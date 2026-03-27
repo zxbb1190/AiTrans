@@ -7,6 +7,8 @@ const { loadProjectConfig } = require('./lib/project-config');
 const {
   captureSelectionImage,
   probeScreenCaptureCapability,
+  prewarmOcrProviders,
+  getPaddleWarmupLanguagePlan,
   recognizeText,
   translateText,
 } = require('./lib/local-pipeline');
@@ -134,12 +136,16 @@ const panelUiState = {
   blurGuardUntil: 0,
   temporaryTopmostTimer: null,
 };
+let ocrPrewarmTimers = [];
 const CAPTURE_SETTLE_MS = 180;
 const RETRYABLE_OCR_ERROR_FRAGMENT = 'tesseract returned empty OCR text';
 const PANEL_WIDTH = 460;
 const PANEL_HEIGHT = 680;
 const PANEL_GAP = 14;
 const SUPPORTED_SEND_SHORTCUTS = ['enter', 'ctrl_enter', 'shift_enter'];
+const OCR_PREWARM_PRIMARY_DELAY_MS = 1400;
+const OCR_PREWARM_SECONDARY_DELAY_MS = 4800;
+const OCR_PREWARM_BUSY_RETRY_MS = 2500;
 
 process.on('uncaughtException', (error) => {
   appendStartupLog('process:uncaughtException', { message: error.message, stack: error.stack });
@@ -260,6 +266,110 @@ function createAuditContext(selection) {
     selection,
     startedAt: Date.now(),
   };
+}
+
+function clearOcrPrewarmTimers() {
+  for (const timer of ocrPrewarmTimers) {
+    clearTimeout(timer);
+  }
+  ocrPrewarmTimers = [];
+}
+
+async function runOcrPrewarm(languages, context) {
+  if (app.isQuitting) {
+    return;
+  }
+  if (captureUiState.overlayVisible || captureUiState.pipelineBusy) {
+    if ((context.remainingBusyRetries || 0) > 0) {
+      appendStartupLog('ocr:prewarm:rescheduled', {
+        languages,
+        reason: context.reason,
+        stage: context.stage,
+      });
+      const retryTimer = setTimeout(() => {
+        void runOcrPrewarm(languages, {
+          ...context,
+          remainingBusyRetries: (context.remainingBusyRetries || 0) - 1,
+        });
+      }, OCR_PREWARM_BUSY_RETRY_MS);
+      ocrPrewarmTimers.push(retryTimer);
+    } else {
+      appendStartupLog('ocr:prewarm:skipped_busy', {
+        languages,
+        reason: context.reason,
+        stage: context.stage,
+      });
+    }
+    return;
+  }
+
+  appendStartupLog('ocr:prewarm:start', {
+    languages,
+    reason: context.reason,
+    stage: context.stage,
+  });
+  const result = await prewarmOcrProviders(config.productSpec, config.implementationConfig, {
+    languages,
+    reason: context.reason,
+    stage: context.stage,
+  });
+  if (result?.skipped) {
+    appendStartupLog('ocr:prewarm:skipped', {
+      languages,
+      reason: context.reason,
+      stage: context.stage,
+      skipReason: result.reason || 'unknown',
+    });
+    return;
+  }
+  if (result?.ok) {
+    appendStartupLog('ocr:prewarm:done', {
+      languages,
+      warmed: result.warmed || languages,
+      reason: context.reason,
+      stage: context.stage,
+    });
+    return;
+  }
+  appendStartupLog('ocr:prewarm:failed', {
+    languages,
+    reason: context.reason,
+    stage: context.stage,
+    error: result?.error || 'unknown',
+  });
+}
+
+function scheduleOcrPrewarm(reason = 'startup') {
+  clearOcrPrewarmTimers();
+  const warmupPlan = getPaddleWarmupLanguagePlan(config.productSpec || {});
+  if (!warmupPlan.length) {
+    return;
+  }
+
+  const primaryLanguages = warmupPlan.slice(0, 1);
+  const secondaryLanguages = warmupPlan.slice(1, 2);
+
+  if (primaryLanguages.length > 0) {
+    const primaryTimer = setTimeout(() => {
+      void runOcrPrewarm(primaryLanguages, {
+        reason,
+        stage: 'primary',
+        remainingBusyRetries: 2,
+      });
+    }, OCR_PREWARM_PRIMARY_DELAY_MS);
+    ocrPrewarmTimers.push(primaryTimer);
+  }
+
+  if (secondaryLanguages.length > 0) {
+    const secondaryTimer = setTimeout(() => {
+      void runOcrPrewarm(secondaryLanguages, {
+        reason,
+        stage: 'secondary',
+        remainingBusyRetries: 1,
+      });
+    }, OCR_PREWARM_SECONDARY_DELAY_MS);
+    ocrPrewarmTimers.push(secondaryTimer);
+  }
 }
 
 function createOverlayWindow() {
@@ -2025,6 +2135,8 @@ ipcMain.handle('setup:save-config', async (_event, payload) => {
     };
   }
 
+  scheduleOcrPrewarm('config_saved');
+
   appendStartupLog('setup-guide:config-saved', {
     configPath: saved.path,
     translationService,
@@ -2095,6 +2207,7 @@ app.whenReady().then(async () => {
     showSetupGuide();
   }
   createOverlayWindow();
+  scheduleOcrPrewarm('startup');
   if (updateRuntime) {
     updateRuntime.scheduleStartupCheck();
   }
